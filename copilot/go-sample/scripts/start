@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -x
+
+rm -rf ~/.ssh/known_hosts
+if [[ "$1" == "build" ]]; then
+  docker-compose -f ../docker-compose-build.yml up -d --build --remove-orphans
+else
+  docker-compose up -d --build
+fi
