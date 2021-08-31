@@ -17,6 +17,7 @@
     "dev": {  "env": "development"  },
     "stg": {  "env": "staging"  },
     "prd": {  "env": "production"  },
-    "stage": "dev"
+    "stage": "dev",
+    "apiversion": "v1"
   }
 }

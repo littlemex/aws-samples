@@ -12,11 +12,11 @@
     "deploy": "cdk deploy -c stage=${CDK_DEPLOY_ENV:-dev}"
   },
   "devDependencies": {
-    "@aws-cdk/assert": "1.119.0",
+    "@aws-cdk/assert": "1.120.0",
     "@types/aws-lambda": "^8.10.83",
     "@types/jest": "^26.0.10",
     "@types/node": "10.17.27",
-    "aws-cdk": "1.119.0",
+    "aws-cdk": "1.120.0",
     "esbuild": "^0.12.23",
     "jest": "^26.4.2",
     "ts-jest": "^26.2.0",
@@ -24,8 +24,10 @@
     "typescript": "~3.9.7"
   },
   "dependencies": {
-    "@aws-cdk/aws-lambda-nodejs": "^1.119.0",
-    "@aws-cdk/core": "1.119.0",
+    "@aws-cdk/aws-apigateway": "^1.120.0",
+    "@aws-cdk/aws-apigatewayv2": "^1.120.0",
+    "@aws-cdk/aws-lambda-nodejs": "^1.120.0",
+    "@aws-cdk/core": "1.120.0",
     "source-map-support": "^0.5.16"
   }
 }
