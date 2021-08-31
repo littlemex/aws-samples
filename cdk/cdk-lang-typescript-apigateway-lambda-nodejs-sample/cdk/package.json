@@ -9,7 +9,7 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "deploy": "cdk deploy -c ${CDK_DEPLOY_ENV:-dev}"
+    "deploy": "cdk deploy -c stage=${CDK_DEPLOY_ENV:-dev}"
   },
   "devDependencies": {
     "@aws-cdk/assert": "1.119.0",
