@@ -1,0 +1,16 @@
+SERVICE: sample
+STAGE: dev
+PROFILE: default
+REGION: us-east-1
+ACCOUNT_ID: xxx
+PROVISIONED_CONCURRENCY: 1
+MEMSIZE: 2048
+
+# private API gatewayを指定している
+# regionalを指定する場合にはWAF, IP制限などを入れること
+APIGW_REST_API_ID: xxx
+APIGW_REST_API_ROOT_RESOURCE_ID: xxx
+
+# deployment bucket
+S3_CONFIG_BUCKET_NAME: akazawt-serverless-deployment-bucket
+S3_CONFIG_BUCKET_PREFIX: sample
