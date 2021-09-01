@@ -1,0 +1,2 @@
+restApiId: ${self:custom.otherfile.environment.env.APIGW_REST_API_ID}
+restApiRootResourceId: ${self:custom.otherfile.environment.env.APIGW_REST_API_ROOT_RESOURCE_ID}

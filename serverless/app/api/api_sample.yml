@@ -1,0 +1,10 @@
+handler: handlers/api_sample.lambda_handler
+timeout: 6
+provisionedConcurrency: ${self:custom.otherfile.environment.env.PROVISIONED_CONCURRENCY}
+events:
+    - http:
+        path: api_sample 
+        method: post
+        integration: lambda
+        request:
+        response:

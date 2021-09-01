@@ -1,0 +1,15 @@
+{
+  "name": "serverless",
+  "version": "1.0.0",
+  "description": "sample",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "serverless-prune-plugin": "^1.4.2",
+    "sls": "^0.1.0"
+  }
+}

@@ -1,0 +1,4 @@
+SERVICE: ${self:custom.otherfile.environment.env.SERVICE}
+ACCOUNT_ID: ${self:custom.otherfile.environment.env.ACCOUNT_ID}
+REGION: ${self:custom.otherfile.environment.env.REGION}
+PROFILE: ${self:custom.otherfile.environment.env.PROFILE}

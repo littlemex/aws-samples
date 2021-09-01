@@ -1,0 +1,62 @@
+- Effect: Allow
+  Action:
+    - logs:CreateLogGroup
+    - logs:CreateLogStream
+    - logs:PutLogEvents
+    - logs:DescribeLogGroups
+    - logs:DescribeLogStreams
+    - logs:GetLogEvents
+    - logs:FilterLogEvents
+    - logs:StartQuery
+    - logs:StopQuery
+    - logs:GetQueryResults
+  Resource:
+    - "*"
+- Effect: "Allow"
+  Action:
+    - "ec2:CreateNetworkInterface"
+    - "ec2:DescribeNetworkInterfaces"
+    - "ec2:DeleteNetworkInterface"
+  Resource:
+    - "*"
+- Effect: Allow
+  Action:
+    - dynamodb:DescribeTable
+    - dynamodb:Query
+    - dynamodb:Scan
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:BatchWriteItem
+    - dynamodb:UpdateItem
+    - dynamodb:DeleteItem
+  Resource: "arn:aws:dynamodb:${self:custom.otherfile.environment.env.REGION}:${self:custom.otherfile.environment.env.ACCOUNT_ID}:table/*"
+- Effect: "Allow"
+  Action:
+    - "SNS:Publish"
+  Resource: 
+    - "arn:aws:sns:${self:custom.otherfile.environment.env.REGION}:${self:custom.otherfile.environment.env.ACCOUNT_ID}:alert"
+    - "arn:aws:sns:${self:custom.otherfile.environment.env.REGION}:${self:custom.otherfile.environment.env.ACCOUNT_ID}:info"
+- Effect: "Allow"
+  Action:
+    - "lambda:InvokeFunction"
+  Resource: "*"
+- Effect: "Allow"
+  Action:
+    - "ce:GetCostAndUsage"
+  Resource: "*"
+- Effect: "Allow"
+  Action:
+    - "ce:GetCostAndUsage"
+  Resource: "*"
+- Effect: "Allow"
+  Action:
+    - "ssm:Get*"
+  Resource: "*"
+- Effect: "Allow"
+  Action:
+    - "sagemaker:InvokeEndpoint"
+    - "sagemaker:List*"
+    - "sagemaker:Delete*"
+    - "sagemaker:Create*"
+    - "sagemaker:Describe*"
+  Resource: "*"

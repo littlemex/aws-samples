@@ -1,0 +1,53 @@
+# Welcome to Serverless!
+# For full config options, check the docs:
+#    docs.serverless.com
+
+# サービス名ごとにlambdaやAPIGWのリソースが作られる
+service: ${self:custom.otherfile.environment.env.SERVICE}
+
+# デプロイに利用するserverlessのバージョンを固定
+# npm install -g serverless@2.56.0
+frameworkVersion: "=2.57.0"
+
+plugins:
+  # 古い世代のLambdaバージョンを削除する
+  - serverless-prune-plugin
+custom:
+  otherfile:
+    environment:
+      # 環境ごとに読み込む設定ファイルを変えることで環境ごとにファイル修正する手間を省く
+      env: ${file(./conf/env_dev.yml)}
+  prune:
+    automatic: true
+    #includeLayers: true
+    number: 5
+
+provider:
+  # ~/.aws/credentialで設定しているプロファイルを指定する
+  profile: "${self:custom.otherfile.environment.env.PROFILE}"
+  name: aws
+  endpointType: REGIONAL
+  tracing:
+    apiGateway: true
+  # API gatewayのログ出力フォーマットを定めている
+  logs: ${file(./conf/provider_logs.yml)}
+  runtime: python3.9
+  lambdaHashingVersion: 20201221
+  memorySize: ${self:custom.otherfile.environment.env.MEMSIZE}
+  stage: ${self:custom.otherfile.environment.env.STAGE}
+  region: ${self:custom.otherfile.environment.env.REGION}
+  # lambdaに設定される環境変数を定義している。個別のlambdaごとにも設定できる。
+  environment: ${file(./conf/provider_env.yml)}
+  # デプロイバケットとパスを指定する、外形監視ではdeploymentPrefixを書き換えて同じバケットを利用している。
+  # この指定をしないと適当なバケットがたくさん生成されてしまう。
+  deploymentBucket:
+    name: ${self:custom.otherfile.environment.env.S3_CONFIG_BUCKET_NAME}
+  deploymentPrefix: ${self:custom.otherfile.environment.env.S3_CONFIG_BUCKET_PREFIX}
+  # デフォルトで設定するロール、個々のlambdaでも設定できる。
+  iamRoleStatements: ${file(./conf/iam.yml)}
+  # 既存のAPI gatewayを指定して利用する場合に必要になる
+  # apiGateway: ${file(./conf/apigw.yml)}
+
+# 個々の機能ごとに別のymlに設定を書く
+functions:
+  api: ${file(./app/api/api_sample.yml)}
