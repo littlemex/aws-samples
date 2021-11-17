@@ -2,6 +2,6 @@
 
 for m in `cat aws.txt`
 do 
-  echo "Getting https://en.wikipedia.org/wiki/${m}"
-  curl "https://en.wikipedia.org/wiki/${m}" > "Data/${m}.html"
+  echo "Getting https://ja.wikipedia.org/wiki/${m}"
+  curl "https://ja.wikipedia.org/wiki/${m}" > "Data/${m}.html"
 done
