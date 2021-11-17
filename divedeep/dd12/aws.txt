@@ -1,0 +1,5 @@
+Amazon_Web_Services
+Amazon.com
+Amazon_Simple_Queue_Service
+Amazon_Elastic_Compute_Cloud
+Amazon_Simple_Storage_Service
