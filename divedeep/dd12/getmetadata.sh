@@ -13,8 +13,7 @@ do
     for m in "${mdata[@]:${ii}:10}"
     do 
         echo "Working on $m"
-        python3 getpagemetadata.py "Data/$m.html" > "Meta/Data/$m.txt.metadata.json" &
-	pids="$pids $!"
+        python3 getpagemetadata.py "Data/$m.html" > "Meta/Data/$m.txt.metadata.json" & pids="$pids $!"
     done
     for p in "$pids"
     do
