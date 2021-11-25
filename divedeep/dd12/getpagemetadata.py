@@ -72,7 +72,7 @@ def document_handler(fname):
     npfile = fname.split('.')[0]
     npname = npfile.split('/')[len(npfile.split('/')) - 1]
     npreplace = npname.replace("#", "/")
-    metadata["_source_uri"] = "https://ja.wikipedia.org/wiki/" + npreplace
+    # metadata["_source_uri"] = "https://ja.wikipedia.org/wiki/" + npreplace
     attributes["Attributes"] = metadata
     print(json.dumps(attributes, sort_keys=True, indent=4, ensure_ascii=False))
 

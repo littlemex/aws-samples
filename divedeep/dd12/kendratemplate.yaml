@@ -1,7 +1,7 @@
 Resources:
       
   ##Create the Role needed to create a Kendra Index
-  KendraIndexRole001:
+  KendraIndexRole002:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -41,11 +41,11 @@ Resources:
                   - 'logs:DescribeLogStreams'
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
-          PolicyName: KendraDemoIndexPolicy001
-      RoleName: KendraDemoIndexRole001
+          PolicyName: KendraDemoIndexPolicy002
+      RoleName: KendraDemoIndexRole002
       
   ##Create the Kendra Index
-  DemoKendraIndex001:
+  DemoKendraIndex002:
     Type: 'AWS::Kendra::Index'
     Properties:
       Edition: 'DEVELOPER_EDITION'
@@ -104,11 +104,11 @@ Resources:
             Displayable: true
             Facetable: true
             Searchable: true
-      Name: 'DemoIndex001'
-      RoleArn: !GetAtt KendraIndexRole001.Arn
+      Name: 'DemoIndex002'
+      RoleArn: !GetAtt KendraIndexRole002.Arn
 
   ##Create the Role needed to attach the S3 Data Source
-  KendraDSRole001:
+  KendraDSRole002:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -138,15 +138,15 @@ Resources:
                   - 'arn:aws:kendra:${region}:${account}:index/${index}'
                   - region: !Ref 'AWS::Region'
                     account: !Ref 'AWS::AccountId'
-                    index: !GetAtt DemoKendraIndex001.Id
+                    index: !GetAtt DemoKendraIndex002.Id
                 Action:
                   - 'kendra:BatchPutDocument'
                   - 'kendra:BatchDeleteDocument'
-          PolicyName: KendraDemoDSPolicy001
-      RoleName: KendraDemoDSRole001
+          PolicyName: KendraDemoDSPolicy002
+      RoleName: KendraDemoDSRole002
   
   ##Attach S3 Data Source
-  KendraDocDS001:
+  KendraDocDS002:
     Type: 'AWS::Kendra::DataSource'
     Properties: 
       DataSourceConfiguration: 
@@ -156,9 +156,9 @@ Resources:
             S3Prefix: 'Meta/'
           InclusionPrefixes:
             - 'Data/'
-      IndexId: !GetAtt DemoKendraIndex001.Id
-      Name: 'DemoDataSource001'
-      RoleArn: !GetAtt KendraDSRole001.Arn
+      IndexId: !GetAtt DemoKendraIndex002.Id
+      Name: 'DemoDataSource002'
+      RoleArn: !GetAtt KendraDSRole002.Arn
       Type: 'S3'
     
 
@@ -168,6 +168,6 @@ Parameters:
     Type: String
 Outputs:
   KendraIndexID:
-    Value: !GetAtt DemoKendraIndex001.Id
+    Value: !GetAtt DemoKendraIndex002.Id
   KendraDatasourceID:
-    Value: !GetAtt KendraDocDS001.Id
+    Value: !GetAtt KendraDocDS002.Id
