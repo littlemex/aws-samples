@@ -1,0 +1,36 @@
+version: '3.7'
+services:
+  godev-build:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+      target: build
+    container_name: godev-build
+    tty: true
+    env_file:
+      - .env.local.build
+    environment:
+      ENV: "${ENV:-development}"
+    networks:
+      local-build:
+        aliases:
+          - godev.local
+  db-build:
+    image: postgres:10.7
+    volumes:
+      - ./postgres-build:/var/lib/postgresql
+    env_file:
+      - .env.local.build
+    environment:
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "35432:5432"
+    networks:
+      local-build:
+networks:
+  local-build:
+    driver: bridge
+    ipam:
+     driver: default
+     config:
+       - subnet: 172.33.0.0/24
