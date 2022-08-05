@@ -1,0 +1,45 @@
+version: '3.7'
+services:
+  gosandbox:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+      target: dev
+    container_name: gosandbox
+    volumes:
+      - ./app/src:/go/src/github.com/t-akzw/go_sandbox
+    ports:
+      - 28080:8080
+      - 2345:2345
+    tty: true
+    env_file:
+      - .env.local
+    environment:
+      APP_PORT: 8080
+      ENV: "${ENV:-development}"
+    depends_on:
+      - db
+    command: /startup_dev.sh
+    networks:
+      local:
+        aliases:
+          - gosandbox.local
+  db:
+    image: postgres:10.7
+    volumes:
+      - ./postgres:/var/lib/postgresql
+    env_file:
+      - .env.local
+    environment:
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "15432:5432"
+    networks:
+      local:
+networks:
+  local:
+    driver: bridge
+    ipam:
+     driver: default
+     config:
+       - subnet: 172.34.0.0/24
