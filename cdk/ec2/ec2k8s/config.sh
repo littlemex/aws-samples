@@ -52,7 +52,7 @@ curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/d
 mv -v /tmp/eksctl /usr/local/bin
 
 sudo -u ubuntu aws kms create-alias --alias-name alias/eksworkshop --target-key-id $(sudo -u ubuntu aws kms create-key --query KeyMetadata.Arn --output text)
-MASTER_ARN=$(sudo -u aubuntu aws kms describe-key --key-id alias/eksworkshop --query KeyMetadata.Arn --output text) && echo "export MASTER_ARN=${MASTER_ARN}" | tee -a /home/ubuntu/.bash_profile
+MASTER_ARN=$(sudo -u ubuntu aws kms describe-key --key-id alias/eksworkshop --query KeyMetadata.Arn --output text) && echo "export MASTER_ARN=${MASTER_ARN}" >> /home/ubuntu/.bash_profile
 
 . /home/ubuntu/.bash_profile
 
