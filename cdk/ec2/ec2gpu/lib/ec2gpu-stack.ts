@@ -8,7 +8,7 @@ import { Construct } from "constructs";
 import { KeyPair } from "cdk-ec2-key-pair";
 
 
-export class Ec2GpuStack extends Stack {
+export class Ec2K8sStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
@@ -50,7 +50,7 @@ export class Ec2GpuStack extends Stack {
     });
 
 
-    const ec2Inf1Instance = new ec2.Instance(this, "Inf1Instance", {
+    const ec2Inf1Instance = new ec2.Instance(this, "GpuInstance", {
       vpc,
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.INFERENCE1, ec2.InstanceSize.XLARGE),
       machineImage: ami,
