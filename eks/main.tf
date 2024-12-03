@@ -210,6 +210,74 @@ variable "cluster_token" {
   type        = string
 }
 
+variable "extra_scripts" {
+  description = "user data extra script."
+  type        = string
+}
+
+locals {
+  user_data = base64encode(templatefile("./al2023_user_data.tpl", {
+    apiServerEndpoint    = aws_eks_cluster.example.endpoint
+    certificateAuthority = aws_eks_cluster.example.certificate_authority[0].data
+    cidr                 = aws_vpc.example.cidr_block
+    name                 = aws_eks_cluster.example.name
+    extra_scripts        = var.extra_scripts
+  }))
+
+  enable_bootstrap_user_data = true
+  cloudinit_pre_nodeadm = [
+    {
+      content_type = "application/node.eks.aws"
+      content      = <<-EOT
+        ---
+        apiVersion: node.eks.aws/v1alpha1
+        kind: NodeConfig
+        spec:
+          kubelet:
+            config:
+              shutdownGracePeriod: 30s
+              featureGates:
+                DisableKubeletCloudCredentialProviders: true
+      EOT
+    }
+  ]
+
+  cloudinit_post_nodeadm = [{
+    content      = <<-EOT
+      echo "All done"
+    EOT
+    content_type = "text/x-shellscript; charset=\"us-ascii\""
+  }]
+
+  nodeadm_cloudinit = local.enable_bootstrap_user_data ? concat(
+    local.cloudinit_pre_nodeadm,
+    [{
+      content_type = "application/node.eks.aws"
+      content      = base64decode(local.user_data)
+    }],
+    local.cloudinit_post_nodeadm
+  ) : local.cloudinit_pre_nodeadm
+}
+
+data "cloudinit_config" "al2023_eks_managed_node_group" {
+  count = length(local.nodeadm_cloudinit) > 0 ? 1 : 0
+
+  base64_encode = true
+  gzip          = false
+  boundary      = "MIMEBOUNDARY"
+
+  dynamic "part" {
+    for_each = { for i, v in local.nodeadm_cloudinit : i => v }
+
+    content {
+      content      = part.value.content
+      content_type = try(part.value.content_type, null)
+      filename     = try(part.value.filename, null)
+      merge_type   = try(part.value.merge_type, null)
+    }
+  }
+}
+
 resource "aws_launch_template" "eks_nodes_custom_ami" {
   name_prefix   = "eks-node-group-custom-template"
   image_id      = var.ami_id
@@ -225,42 +293,7 @@ resource "aws_launch_template" "eks_nodes_custom_ami" {
 
   vpc_security_group_ids = [aws_security_group.eks_security_group.id]
 
-  user_data = base64encode(<<-EOF
-      MIME-Version: 1.0
-      Content-Type: multipart/mixed; boundary="==MYBOUNDARY=="
-
-      --==MYBOUNDARY==
-      Content-Type: application/node.eks.aws
-
-      ---
-      apiVersion: node.eks.aws/v1alpha1
-      kind: NodeConfig
-      spec:
-        cluster:
-          name: ${aws_eks_cluster.example.name}
-          apiServerEndpoint: ${aws_eks_cluster.example.endpoint}
-          certificateAuthority: ${aws_eks_cluster.example.certificate_authority[0].data}
-          cidr: ${aws_vpc.example.cidr_block}
-        containerd:
-          config: |
-            [plugins."io.containerd.grpc.v1.cri".containerd]
-            discard_unpacked_layers = false
-
-      --==MYBOUNDARY==
-      Content-Type: application/node.eks.aws
-
-      ---
-      apiVersion: node.eks.aws/v1alpha1
-      kind: NodeConfig
-      spec:
-        kubelet:
-          config:
-            shutdownGracePeriod: 30s
-            featureGates:
-              DisableKubeletCloudCredentialProviders: true
-      --==MYBOUNDARY==--
-      EOF
-  )
+  user_data = data.cloudinit_config.al2023_eks_managed_node_group[0].rendered
 
   tag_specifications {
     resource_type = "instance"
