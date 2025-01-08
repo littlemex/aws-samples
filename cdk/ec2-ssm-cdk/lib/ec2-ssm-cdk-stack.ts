@@ -22,12 +22,19 @@ export class Ec2SsmCdkStack extends Stack {
       isDefault: true
     });
 
-    // Security group without SSH access
+    // Security group with port 8080 access
     const securityGroup = new ec2.SecurityGroup(this, "SecurityGroup", {
       vpc,
       description: "Security group for EC2 instance",
       allowAllOutbound: true,
     });
+
+    // Allow inbound traffic on port 8080
+    securityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(8080),
+      'Allow inbound HTTP traffic on port 8080'
+    );
 
     // IAM role with SSM access
     const role = new iam.Role(this, "ec2Role", {
@@ -53,17 +60,17 @@ export class Ec2SsmCdkStack extends Stack {
       ],
     });
 
-    // Add user data script to install and start SSM agent
+    // Install SSM agent using Amazon's official method
+    /*
     ec2Instance.userData.addCommands(
-      // Update package list
-      "apt-get update",
-      // Install required dependencies
-      "apt-get install -y snapd",
-      // Install SSM agent via snap
-      "snap install amazon-ssm-agent --classic",
-      // Start SSM agent
-      "snap start amazon-ssm-agent"
+      "mkdir -p /tmp/ssm",
+      "cd /tmp/ssm",
+      "wget https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb",
+      "dpkg -i amazon-ssm-agent.deb",
+      "systemctl enable amazon-ssm-agent",
+      "systemctl start amazon-ssm-agent"
     );
+    */
 
     const asset = new Asset(this, "Asset", { path: path.join(__dirname, "../config.sh") });
     const localPath = ec2Instance.userData.addS3DownloadCommand({
@@ -71,10 +78,13 @@ export class Ec2SsmCdkStack extends Stack {
       bucketKey: asset.s3ObjectKey,
     });
 
-    ec2Instance.userData.addExecuteFileCommand({
-      filePath: localPath,
-      arguments: "--verbose -y"
-    });
+    // Execute config.sh in cloud-init runcmd section
+    ec2Instance.userData.addCommands(
+      "mkdir -p /var/lib/cloud/scripts/per-instance",
+      `cp ${localPath} /var/lib/cloud/scripts/per-instance/config.sh`,
+      "chmod +x /var/lib/cloud/scripts/per-instance/config.sh",
+      "/var/lib/cloud/scripts/per-instance/config.sh > /var/log/config-script.log 2>&1"
+    );
     asset.grantRead(ec2Instance.role);
 
     new cdk.CfnOutput(this, "Instance ID", { value: ec2Instance.instanceId });
@@ -86,3 +96,4 @@ export class Ec2SsmCdkStack extends Stack {
     });
   }    
 }
+
