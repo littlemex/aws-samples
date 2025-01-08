@@ -1,0 +1,60 @@
+{
+  "vpc-provider:account=067150986393:filter.isDefault=true:region=us-east-1:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-839f38fe",
+    "vpcCidrBlock": "172.31.0.0/16",
+    "ownerAccountId": "067150986393",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-ae79edf1",
+            "cidr": "172.31.32.0/20",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-2132105f"
+          },
+          {
+            "subnetId": "subnet-093d841edf4db6242",
+            "cidr": "172.31.112.0/20",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-09318cc6b5766a522"
+          },
+          {
+            "subnetId": "subnet-db1c97bd",
+            "cidr": "172.31.0.0/20",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-074ba5049b03c5f5c"
+          },
+          {
+            "subnetId": "subnet-152eb834",
+            "cidr": "172.31.80.0/20",
+            "availabilityZone": "us-east-1c",
+            "routeTableId": "rtb-2132105f"
+          },
+          {
+            "subnetId": "subnet-a2f3a8ef",
+            "cidr": "172.31.16.0/20",
+            "availabilityZone": "us-east-1d",
+            "routeTableId": "rtb-2132105f"
+          },
+          {
+            "subnetId": "subnet-f1b769c0",
+            "cidr": "172.31.48.0/20",
+            "availabilityZone": "us-east-1e",
+            "routeTableId": "rtb-2132105f"
+          },
+          {
+            "subnetId": "subnet-1bc58815",
+            "cidr": "172.31.64.0/20",
+            "availabilityZone": "us-east-1f",
+            "routeTableId": "rtb-2132105f"
+          }
+        ]
+      }
+    ]
+  },
+  "ami:account=067150986393:filters.image-type.0=machine:filters.name.0=Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.5*:filters.state.0=available:owners.0=amazon:region=us-east-1": "ami-031290e21cc458792",
+  "ami:account=067150986393:filters.image-type.0=machine:filters.name.0=Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.5*Ubuntu*:filters.state.0=available:owners.0=amazon:region=us-east-1": "ami-0772e0bfc7cc9c5de"
+}
