@@ -18,23 +18,24 @@ export class Ec2SsmCdkStack extends Stack {
       owners: ["amazon"],
     });
 
-    const vpc = ec2.Vpc.fromLookup(this, "VPC", {
-      isDefault: true
+    // Create a new VPC with public subnets in different AZs
+    const vpc = new ec2.Vpc(this, "VPC", {
+      maxAzs: 2,
+      subnetConfiguration: [
+        {
+          cidrMask: 24,
+          name: 'Public',
+          subnetType: ec2.SubnetType.PUBLIC,
+        }
+      ]
     });
 
-    // Security group with port 8080 access
-    const securityGroup = new ec2.SecurityGroup(this, "SecurityGroup", {
+    // Security group for EC2 instance
+    const ec2SecurityGroup = new ec2.SecurityGroup(this, "EC2SecurityGroup", {
       vpc,
       description: "Security group for EC2 instance",
       allowAllOutbound: true,
     });
-
-    // Allow inbound traffic on port 8080
-    securityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(8080),
-      'Allow inbound HTTP traffic on port 8080'
-    );
 
     // IAM role with SSM access
     const role = new iam.Role(this, "ec2Role", {
@@ -46,11 +47,23 @@ export class Ec2SsmCdkStack extends Stack {
       iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore")
     );
 
+    // Add policy for Session Manager port forwarding
+    role.addToPrincipalPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'ssmmessages:CreateControlChannel',
+        'ssmmessages:CreateDataChannel',
+        'ssmmessages:OpenControlChannel',
+        'ssmmessages:OpenDataChannel'
+      ],
+      resources: ['*']
+    }));
+
     const ec2Instance = new ec2.Instance(this, "Instance", {
       vpc,
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.G6, ec2.InstanceSize.XLARGE4),
       machineImage: ami,
-      securityGroup: securityGroup,
+      securityGroup: ec2SecurityGroup,
       role: role,
       blockDevices: [
         {
@@ -58,19 +71,11 @@ export class Ec2SsmCdkStack extends Stack {
           volume: ec2.BlockDeviceVolume.ebs(500),
         },
       ],
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PUBLIC
+      }
     });
 
-    // Install SSM agent using Amazon's official method
-    /*
-    ec2Instance.userData.addCommands(
-      "mkdir -p /tmp/ssm",
-      "cd /tmp/ssm",
-      "wget https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb",
-      "dpkg -i amazon-ssm-agent.deb",
-      "systemctl enable amazon-ssm-agent",
-      "systemctl start amazon-ssm-agent"
-    );
-    */
 
     const asset = new Asset(this, "Asset", { path: path.join(__dirname, "../config.sh") });
     const localPath = ec2Instance.userData.addS3DownloadCommand({
@@ -87,13 +92,16 @@ export class Ec2SsmCdkStack extends Stack {
     );
     asset.grantRead(ec2Instance.role);
 
+    // Outputs
     new cdk.CfnOutput(this, "Instance ID", { value: ec2Instance.instanceId });
-    new cdk.CfnOutput(this, "Notifications", { 
-      value: `Please install session-manager-plugin to your local pc.`
+    new cdk.CfnOutput(this, "Prerequisites", { 
+      value: "1. Install AWS CLI\n2. Install Session Manager plugin (https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)"
     });
-    new cdk.CfnOutput(this, "Connect Command", { 
-      value: `aws ssm start-session --target ${ec2Instance.instanceId} --region ${region}`
+    new cdk.CfnOutput(this, "Port Forward Command", { 
+      value: `aws ssm start-session --target ${ec2Instance.instanceId} --region ${region} --document-name AWS-StartPortForwardingSession --parameters "portNumber"=["8080"],"localPortNumber"=["8080"]`
+    });
+    new cdk.CfnOutput(this, "Access URL", {
+      value: "After running the port forward command, access: https://localhost:8080"
     });
   }    
 }
-
