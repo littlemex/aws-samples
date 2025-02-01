@@ -56,5 +56,13 @@
     ]
   },
   "ami:account=067150986393:filters.image-type.0=machine:filters.name.0=Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.5*:filters.state.0=available:owners.0=amazon:region=us-east-1": "ami-031290e21cc458792",
-  "ami:account=067150986393:filters.image-type.0=machine:filters.name.0=Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.5*Ubuntu*:filters.state.0=available:owners.0=amazon:region=us-east-1": "ami-0772e0bfc7cc9c5de"
+  "ami:account=067150986393:filters.image-type.0=machine:filters.name.0=Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.5*Ubuntu*:filters.state.0=available:owners.0=amazon:region=us-east-1": "ami-0772e0bfc7cc9c5de",
+  "availability-zones:account=067150986393:region=us-east-1": [
+    "us-east-1a",
+    "us-east-1b",
+    "us-east-1c",
+    "us-east-1d",
+    "us-east-1e",
+    "us-east-1f"
+  ]
 }
