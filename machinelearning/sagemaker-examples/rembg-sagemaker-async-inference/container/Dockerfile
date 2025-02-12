@@ -26,9 +26,6 @@ RUN if [ "${TARGET_PLATFORM}" = "gpu-base" ]; then \
         pip install --no-cache-dir \
         rembg[gpu] \
         pillow \
-        fastapi \
-        uvicorn \
-        gunicorn \
         sagemaker-inference \
         numpy \
         onnxruntime-gpu; \
@@ -36,9 +33,6 @@ RUN if [ "${TARGET_PLATFORM}" = "gpu-base" ]; then \
         pip install --no-cache-dir \
         rembg[cpu] \
         pillow \
-        fastapi \
-        uvicorn \
-        gunicorn \
         sagemaker-inference \
         numpy \
         onnxruntime; \
