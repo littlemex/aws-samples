@@ -14,6 +14,8 @@ if [ -z "$SAGEMAKER_ROLE_ARN" ] || [ -z "$ECR_REPO" ] || [ -z "$INPUT_BUCKET" ] 
     exit 1
 fi
 
+# FIXME: 既にイメージがあれば build_and_push.sh 実行をスキップしたいです
+
 # イメージのビルドとプッシュ
 echo "コンテナイメージをビルドしてECRにプッシュします..."
 if [ "$USE_GPU" = "true" ]; then

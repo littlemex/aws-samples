@@ -5,11 +5,12 @@ import sys
 import io
 import asyncio
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 from concurrent.futures import ThreadPoolExecutor
 
 import boto3
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel, Field, validator
 from PIL import Image
 from rembg import remove, new_session
 
@@ -20,14 +21,30 @@ logger = logging.getLogger(__name__)
 # Initialize the FastAPI app
 app = FastAPI()
 
-# FIXME: 環境変数で AWS リソースがなくてもローカルで背景削除検証できるような実装に変更してください。
-#  例えば、S3 の in/out の代わりにローカルのディレクトリ in/out を利用したいです。
-# FIXME: SageMaker 上でエラー等の問題がおきないのであれば pydantic を用いた型付けをしたいです。
+# Pydantic models for request/response validation
+class AsyncInferenceRequest(BaseModel):
+    InputLocation: str = Field(..., description="Input image location (S3 URI or local path)")
+    OutputLocation: str = Field(..., description="Output image location (S3 URI or local path)")
 
-# Initialize AWS clients
-runtime = boto3.client('sagemaker-runtime')
-s3 = boto3.client('s3')
-cloudwatch = boto3.client('cloudwatch')
+    @validator('InputLocation', 'OutputLocation')
+    def validate_location(cls, v):
+        if not (v.startswith('s3://') or v.startswith('file://')):
+            raise ValueError("Location must be either an S3 URI (s3://) or local file path (file://)")
+        return v
+
+class AsyncInferenceResponse(BaseModel):
+    status: str = Field(..., description="Processing status")
+    output_location: str = Field(..., description="Location of the processed image")
+
+class ErrorResponse(BaseModel):
+    detail: str = Field(..., description="Error details")
+
+# Initialize AWS clients (only if AWS resources are enabled)
+USE_AWS = os.environ.get('USE_AWS', 'true').lower() == 'true'
+if USE_AWS:
+    runtime = boto3.client('sagemaker-runtime')
+    s3 = boto3.client('s3')
+    cloudwatch = boto3.client('cloudwatch')
 
 # Global variables
 model_name = os.environ.get('MODEL_NAME', 'u2net')
@@ -66,6 +83,9 @@ def model_fn():
 
 async def update_metrics(endpoint_name: str):
     """Update CloudWatch metrics for queue monitoring"""
+    if not USE_AWS:
+        return
+
     try:
         # Get current semaphore count to estimate backlog
         backlog_size = max_concurrent_invocations - semaphore._value
@@ -97,24 +117,64 @@ def process_image(image_data: bytes) -> bytes:
     output_image.save(img_byte_arr, format='PNG')
     return img_byte_arr.getvalue()
 
+def parse_location(location: str) -> tuple[str, str, bool]:
+    """Parse location string and determine if it's S3 or local"""
+    is_s3 = location.startswith('s3://')
+    if is_s3:
+        parts = location.replace("s3://", "").split("/")
+        bucket = parts[0]
+        key = "/".join(parts[1:])
+        return bucket, key, is_s3
+    else:
+        path = location.replace("file://", "")
+        return "", path, is_s3
+
+async def read_input_image(input_bucket: str, input_key: str, input_is_s3: bool) -> bytes:
+    """Read input image from S3 or local file system"""
+    try:
+        if input_is_s3:
+            response = s3.get_object(Bucket=input_bucket, Key=input_key)
+            return response['Body'].read()
+        else:
+            with open(input_key, 'rb') as f:
+                return f.read()
+    except Exception as e:
+        logger.error(f"Error reading input image: {str(e)}")
+        raise
+
+async def save_output_image(output_bytes: bytes, output_bucket: str, output_key: str, output_is_s3: bool) -> str:
+    """Save output image to S3 or local file system"""
+    try:
+        if output_is_s3:
+            s3.put_object(
+                Bucket=output_bucket,
+                Key=output_key,
+                Body=output_bytes,
+                ContentType='image/png'
+            )
+            return f"s3://{output_bucket}/{output_key}"
+        else:
+            # Create output directory if it doesn't exist
+            output_dir = Path(output_key).parent
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_key, 'wb') as f:
+                f.write(output_bytes)
+            return f"file://{output_key}"
+    except Exception as e:
+        logger.error(f"Error saving output image: {str(e)}")
+        raise
+
 async def process_async_inference(input_location: str, output_location: str, endpoint_name: str):
     """Process async inference request with queue management"""
     try:
-        # Acquire semaphore for concurrent request management
         async with semaphore:
-            # Parse S3 input location
-            input_parts = input_location.replace("s3://", "").split("/")
-            input_bucket = input_parts[0]
-            input_key = "/".join(input_parts[1:])
+            # Parse locations
+            input_bucket, input_key, input_is_s3 = parse_location(input_location)
+            output_bucket, output_key, output_is_s3 = parse_location(output_location)
 
-            # Parse S3 output location
-            output_parts = output_location.replace("s3://", "").split("/")
-            output_bucket = output_parts[0]
-            output_key = "/".join(output_parts[1:])
-
-            # Download input image from S3
-            response = s3.get_object(Bucket=input_bucket, Key=input_key)
-            image_data = response['Body'].read()
+            # Read input image
+            image_data = await read_input_image(input_bucket, input_key, input_is_s3)
             
             # Process image in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
@@ -124,59 +184,33 @@ async def process_async_inference(input_location: str, output_location: str, end
                 image_data
             )
             
-            # Upload result to S3
-            s3.put_object(
-                Bucket=output_bucket,
-                Key=output_key,
-                Body=output_bytes,
-                ContentType='image/png'
+            # Save output image
+            output_path = await save_output_image(output_bytes, output_bucket, output_key, output_is_s3)
+            
+            # Update metrics after processing (AWS only)
+            if USE_AWS:
+                await update_metrics(endpoint_name)
+            
+            return AsyncInferenceResponse(
+                status="success",
+                output_location=output_path
             )
-            
-            # Update metrics after processing
-            await update_metrics(endpoint_name)
-            
-            return {
-                "status": "success",
-                "output_location": f"s3://{output_bucket}/{output_key}"
-            }
             
     except Exception as e:
         logger.error(f"Error processing async inference: {str(e)}")
-        # Update metrics even on failure
-        await update_metrics(endpoint_name)
+        if USE_AWS:
+            await update_metrics(endpoint_name)
         raise
 
 # Load the model
 model = model_fn()
 
-@app.post("/invocations")
-async def invoke_endpoint(request: Dict):
+@app.post("/invocations", response_model=AsyncInferenceResponse)
+async def invoke_endpoint(request: AsyncInferenceRequest):
     """
     Endpoint for async model invocation
-    Expected request format:
-    {
-        "InputLocation": "s3://input-bucket/input-key",
-        "OutputLocation": "s3://output-bucket/output-key"
-    }
     """
     try:
-        if not isinstance(request, dict):
-            raise HTTPException(status_code=400, detail="Invalid request format")
-        
-        input_location = request.get("InputLocation")
-        output_location = request.get("OutputLocation")
-        
-        if not input_location or not output_location:
-            raise HTTPException(
-                status_code=400,
-                detail="Both InputLocation and OutputLocation are required"
-            )
-        
-        if not (input_location.startswith("s3://") and output_location.startswith("s3://")):
-            raise HTTPException(
-                status_code=400,
-                detail="Both InputLocation and OutputLocation must be S3 URIs"
-            )
         # Get endpoint name from environment
         endpoint_name = os.environ.get('SAGEMAKER_ENDPOINT_NAME', 'unknown-endpoint')
         
@@ -188,7 +222,11 @@ async def invoke_endpoint(request: Dict):
                 detail="Queue is full, please try again later"
             )
             
-        result = await process_async_inference(input_location, output_location, endpoint_name)
+        result = await process_async_inference(
+            request.InputLocation,
+            request.OutputLocation,
+            endpoint_name
+        )
         return result
     
     except Exception as e:

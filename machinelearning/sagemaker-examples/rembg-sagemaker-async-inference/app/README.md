@@ -7,50 +7,12 @@
 この実装はSageMaker非同期推論の仕様に従い、以下のファイルで構成されています：
 
 - `inference.py`: 非同期推論リクエストを処理するFastAPIアプリケーション
+- `update_env.py`: CDKデプロイ後の環境変数を.envファイルに反映するスクリプト
 - `Dockerfile`: 推論エンドポイント用のコンテナ設定
 - `serve`: FastAPIアプリケーションを起動するスクリプト
 - `build_and_push.sh`: ECRへのイメージビルド・プッシュスクリプト
 - `setup_and_deploy.sh`: セットアップとデプロイの自動化スクリプト
-- `.env`: 環境変数設定ファイル（gitignore対象）
-- `.env.sample`: 環境変数設定ファイルのサンプル（git管理対象）
-
-## 環境変数の設定
-
-1. `.env.sample` を `.env` にコピーします：
-```bash
-cp .env.sample .env
-```
-
-2. `.env` ファイルを編集し、必要な値を設定します：
-
-```bash
-# AWS Account and Region
-AWS_ACCOUNT_ID=<AWSアカウントID>
-AWS_REGION=<リージョン>
-
-# ECR Repository
-ECR_REPO=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/rembg-async-app
-
-# SageMaker Configuration
-SAGEMAKER_ROLE_ARN=<SageMaker実行ロールのARN>
-SAGEMAKER_MODEL_NAME=rembg-async-app
-SAGEMAKER_ENDPOINT_NAME=rembg-async-app
-SAGEMAKER_INSTANCE_TYPE=ml.g4dn.xlarge
-
-# S3 Buckets
-INPUT_BUCKET=<入力用S3バケット名>
-OUTPUT_BUCKET=<出力用S3バケット名>
-
-# SNS Topics
-SUCCESS_TOPIC_ARN=<成功通知用SNSトピックARN>
-ERROR_TOPIC_ARN=<エラー通知用SNSトピックARN>
-
-# Runtime Configuration
-USE_GPU=true
-MAX_CONCURRENT_INVOCATIONS=4
-MODEL_NAME=u2net
-MODEL_PATH=/opt/ml/model
-```
+- `.env`: 環境変数設定ファイル（.gitignore対象）
 
 ## API仕様
 
@@ -87,15 +49,53 @@ MODEL_PATH=/opt/ml/model
 
 ## ビルドとデプロイ
 
-1. 環境変数の設定
+1. CDK デプロイ
+
 ```bash
-cp .env.sample .env
-# .envファイルを編集して必要な値を設定
+# cdk-outputs.jsonの名前を変えないでください, .env作成のためにこのjsonを利用します
+cd cdk && npx npm install && npx cdk deploy --outputs-file cdk-outputs.json
 ```
 
-2. セットアップとデプロイの実行
+2. 環境変数の設定
+
+これにより、CDKで作成されたリソースの情報が自動的に.envファイルに追加されます。
+
 ```bash
-./setup_and_deploy.sh
+uv sync && cd app && uv run update_env.py
+```
+
+## ローカルでのテスト
+
+1. Dockerイメージのビルド：
+
+```bash
+bash -x build_and_push.sh
+```
+
+
+2. ローカルでの実行：
+```bash
+# モデルのダウンロード
+uv run download_models.py
+
+# CPU 推論
+docker run -p 8080:8080 -e USE_AWS=false \
+  -v $(pwd)/models:/opt/ml/model rembg-async-app:cpu
+```
+
+ここ以降 TBD
+
+3. ローカルでのテスト:
+
+```bash
+```
+
+## SageMaker エンドポイントのデプロイ
+
+3. セットアップとデプロイの実行
+
+```bash
+bash -x ./setup_and_deploy.sh
 ```
 
 このスクリプトは以下の処理を実行します：
@@ -104,37 +104,51 @@ cp .env.sample .env
 - 依存関係のインストール
 - SageMaker非同期推論エンドポイントのデプロイ
 
-## CDKデプロイ後の環境変数設定
 
-CDKデプロイ後に出力されるAWSリソース情報を環境変数として保存するには、以下のスクリプトを実行します：
+### ローカルテスト
 
+1. ローカルディレクトリの準備：
 ```bash
-# CDKのアウトプットをJSONとして保存
-npx cdk deploy --outputs-file cdk-outputs.json
-
-# 環境変数として保存
-# FIXME: update_env.py がないので作成してください。既存の .env が存在する場合はその情報を破壊しないように気を付けてください。
-python update_env.py
+mkdir -p test/input test/output
 ```
 
-これにより、CDKで作成されたリソースの情報が自動的に.envファイルに追加されます。
-
-## ローカルでのテスト
-
-1. Dockerイメージのビルド：
+2. テスト画像の配置：
 ```bash
-docker build -t rembg-async --build-arg TARGET_PLATFORM=cpu-base .
+# テスト用の画像をinputディレクトリに配置
+cp your-image.jpg test/input/
 ```
 
-2. ローカルでの実行：
+3. ローカルテスト用のcurlコマンド：
 ```bash
-docker run -p 8080:8080 rembg-async
+curl -X POST http://localhost:8080/invocations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "InputLocation": "file://test/input/your-image.jpg",
+    "OutputLocation": "file://test/output/result.png"
+  }'
 ```
 
-# FIXME: テストがないので curl コマンドを提供してください。
+### SageMaker非同期推論エンドポイントのテスト
+
+```bash
+# 環境変数の設定
+ENDPOINT_NAME=$(aws sagemaker list-endpoints --query "Endpoints[?EndpointName.contains(@, 'rembg-async')].EndpointName" --output text)
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION=$(aws configure get region)
+
+# テスト用の画像をS3にアップロード
+aws s3 cp your-image.jpg s3://${INPUT_BUCKET}/test/input/
+
+# 非同期推論リクエストの実行
+aws sagemaker-runtime invoke-endpoint-async \
+  --endpoint-name ${ENDPOINT_NAME} \
+  --input-location s3://${INPUT_BUCKET}/test/input/your-image.jpg \
+  --output-location s3://${OUTPUT_BUCKET}/test/output/result.png \
+  --content-type application/json \
+  output.json
+
+# 結果の確認
+cat output.json
+```
 
 # FIXME: デプロイしたエンドポイントへのリクエストを行う python スクリプトを作成してください。SNS の情報を確認して S3 の出力画像をローカルに落とす処理も実装してほしいです。
-
-## SageMakerとの統合
-
-この実装は、SageMaker Python SDKまたはAWSコンソールを使用してSageMaker非同期推論エンドポイントとしてデプロイできます。エンドポイントは、S3統合を通じて非同期推論リクエストを自動的に処理します。
