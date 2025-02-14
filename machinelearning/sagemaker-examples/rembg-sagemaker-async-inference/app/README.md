@@ -69,9 +69,11 @@ uv sync && cd app && uv run update_env.py
 1. Dockerイメージのビルド：
 
 ```bash
+# CPU 推論
 bash -x build_and_push.sh
+# GPU 推論 (USE_GPU=true) で設定してもよい
+bash -x build_and_push.sh --gpu
 ```
-
 
 2. ローカルでの実行：
 ```bash
@@ -80,14 +82,19 @@ uv run download_models.py
 
 # CPU 推論
 docker run -p 8080:8080 -e USE_AWS=false \
+  -v $(pwd)/local-bucket:/opt/ml/code/local-bucket \
   -v $(pwd)/models:/opt/ml/model rembg-async-app:cpu
-```
 
-ここ以降 TBD
+# GPU 推論
+docker run --gpus all -p 8080:8080 -e USE_AWS=false \
+  -v $(pwd)/local-bucket:/opt/ml/code/local-bucket \
+  -v $(pwd)/models:/opt/ml/model rembg-async-app:gpu
+```
 
 3. ローカルでのテスト:
 
 ```bash
+ USE_AWS=false uv run request_endpoint.py examples/anime-girl-3.jpg --output-dir ./outputs
 ```
 
 ## SageMaker エンドポイントのデプロイ

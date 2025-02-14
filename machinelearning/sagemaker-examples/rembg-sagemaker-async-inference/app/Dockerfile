@@ -12,10 +12,6 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /opt/ml/code
 
-# Copy inference code
-COPY inference.py /opt/ml/code/
-COPY serve /opt/ml/code/
-
 # Install Python dependencies based on platform
 RUN if [ "$TARGET_PLATFORM" = "gpu-base" ]; then \
         pip install --no-cache-dir \
@@ -35,6 +31,10 @@ RUN if [ "$TARGET_PLATFORM" = "gpu-base" ]; then \
             requests==2.31.0; \
     fi
 
+# Copy inference code
+COPY inference.py /opt/ml/code/
+COPY serve /opt/ml/code/
+
 # Make serve script executable
 RUN chmod +x /opt/ml/code/serve
 
@@ -42,6 +42,7 @@ RUN chmod +x /opt/ml/code/serve
 ENV PYTHONUNBUFFERED=TRUE
 ENV PYTHONDONTWRITEBYTECODE=TRUE
 ENV MODEL_PATH=/opt/ml/model
+# FIXME: 1 or 0 になっていないといけない
 ENV CUDA_ENABLED=${TARGET_PLATFORM:-cpu-base}
 
 # Expose port 8080
