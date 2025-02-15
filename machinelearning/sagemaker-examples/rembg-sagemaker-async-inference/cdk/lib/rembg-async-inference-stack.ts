@@ -67,13 +67,20 @@ export class RembgAsyncInferenceStack extends cdk.Stack {
       ]
     }));
 
+    // Add ECR repository access permissions
     sagemakerRole.addToPolicy(new iam.PolicyStatement({
       actions: [
         'ecr:GetDownloadUrlForLayer',
         'ecr:BatchGetImage',
         'ecr:BatchCheckLayerAvailability'
       ],
-      resources: [repository.repositoryArn]
+      resources: [`arn:aws:ecr:${this.region}:${this.account}:repository/*`]
+    }));
+
+    // Add ECR authorization token permission
+    sagemakerRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['ecr:GetAuthorizationToken'],
+      resources: ['*']  // GetAuthorizationToken requires resource "*"
     }));
 
     sagemakerRole.addToPolicy(new iam.PolicyStatement({
@@ -89,6 +96,18 @@ export class RembgAsyncInferenceStack extends cdk.Stack {
     sagemakerRole.addToPolicy(new iam.PolicyStatement({
       actions: ['sns:Publish'],
       resources: [notificationTopic.topicArn]
+    }));
+
+    // Add permissions for SageMaker default bucket
+    sagemakerRole.addToPolicy(new iam.PolicyStatement({
+      actions: [
+        's3:ListBucket',
+        's3:PutObject'
+      ],
+      resources: [
+        `arn:aws:s3:::sagemaker-${this.region}-${this.account}`,
+        `arn:aws:s3:::sagemaker-${this.region}-${this.account}/*`
+      ]
     }));
 
     // Output the resource information
