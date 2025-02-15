@@ -35,6 +35,7 @@
 }
 ```
 
+# FIXME: エラー時のレスポンスは SageMaker Async Inference の期待と正しいですか？
 エラー時のレスポンス：
 ```json
 {
@@ -81,12 +82,12 @@ bash -x build_and_push.sh --gpu
 uv run download_models.py
 
 # CPU 推論
-docker run -p 8080:8080 -e USE_AWS=false \
+docker run --rm -p 8080:8080 -e USE_AWS=false \
   -v $(pwd)/local-bucket:/opt/ml/code/local-bucket \
   -v $(pwd)/models:/opt/ml/model rembg-async-app:cpu
 
 # GPU 推論
-docker run --gpus all -p 8080:8080 -e USE_AWS=false \
+docker run --rm --gpus all -p 8080:8080 -e USE_AWS=false \
   -v $(pwd)/local-bucket:/opt/ml/code/local-bucket \
   -v $(pwd)/models:/opt/ml/model rembg-async-app:gpu
 ```
@@ -94,7 +95,7 @@ docker run --gpus all -p 8080:8080 -e USE_AWS=false \
 3. ローカルでのテスト:
 
 ```bash
- USE_AWS=false uv run request_endpoint.py examples/anime-girl-3.jpg --output-dir ./outputs
+USE_AWS=false uv run request_endpoint.py examples/anime-girl-3.jpg --output-dir ./outputs
 ```
 
 ## SageMaker エンドポイントのデプロイ
@@ -110,30 +111,6 @@ bash -x ./setup_and_deploy.sh
 - ECRへのイメージプッシュ
 - 依存関係のインストール
 - SageMaker非同期推論エンドポイントのデプロイ
-
-
-### ローカルテスト
-
-1. ローカルディレクトリの準備：
-```bash
-mkdir -p test/input test/output
-```
-
-2. テスト画像の配置：
-```bash
-# テスト用の画像をinputディレクトリに配置
-cp your-image.jpg test/input/
-```
-
-3. ローカルテスト用のcurlコマンド：
-```bash
-curl -X POST http://localhost:8080/invocations \
-  -H "Content-Type: application/json" \
-  -d '{
-    "InputLocation": "file://test/input/your-image.jpg",
-    "OutputLocation": "file://test/output/result.png"
-  }'
-```
 
 ### SageMaker非同期推論エンドポイントのテスト
 
@@ -157,5 +134,3 @@ aws sagemaker-runtime invoke-endpoint-async \
 # 結果の確認
 cat output.json
 ```
-
-# FIXME: デプロイしたエンドポイントへのリクエストを行う python スクリプトを作成してください。SNS の情報を確認して S3 の出力画像をローカルに落とす処理も実装してほしいです。

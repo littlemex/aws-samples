@@ -4,6 +4,7 @@ import logging
 import sys
 import io
 import asyncio
+import time
 from pathlib import Path
 from typing import Dict, Union, Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -69,18 +70,43 @@ def download_models():
         raise FileNotFoundError(f"Model file not found: {model_path}")
     
     return str(model_path)
-
 def model_fn():
     """Load the model for inference"""
     global model_session
     
     try:
+        start_time = time.time()
+        
+        # Step 1: Download models
+        step1_start = time.time()
         model_path = download_models()
-        # モデルパスを明示的に指定してセッションを作成
-        # これにより、rembgライブラリの自動ダウンロードを防ぐ
+        step1_time = time.time() - step1_start
+        logger.info(f"Step 1 - Model download check took: {step1_time:.2f} seconds")
+        
+        # Step 2: Set environment and create session
+        step2_start = time.time()
         os.environ['U2NET_HOME'] = os.path.dirname(model_path)
         model_session = new_session(model_name, model_path=model_path)
+        step2_time = time.time() - step2_start
+        logger.info(f"Step 2 - Session creation took: {step2_time:.2f} seconds")
+        
+        # Step 3: GPU/CPU setup
+        step3_start = time.time()
+        import torch
+        if torch.cuda.is_available():
+            device = torch.cuda.get_device_name(0)
+            logger.info(f"Using GPU: {device}")
+            torch.cuda.empty_cache()
+            torch.cuda.set_per_process_memory_fraction(0.8)
+        else:
+            logger.info("Using CPU for inference")
+        step3_time = time.time() - step3_start
+        logger.info(f"Step 3 - GPU/CPU setup took: {step3_time:.2f} seconds")
+
+        total_time = time.time() - start_time
+        logger.info(f"Total model loading time: {total_time:.2f} seconds")
         logger.info(f"Successfully loaded model: {model_name}")
+        return model_session
         return model_session
     except FileNotFoundError as e:
         logger.error(f"Model file not found at {model_path}. Please ensure the model is mounted correctly.")
