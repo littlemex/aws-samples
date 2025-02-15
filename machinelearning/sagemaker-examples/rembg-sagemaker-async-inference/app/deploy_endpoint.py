@@ -9,6 +9,35 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+def delete_endpoint_if_exists(sagemaker_client, endpoint_name):
+    """
+    既存のエンドポイントが存在する場合は削除します
+    """
+    try:
+        sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
+        print(f"Deleting existing endpoint: {endpoint_name}")
+        waiter = sagemaker_client.get_waiter('endpoint_deleted')
+        waiter.wait(EndpointName=endpoint_name)
+        print(f"Existing endpoint deleted: {endpoint_name}")
+    except sagemaker_client.exceptions.ClientError as e:
+        if "Could not find endpoint" in str(e):
+            print(f"No existing endpoint found: {endpoint_name}")
+        else:
+            raise e
+
+def delete_endpoint_config_if_exists(sagemaker_client, endpoint_config_name):
+    """
+    既存のエンドポイント設定が存在する場合は削除します
+    """
+    try:
+        sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_config_name)
+        print(f"Deleted existing endpoint configuration: {endpoint_config_name}")
+    except sagemaker_client.exceptions.ClientError as e:
+        if "Could not find endpoint configuration" in str(e):
+            print(f"No existing endpoint configuration found: {endpoint_config_name}")
+        else:
+            raise e
+
 def deploy_async_endpoint(
     role_arn=os.getenv('SAGEMAKER_ROLE_ARN'),
     image_uri=os.getenv('ECR_REPO'),
@@ -23,6 +52,11 @@ def deploy_async_endpoint(
     Deploy SageMaker Async Inference endpoint for rembg app
     """
     sagemaker_session = sagemaker.Session()
+    sagemaker_client = boto3.client('sagemaker')
+    
+    # 既存のエンドポイントとエンドポイント設定を削除
+    delete_endpoint_if_exists(sagemaker_client, endpoint_name)
+    delete_endpoint_config_if_exists(sagemaker_client, endpoint_name)
     
     # Create model
     model = Model(

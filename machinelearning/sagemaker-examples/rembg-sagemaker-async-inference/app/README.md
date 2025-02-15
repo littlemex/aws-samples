@@ -100,7 +100,7 @@ USE_AWS=false uv run request_endpoint.py examples/anime-girl-3.jpg --output-dir 
 
 ## SageMaker エンドポイントのデプロイ
 
-3. セットアップとデプロイの実行
+4. セットアップとデプロイの実行
 
 ```bash
 bash -x ./setup_and_deploy.sh
@@ -111,6 +111,12 @@ bash -x ./setup_and_deploy.sh
 - ECRへのイメージプッシュ
 - 依存関係のインストール
 - SageMaker非同期推論エンドポイントのデプロイ
+
+5. ローカルでのテスト:
+
+```bash
+USE_AWS=true uv run request_endpoint.py examples/anime-girl-3.jpg --output-dir ./outputs
+```
 
 ### SageMaker非同期推論エンドポイントのテスト
 

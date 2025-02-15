@@ -1,6 +1,17 @@
 #!/usr/bin/env python
 
 import uvicorn
+import logging
 
 if __name__ == "__main__":
-    uvicorn.run("inference:app", host="0.0.0.0", port=8080)
+    # Configure uvicorn logger to use standard names
+    uvicorn_logger = logging.getLogger("uvicorn")
+    uvicorn_logger.propagate = False
+    
+    # Run the server
+    uvicorn.run(
+        "inference:app",
+        host="0.0.0.0",
+        port=8080,
+        log_level="info"
+    )

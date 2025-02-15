@@ -60,7 +60,7 @@ docker tag rembg-async-app:$TAG $ECR_REPO:$TAG
 docker tag rembg-async-app:$TAG $ECR_REPO:latest
 
 # ECRにプッシュ
-#docker push $ECR_REPO:$TAG
-#docker push $ECR_REPO:latest
+docker push $ECR_REPO:$TAG
+docker push $ECR_REPO:latest
 
 echo "イメージのビルドとプッシュが完了しました（$TAG バージョン）"

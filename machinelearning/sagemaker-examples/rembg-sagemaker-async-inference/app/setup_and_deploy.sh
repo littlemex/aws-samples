@@ -14,14 +14,15 @@ if [ -z "$SAGEMAKER_ROLE_ARN" ] || [ -z "$ECR_REPO" ] || [ -z "$INPUT_BUCKET" ] 
     exit 1
 fi
 
-# FIXME: 既にイメージがあれば build_and_push.sh 実行をスキップしたいです
+# イメージが既に存在するか確認
+IMAGE_EXISTS=$(aws ecr describe-images --repository-name $(echo $ECR_REPO | cut -d'/' -f2) --region $(echo $ECR_REPO | cut -d'.' -f4) --query 'length(imageDetails)' 2>/dev/null || echo "0")
 
-# イメージのビルドとプッシュ
-echo "コンテナイメージをビルドしてECRにプッシュします..."
-if [ "$USE_GPU" = "true" ]; then
-    ./build_and_push.sh --gpu
+if [ "$IMAGE_EXISTS" = "0" ]; then
+    # イメージのビルドとプッシュ
+    echo "コンテナイメージをビルドしてECRにプッシュします..."
+    bash -x ./build_and_push.sh
 else
-    ./build_and_push.sh
+    echo "コンテナイメージは既に存在するためスキップします"
 fi
 
 # 依存関係のインストール
