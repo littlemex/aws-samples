@@ -69,7 +69,7 @@ thread_pool = ThreadPoolExecutor(max_workers=max_concurrent_invocations)
 # Initialize processor based on environment
 processor = AWSInferenceProcessor(model_name) if USE_AWS else LocalInferenceProcessor(model_name)
 
-async def process_async_inference(input_location: str, output_location: str, endpoint_name: str, inference_id: str):
+async def process_async_inference(input_location: str, output_location: str, inference_id: str):
     """Process async inference request with queue management"""
     try:
         async with semaphore:
@@ -94,7 +94,8 @@ async def process_async_inference(input_location: str, output_location: str, end
             # Update metrics after processing (AWS only)
             if USE_AWS:
                 backlog_size = max_concurrent_invocations - semaphore._value
-                processor.update_backlog_metric(endpoint_name, backlog_size)
+                # FIXME: 適切なエンドポイント名を取得する
+                processor.update_backlog_metric("app", backlog_size)
             
             return AsyncInferenceResponse(
                 InferenceId=inference_id,
@@ -169,9 +170,8 @@ def create_inference_response(result: AsyncInferenceResponse) -> JSONResponse:
         headers=headers
     )
 
-@app.post("/endpoints/{endpoint_name}/async-invocations", response_model=AsyncInferenceResponse, status_code=202)
+@app.post("/invocations", response_model=AsyncInferenceResponse, status_code=202)
 async def invoke_endpoint(
-    endpoint_name: str,
     # request: Request,
     x_amzn_sagemaker_content_type: str = Header(..., max_length=1024, alias="X-Amzn-SageMaker-Content-Type"),
     x_amzn_sagemaker_accept: Optional[str] = Header(None, max_length=1024, alias="X-Amzn-SageMaker-Accept"),
@@ -187,7 +187,6 @@ async def invoke_endpoint(
     """
     try:
         # Log request details
-        logger.info(f"Endpoint name: {endpoint_name}")
         logger.info(f"Content type: {x_amzn_sagemaker_content_type}")
         logger.info(f"Accept: {x_amzn_sagemaker_accept}")
         logger.info(f"Custom attributes: {x_amzn_sagemaker_custom_attributes}")
@@ -207,7 +206,6 @@ async def invoke_endpoint(
         result = await process_async_inference(
             request_params["input_location"],
             request_params["output_location"],
-            endpoint_name,
             request_params["inference_id"]
         )
         

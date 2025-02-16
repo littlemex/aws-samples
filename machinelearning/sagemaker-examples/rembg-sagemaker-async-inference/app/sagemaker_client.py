@@ -58,16 +58,16 @@ class SageMakerClient:
         else:
             # ローカル環境用の実装
             # Validate required parameters
-            if not EndpointName:
-                raise ValueError("EndpointName is required")
+            # if not EndpointName:
+            #     raise ValueError("EndpointName is required")
             if not InputLocation:
                 raise ValueError("InputLocation is required")
             if not ContentType:
                 raise ValueError("ContentType is required")
 
             # Validate parameter constraints
-            if len(EndpointName) > 63 or not EndpointName.replace('-', '').isalnum():
-                raise ValueError("Invalid EndpointName format")
+            # if len(EndpointName) > 63 or not EndpointName.replace('-', '').isalnum():
+            #     raise ValueError("Invalid EndpointName format")
             if len(InputLocation) > 1024 or not InputLocation.startswith(('https://', 's3://')):
                 raise ValueError("Invalid InputLocation format")
             if InferenceId and (len(InferenceId) < 1 or len(InferenceId) > 64):
@@ -77,7 +77,7 @@ class SageMakerClient:
             if InvocationTimeoutSeconds and (InvocationTimeoutSeconds < 1 or InvocationTimeoutSeconds > 3600):
                 raise ValueError("Invalid InvocationTimeoutSeconds range")
 
-            url = f'http://localhost:8080/endpoints/{EndpointName}/async-invocations'
+            url = f'http://localhost:8080/invocations'
             headers = {
                 'X-Amzn-SageMaker-Content-Type': ContentType,
                 'X-Amzn-SageMaker-InputLocation': InputLocation

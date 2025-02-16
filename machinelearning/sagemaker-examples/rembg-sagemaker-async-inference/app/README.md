@@ -7,44 +7,24 @@
 この実装はSageMaker非同期推論の仕様に従い、以下のファイルで構成されています：
 
 - `inference.py`: 非同期推論リクエストを処理するFastAPIアプリケーション
-- `update_env.py`: CDKデプロイ後の環境変数を.envファイルに反映するスクリプト
+  - `inference_processor.py`
+  - `cloudwatch_metrics.py`
 - `Dockerfile`: 推論エンドポイント用のコンテナ設定
 - `serve`: FastAPIアプリケーションを起動するスクリプト
+- `update_env.py`: CDKデプロイ後の環境変数を.envファイルに反映するスクリプト
+- `download_models.py`: モデルをダウンロードするスクリプト
 - `build_and_push.sh`: ECRへのイメージビルド・プッシュスクリプト
 - `setup_and_deploy.sh`: セットアップとデプロイの自動化スクリプト
+- `request_endpoint.py`: 推論リクエスト用のスクリプト
 - `.env`: 環境変数設定ファイル（.gitignore対象）
 
 ## API仕様
 
 エンドポイントは以下の形式のリクエストを受け付けます（[InvokeEndpointAsync API](https://boto3.amazonaws.com/v1/documentation/api/1.26.83/reference/services/sagemaker-runtime/client/invoke_endpoint_async.html)に準拠）：
 
-```json
-{
-    "InputLocation": "s3://input-bucket/input-key",
-}
-```
-
-### レスポンス形式
-
-成功時のレスポンス：
-```json
-{
-    "status": "success",
-    "output_location": "s3://output-bucket/output-key"
-}
-```
-
-# FIXME: エラー時のレスポンスは SageMaker Async Inference の期待と正しいですか？
-エラー時のレスポンス：
-```json
-{
-    "detail": "エラーメッセージ"
-}
-```
-
 ## エンドポイント
 
-- `/invocations`: 非同期推論用メインエンドポイント
+- `/endpoints/{endpoint_name}/async-invocations`: 非同期推論用メインエンドポイント
 - `/ping`: ヘルスチェック用エンドポイント
 
 ## ビルドとデプロイ
@@ -102,6 +82,7 @@ USE_AWS=false uv run request_endpoint.py local-bucket/examples/anime-girl-3.jpg 
 4. セットアップとデプロイの実行
 
 ```bash
+# image がすでにあると push スキップされることに注意
 bash -x ./setup_and_deploy.sh
 ```
 
@@ -111,7 +92,7 @@ bash -x ./setup_and_deploy.sh
 - 依存関係のインストール
 - SageMaker非同期推論エンドポイントのデプロイ
 
-5. ローカルでのテスト:
+5. SageMaker 非同期推論エンドポイントへのテスト:
 
 ```bash
 USE_AWS=true uv run request_endpoint.py local-bucket/examples/anime-girl-3.jpg --output-dir local-bucket/outputs

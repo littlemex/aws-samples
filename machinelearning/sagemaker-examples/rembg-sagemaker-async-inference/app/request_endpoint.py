@@ -14,7 +14,7 @@ from sagemaker_client import SageMakerClient
 
 # ロガーの設定
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
@@ -144,19 +144,20 @@ class AWSBackgroundRemovalProcessor(BackgroundRemovalProcessor):
         return f"s3://{self.input_bucket}/{input_key}"
 
     def send_inference_request(self, input_location: str, output_location: str) -> Any:
-        custom_attributes = json.dumps({
-            "OutputLocation": f"s3://{self.output_bucket}/{self.output_key}"
-        })
+        custom_attributes = f"output_location=s3://{output_location}"
         
         inference_id = str(time.time())
         self.logger.info(f"Sending async inference request to endpoint: {self.endpoint_name}")
-        
+
         response = self.sagemaker_client.invoke_endpoint_async(
             EndpointName=self.endpoint_name,
             ContentType='application/json',
             CustomAttributes=custom_attributes,
             InferenceId=inference_id,
-            InputLocation=input_location
+            InputLocation=input_location,
+            Accept="",
+            RequestTTLSeconds=60,
+            InvocationTimeoutSeconds=100
         )
         
         return response
