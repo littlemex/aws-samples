@@ -52,24 +52,6 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error"}
     )
 
-class AsyncInferenceRequest(BaseModel):
-    ContentType: Optional[str] = Field(..., max_length=1024, pattern=r'\p{ASCII}*', alias="content_type")
-    Accept: Optional[str] = Field(..., max_length=1024, pattern=r'\p{ASCII}*', alias="accept")
-    CustomAttributes: Optional[str] = Field(None, max_length=1024, pattern=r'\p{ASCII}*', alias="custom_attributes")
-    InferenceId: Optional[str] = Field(None, min_length=1, max_length=64, pattern=r'^[^\s][\x20-\x7E]*$', alias="inference_id")
-    InputLocation: str = Field(..., min_length=1, max_length=1024, pattern=r'^(https|s3)://([^/]+)/?(.*)$', alias="input_location")
-    RequestTtl: Optional[int] = Field(21600, ge=60, le=21600, alias="request_ttl")
-    InvocationTimeout: Optional[int] = Field(900, ge=1, le=3600, alias="invocation_timeout")
-
-    class Config:
-        populate_by_name = True
-
-    @validator('InputLocation')
-    def validate_location(cls, v):
-        if not v.startswith('s3://'):
-            raise ValueError("Location must be an S3 URI (s3://)")
-        return v
-
 class AsyncInferenceResponse(BaseModel):
     InferenceId: str = Field(..., description="Identifier for the inference request")
     OutputLocation: str = Field(..., description="The S3 URI where the inference response payload is stored")
@@ -126,7 +108,11 @@ async def process_async_inference(input_location: str, output_location: str, end
             processor.update_backlog_metric(endpoint_name, backlog_size)
         raise
 
-async def process_request_parameters(input_location: str, inference_id: Optional[str] = None) -> dict:
+async def process_request_parameters(
+    input_location: str,
+    inference_id: Optional[str] = None,
+    custom_attributes: Optional[str] = None
+) -> dict:
     """Process and validate request parameters"""
     # Validate input location format
     if not input_location.startswith(('https://', 's3://')):
@@ -135,9 +121,19 @@ async def process_request_parameters(input_location: str, inference_id: Optional
             detail="InputLocation must start with https:// or s3://"
         )
 
-    # Generate output location based on input location
-    input_parts = input_location.split('/')
-    output_location = f"{'/'.join(input_parts[:-1])}/output/{input_parts[-1]}"
+    # Generate output location based on input location or custom attributes
+    output_location = None
+    if custom_attributes:
+        try:
+            custom_attrs = dict(attr.split('=') for attr in custom_attributes.split(';') if '=' in attr)
+            output_location = custom_attrs.get('output_location')
+        except Exception as e:
+            logger.warning(f"Failed to parse custom attributes: {e}")
+    
+    # Fallback to default output location if not specified in custom attributes
+    if not output_location:
+        input_parts = input_location.split('/')
+        output_location = f"{'/'.join(input_parts[:-1])}/output/{input_parts[-1]}"
     
     # Generate or use provided inference ID
     final_inference_id = inference_id or str(time.time())
@@ -176,7 +172,7 @@ def create_inference_response(result: AsyncInferenceResponse) -> JSONResponse:
 @app.post("/endpoints/{endpoint_name}/async-invocations", response_model=AsyncInferenceResponse, status_code=202)
 async def invoke_endpoint(
     endpoint_name: str,
-    request: Request,
+    # request: Request,
     x_amzn_sagemaker_content_type: str = Header(..., max_length=1024, alias="X-Amzn-SageMaker-Content-Type"),
     x_amzn_sagemaker_accept: Optional[str] = Header(None, max_length=1024, alias="X-Amzn-SageMaker-Accept"),
     x_amzn_sagemaker_custom_attributes: Optional[str] = Header(None, max_length=1024, alias="X-Amzn-SageMaker-Custom-Attributes"),
@@ -203,7 +199,8 @@ async def invoke_endpoint(
         # Process request parameters
         request_params = await process_request_parameters(
             x_amzn_sagemaker_input_location,
-            x_amzn_sagemaker_inference_id
+            x_amzn_sagemaker_inference_id,
+            x_amzn_sagemaker_custom_attributes
         )
             
         # Process the inference request

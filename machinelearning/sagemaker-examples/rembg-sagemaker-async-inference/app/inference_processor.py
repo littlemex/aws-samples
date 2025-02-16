@@ -65,18 +65,26 @@ class InferenceProcessor(ABC):
 
     def process_image(self, image_data: bytes) -> bytes:
         """Process image using the loaded model"""
-        self.initialize_model()
-        
-        image = Image.open(io.BytesIO(image_data))
-        output_image = remove(image, session=self.model_session)
-        img_byte_arr = io.BytesIO()
-        output_image.save(img_byte_arr, format='PNG')
-        return img_byte_arr.getvalue()
+        try:
+            self.initialize_model()
+            
+            image = Image.open(io.BytesIO(image_data))
+            output_image = remove(image, session=self.model_session)
+            img_byte_arr = io.BytesIO()
+            output_image.save(img_byte_arr, format='PNG')
+            return img_byte_arr.getvalue()
+        except Exception as e:
+            logger.error(f"Error processing image: {str(e)}")
+            raise
 
     def update_backlog_metric(self, endpoint_name: str, backlog_size: int) -> None:
         """Update CloudWatch metrics for queue monitoring"""
-        if self.cloudwatch_handler:
-            self.cloudwatch_handler.put_backlog_metric(endpoint_name, backlog_size)
+        try:
+            if self.cloudwatch_handler:
+                self.cloudwatch_handler.put_backlog_metric(endpoint_name, backlog_size)
+        except Exception as e:
+            logger.error(f"Error updating backlog metric: {str(e)}")
+            raise
 
     @abstractmethod
     async def read_input_image(self, input_bucket: str, input_key: str) -> bytes:
@@ -95,6 +103,7 @@ class InferenceProcessor(ABC):
         parts = location.replace("s3://", "").split("/")
         bucket = parts[0]
         key = "/".join(parts[1:])
+        logger.info(f"Parsed location - bucket: {bucket}, key: {key}")
         return bucket, key
 
 class LocalInferenceProcessor(InferenceProcessor):
@@ -118,6 +127,7 @@ class LocalInferenceProcessor(InferenceProcessor):
         """Save output image to local file system"""
         try:
             local_path = f"{output_bucket}/{output_key}"
+            logger.info(f"Saving to local path: {local_path}")
             # Create output directory if it doesn't exist
             output_dir = Path(local_path).parent
             output_dir.mkdir(parents=True, exist_ok=True)
