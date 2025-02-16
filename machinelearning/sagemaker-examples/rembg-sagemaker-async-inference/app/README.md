@@ -24,7 +24,7 @@
 
 ## エンドポイント
 
-- `/endpoints/{endpoint_name}/async-invocations`: 非同期推論用メインエンドポイント
+- `/invocations`: 非同期推論用メインエンドポイント
 - `/ping`: ヘルスチェック用エンドポイント
 
 ## ビルドとデプロイ
