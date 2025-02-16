@@ -20,7 +20,7 @@ IMAGE_EXISTS=$(aws ecr describe-images --repository-name $(echo $ECR_REPO | cut 
 if [ "$IMAGE_EXISTS" = "0" ]; then
     # イメージのビルドとプッシュ
     echo "コンテナイメージをビルドしてECRにプッシュします..."
-    bash -x ./build_and_push.sh
+    bash -x ./build_and_push.sh --push
 else
     echo "コンテナイメージは既に存在するためスキップします"
 fi

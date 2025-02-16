@@ -16,12 +16,11 @@
 
 ## API仕様
 
-エンドポイントは以下の形式のリクエストを受け付けます（InvokeEndpointAsync APIに準拠）：
+エンドポイントは以下の形式のリクエストを受け付けます（[InvokeEndpointAsync API](https://boto3.amazonaws.com/v1/documentation/api/1.26.83/reference/services/sagemaker-runtime/client/invoke_endpoint_async.html)に準拠）：
 
 ```json
 {
     "InputLocation": "s3://input-bucket/input-key",
-    "OutputLocation": "s3://output-bucket/output-key"
 }
 ```
 
@@ -95,7 +94,7 @@ docker run --rm --gpus all -p 8080:8080 -e USE_AWS=false \
 3. ローカルでのテスト:
 
 ```bash
-USE_AWS=false uv run request_endpoint.py examples/anime-girl-3.jpg --output-dir ./outputs
+USE_AWS=false uv run request_endpoint.py local-bucket/examples/anime-girl-3.jpg --output-dir local-bucket/outputs
 ```
 
 ## SageMaker エンドポイントのデプロイ
@@ -115,28 +114,5 @@ bash -x ./setup_and_deploy.sh
 5. ローカルでのテスト:
 
 ```bash
-USE_AWS=true uv run request_endpoint.py examples/anime-girl-3.jpg --output-dir ./outputs
-```
-
-### SageMaker非同期推論エンドポイントのテスト
-
-```bash
-# 環境変数の設定
-ENDPOINT_NAME=$(aws sagemaker list-endpoints --query "Endpoints[?EndpointName.contains(@, 'rembg-async')].EndpointName" --output text)
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-REGION=$(aws configure get region)
-
-# テスト用の画像をS3にアップロード
-aws s3 cp your-image.jpg s3://${INPUT_BUCKET}/test/input/
-
-# 非同期推論リクエストの実行
-aws sagemaker-runtime invoke-endpoint-async \
-  --endpoint-name ${ENDPOINT_NAME} \
-  --input-location s3://${INPUT_BUCKET}/test/input/your-image.jpg \
-  --output-location s3://${OUTPUT_BUCKET}/test/output/result.png \
-  --content-type application/json \
-  output.json
-
-# 結果の確認
-cat output.json
+USE_AWS=true uv run request_endpoint.py local-bucket/examples/anime-girl-3.jpg --output-dir local-bucket/outputs
 ```

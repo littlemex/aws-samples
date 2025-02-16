@@ -38,6 +38,8 @@ def delete_endpoint_config_if_exists(sagemaker_client, endpoint_config_name):
         else:
             raise e
 
+# FIXME: インスタンスの最小台数を 0, 最大台数を 2 にしてもらえますか。
+
 def deploy_async_endpoint(
     role_arn=os.getenv('SAGEMAKER_ROLE_ARN'),
     image_uri=os.getenv('ECR_REPO'),

@@ -46,6 +46,8 @@ RUN if [ "${TARGET_PLATFORM}" = "gpu" ]; then \
 
 # Copy inference code
 COPY inference.py /opt/ml/code/
+COPY inference_processor.py /opt/ml/code/
+COPY cloudwatch_metrics.py /opt/ml/code/
 COPY serve /opt/ml/code/
 
 # Make serve script executable

@@ -10,16 +10,19 @@ fi
 
 # 使用方法を表示する関数
 usage() {
-    echo "Usage: $0 [--gpu]"
-    echo "  --gpu    GPUサポート付きのコンテナをビルド（省略時はCPUバージョン）"
+    echo "Usage: $0 [--gpu] [--push]"
+    echo "  --gpu     GPUサポート付きのコンテナをビルド（省略時はCPUバージョン）"
+    echo "  --push    ビルド後にECRにプッシュする"
     exit 1
 }
 
 # 引数の解析
 USE_GPU=${USE_GPU:-false}
+PUSH_TO_ECR=false
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --gpu) USE_GPU=true ;;
+        --push) PUSH_TO_ECR=true ;;
         -h|--help) usage ;;
         *) echo "Unknown parameter: $1"; usage ;;
     esac
@@ -59,8 +62,13 @@ docker buildx build --platform linux/amd64 \
 docker tag rembg-async-app:$TAG $ECR_REPO:$TAG
 docker tag rembg-async-app:$TAG $ECR_REPO:latest
 
-# ECRにプッシュ
-docker push $ECR_REPO:$TAG
-docker push $ECR_REPO:latest
-
-echo "イメージのビルドとプッシュが完了しました（$TAG バージョン）"
+# ECRにプッシュ（--push オプションが指定された場合のみ）
+if [ "$PUSH_TO_ECR" = true ]; then
+    echo "Pushing images to ECR..."
+    docker push $ECR_REPO:$TAG
+    docker push $ECR_REPO:latest
+    echo "イメージのビルドとプッシュが完了しました（$TAG バージョン）"
+else
+    echo "イメージのビルドが完了しました（$TAG バージョン）"
+    echo "ECRへのプッシュをスキップしました。プッシュする場合は --push オプションを使用してください。"
+fi
