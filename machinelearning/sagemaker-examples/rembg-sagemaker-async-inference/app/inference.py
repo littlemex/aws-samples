@@ -190,7 +190,7 @@ async def process_request(request: Request) -> tuple[any, SageMakerHeaders]:
     
     # Get request body and content type
     body = await request.body()
-    content_type = request.headers.get("x-amzn-sagemaker-content-type", "").lower()
+    content_type = request.headers.get("content-type", "").lower()
     
     # Process body based on content type
     logger.info("Raw request body:")
@@ -255,7 +255,7 @@ async def process_request(request: Request) -> tuple[any, SageMakerHeaders]:
 
     # Validate and create SageMaker headers
     sagemaker_headers = SageMakerHeaders(
-        content_type=headers.get("x-amzn-sagemaker-content-type"),
+        content_type=headers.get("content-type"),
         accept=headers.get("x-amzn-sagemaker-accept"),
         custom_attributes=headers.get("x-amzn-sagemaker-custom-attributes"),
         inference_id=headers.get("x-amzn-sagemaker-inference-id"),

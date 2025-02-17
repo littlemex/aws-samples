@@ -72,7 +72,7 @@ class SageMakerClient:
             endpoint_host = os.getenv('LOCAL_ENDPOINT_HOST', 'localhost:8080')
             url = f'http://{endpoint_host}/invocations'
             headers = {
-                'X-Amzn-SageMaker-Content-Type': ContentType
+                'Content-Type': ContentType
             }
 
             # Add optional headers

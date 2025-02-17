@@ -86,7 +86,7 @@ def deploy_async_endpoint(
     predictor = model.deploy(
         endpoint_name=endpoint_name,
         instance_type=instance_type,
-        initial_instance_count=0,  # Start with 0 instances
+        initial_instance_count=1,  # Start with 1 instance, will scale down to 0 via auto-scaling
         async_inference_config=async_config,
         wait=True
     )
