@@ -1,6 +1,5 @@
 import os
 import boto3
-import sagemaker
 from sagemaker.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.model import Model
 import argparse
@@ -48,12 +47,12 @@ def deploy_async_endpoint(
     instance_type=os.getenv('SAGEMAKER_INSTANCE_TYPE', 'ml.g4dn.xlarge'),
     input_bucket=os.getenv('INPUT_BUCKET'),
     output_bucket=os.getenv('OUTPUT_BUCKET'),
-    use_gpu=os.getenv('USE_GPU', 'true').lower() == 'true'
+    use_gpu=os.getenv('USE_GPU', 'true').lower() == 'true',
+    model_data_url=os.getenv('MODEL_DATA_URL')  # S3 URL for model data
 ):
     """
     Deploy SageMaker Async Inference endpoint for rembg app
     """
-    sagemaker_session = sagemaker.Session()
     sagemaker_client = boto3.client('sagemaker')
     
     # 既存のエンドポイントとエンドポイント設定を削除
@@ -65,10 +64,11 @@ def deploy_async_endpoint(
         image_uri=image_uri,
         role=role_arn,
         name=model_name,
+        model_data=model_data_url,  # S3 path to model data
         env={
             'CUDA_ENABLED': '1' if use_gpu else '0',
             'MODEL_NAME': os.getenv('MODEL_NAME', 'u2net'),
-            'MODEL_PATH': os.getenv('MODEL_PATH', '/opt/ml/model')
+            'MODEL_PATH': '/opt/ml/model'  # SageMaker default model path
         }
     )
     
@@ -82,13 +82,42 @@ def deploy_async_endpoint(
         }
     )
     
-    # Deploy endpoint
+    # Deploy endpoint with autoscaling
     predictor = model.deploy(
         endpoint_name=endpoint_name,
         instance_type=instance_type,
-        initial_instance_count=1,
+        initial_instance_count=0,  # Start with 0 instances
         async_inference_config=async_config,
         wait=True
+    )
+
+    # Configure autoscaling
+    client = boto3.client('application-autoscaling')
+    
+    # Register scalable target
+    client.register_scalable_target(
+        ServiceNamespace='sagemaker',
+        ResourceId=f'endpoint/{endpoint_name}/variant/AllTraffic',
+        ScalableDimension='sagemaker:variant:DesiredInstanceCount',
+        MinCapacity=0,
+        MaxCapacity=2
+    )
+    
+    # Configure scaling policy
+    client.put_scaling_policy(
+        PolicyName=f'{endpoint_name}-scaling-policy',
+        ServiceNamespace='sagemaker',
+        ResourceId=f'endpoint/{endpoint_name}/variant/AllTraffic',
+        ScalableDimension='sagemaker:variant:DesiredInstanceCount',
+        PolicyType='TargetTrackingScaling',
+        TargetTrackingScalingPolicyConfiguration={
+            'TargetValue': 70.0,  # Target utilization of 70%
+            'PredefinedMetricSpecification': {
+                'PredefinedMetricType': 'SageMakerVariantInvocationsPerInstance'
+            },
+            'ScaleOutCooldown': 300,  # 5 minutes
+            'ScaleInCooldown': 300    # 5 minutes
+        }
     )
     
     print(f"Endpoint {endpoint_name} deployed successfully")
@@ -116,7 +145,7 @@ def main():
         instance_type=args.instance_type or os.getenv('SAGEMAKER_INSTANCE_TYPE', 'ml.g4dn.xlarge'),
         input_bucket=args.input_bucket or os.getenv('INPUT_BUCKET'),
         output_bucket=args.output_bucket or os.getenv('OUTPUT_BUCKET'),
-        use_gpu=args.use_gpu if args.use_gpu is not None else os.getenv('USE_GPU', 'true').lower() == 'true'
+        use_gpu=args.use_gpu if args.use_gpu is not None else os.getenv('USE_GPU', 'true').lower() == 'true',
     )
 
 if __name__ == '__main__':

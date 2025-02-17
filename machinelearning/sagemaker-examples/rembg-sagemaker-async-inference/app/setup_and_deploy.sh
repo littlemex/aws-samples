@@ -29,6 +29,20 @@ fi
 echo "依存関係をインストールします..."
 uv sync
 
+# モデルファイルの準備とアップロード
+echo "モデルファイルをtar.gzに圧縮します..."
+tar -czf model.tar.gz -C models u2net.onnx
+echo "model.tar.gz を作成しました"
+
+# S3にアップロード
+echo "model.tar.gz を S3 にアップロードします..."
+aws s3 cp model.tar.gz "s3://${INPUT_BUCKET}/model.tar.gz"
+echo "アップロードが完了しました"
+
+# MODEL_DATA_URL の設定
+export MODEL_DATA_URL="s3://${INPUT_BUCKET}/model.tar.gz"
+echo "MODEL_DATA_URL を ${MODEL_DATA_URL} に設定しました"
+
 # SageMaker エンドポイントのデプロイ
 echo "SageMaker エンドポイントをデプロイします..."
 GPU_FLAG=""
