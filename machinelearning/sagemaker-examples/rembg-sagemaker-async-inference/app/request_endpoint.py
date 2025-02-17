@@ -3,13 +3,11 @@ import os
 import json
 import time
 import boto3
-import requests
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from dotenv import load_dotenv
 from abc import ABC, abstractmethod
-from botocore.exceptions import WaiterError
 from sagemaker_client import SageMakerClient
 
 # ロガーの設定
@@ -99,7 +97,8 @@ class LocalBackgroundRemovalProcessor(BackgroundRemovalProcessor):
         
         response = self.sagemaker_client.invoke_endpoint_async(
             EndpointName=self.endpoint_name,
-            ContentType='application/json',
+            # FIXME: 入力で指定したフォーマットを解析して ContentType を入れたい
+            ContentType='image/jpeg',
             CustomAttributes=custom_attributes,
             InputLocation=input_location
         )
@@ -151,11 +150,11 @@ class AWSBackgroundRemovalProcessor(BackgroundRemovalProcessor):
 
         response = self.sagemaker_client.invoke_endpoint_async(
             EndpointName=self.endpoint_name,
-            ContentType='application/json',
+            ContentType='image/jpeg',
             CustomAttributes=custom_attributes,
             InferenceId=inference_id,
             InputLocation=input_location,
-            Accept="",
+            Accept='image/jpeg',
             RequestTTLSeconds=60,
             InvocationTimeoutSeconds=100
         )
@@ -186,7 +185,7 @@ class AWSBackgroundRemovalProcessor(BackgroundRemovalProcessor):
     
     def _wait_for_sns_notification(self, inference_id: str) -> Dict[str, Any]:
         """SNS通知をポーリングして処理完了を待機"""
-        MAX_ATTEMPTS = 5
+        MAX_ATTEMPTS = 1
         WAIT_TIME = 10
         
         for attempt in range(MAX_ATTEMPTS):

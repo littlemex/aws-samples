@@ -23,7 +23,8 @@ def update_env():
         'INPUT_BUCKET': '',  # CDKで生成される
         'OUTPUT_BUCKET': '',  # CDKで生成される
         'SUCCESS_TOPIC_ARN': '',  # CDKで生成される
-        'ERROR_TOPIC_ARN': ''  # CDKで生成される
+        'ERROR_TOPIC_ARN': '',  # CDKで生成される
+        'LOCAL_ENDPOINT_HOST': 'localhost:8080'
     }
     
     # 既存の.envファイルを読み込む
@@ -107,7 +108,10 @@ def update_env():
         f.write(f"USE_GPU={env_vars['USE_GPU']}\n")
         f.write(f"MAX_CONCURRENT_INVOCATIONS={env_vars['MAX_CONCURRENT_INVOCATIONS']}\n")
         f.write(f"MODEL_NAME={env_vars['MODEL_NAME']}\n")
-        f.write(f"MODEL_PATH={env_vars['MODEL_PATH']}\n")
+        f.write(f"MODEL_PATH={env_vars['MODEL_PATH']}\n\n")
+
+        f.write("# [Local use] Request Client Configuration\n")
+        f.write(f"LOCAL_ENDPOINT_HOST={env_vars['LOCAL_ENDPOINT_HOST']}\n")
 
 if __name__ == '__main__':
     update_env()

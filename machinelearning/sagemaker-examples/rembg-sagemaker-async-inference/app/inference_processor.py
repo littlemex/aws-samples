@@ -3,7 +3,6 @@ import io
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 import boto3
 from PIL import Image
 from rembg import remove, new_session
@@ -112,6 +111,7 @@ class LocalInferenceProcessor(InferenceProcessor):
     def __init__(self, model_name: str = 'u2net'):
         super().__init__(model_name, use_cloudwatch=False)
 
+    # 画像がバイナリで body に入っているのでこのメソッドは不要だがそのまま残しておく
     async def read_input_image(self, input_bucket: str, input_key: str) -> bytes:
         """Read input image from local file system"""
         try:

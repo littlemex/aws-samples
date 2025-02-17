@@ -57,30 +57,22 @@ class SageMakerClient:
             )
         else:
             # ローカル環境用の実装
-            # Validate required parameters
-            # if not EndpointName:
-            #     raise ValueError("EndpointName is required")
             if not InputLocation:
                 raise ValueError("InputLocation is required")
             if not ContentType:
                 raise ValueError("ContentType is required")
 
             # Validate parameter constraints
-            # if len(EndpointName) > 63 or not EndpointName.replace('-', '').isalnum():
-            #     raise ValueError("Invalid EndpointName format")
             if len(InputLocation) > 1024 or not InputLocation.startswith(('https://', 's3://')):
                 raise ValueError("Invalid InputLocation format")
             if InferenceId and (len(InferenceId) < 1 or len(InferenceId) > 64):
                 raise ValueError("Invalid InferenceId length")
-            if RequestTTLSeconds and (RequestTTLSeconds < 60 or RequestTTLSeconds > 21600):
-                raise ValueError("Invalid RequestTTLSeconds range")
-            if InvocationTimeoutSeconds and (InvocationTimeoutSeconds < 1 or InvocationTimeoutSeconds > 3600):
-                raise ValueError("Invalid InvocationTimeoutSeconds range")
 
-            url = f'http://localhost:8080/invocations'
+            # Get endpoint URL from environment variable or use default
+            endpoint_host = os.getenv('LOCAL_ENDPOINT_HOST', 'localhost:8080')
+            url = f'http://{endpoint_host}/invocations'
             headers = {
-                'X-Amzn-SageMaker-Content-Type': ContentType,
-                'X-Amzn-SageMaker-InputLocation': InputLocation
+                'X-Amzn-SageMaker-Content-Type': ContentType
             }
 
             # Add optional headers
@@ -90,17 +82,23 @@ class SageMakerClient:
                 headers['X-Amzn-SageMaker-Custom-Attributes'] = CustomAttributes
             if InferenceId:
                 headers['X-Amzn-SageMaker-Inference-Id'] = InferenceId
-            if RequestTTLSeconds:
-                headers['X-Amzn-SageMaker-RequestTTLSeconds'] = str(RequestTTLSeconds)
-            if InvocationTimeoutSeconds:
-                headers['X-Amzn-SageMaker-InvocationTimeoutSeconds'] = str(InvocationTimeoutSeconds)
 
             self.logger.info("Local request details:")
             self.logger.info(f"URL: {url}")
             self.logger.info(f"Headers: {json.dumps(headers, indent=2)}")
 
+            # Convert s3:// path to local path and read image as binary
+            local_path = InputLocation.replace('s3://', '')
             try:
-                response = requests.post(url, headers=headers)
+                with open(local_path, 'rb') as f:
+                    body = f.read()
+            except FileNotFoundError:
+                raise ValueError(f"Image file not found at {local_path}")
+            except IOError as e:
+                raise ValueError(f"Error reading image file: {str(e)}")
+
+            try:
+                response = requests.post(url, headers=headers, data=body)
                 
                 if response.status_code == 202:
                     # Extract response headers

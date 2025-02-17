@@ -1,14 +1,15 @@
 import os
+import io
 import logging
 import asyncio
 import time
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 from inference_processor import LocalInferenceProcessor, AWSInferenceProcessor
 
@@ -59,6 +60,13 @@ class AsyncInferenceResponse(BaseModel):
 class ErrorResponse(BaseModel):
     detail: str = Field(..., description="Error details")
 
+class SageMakerHeaders(BaseModel):
+    content_type: str = Field(..., max_length=1024)
+    accept: Optional[str] = Field(None, max_length=1024)
+    custom_attributes: Optional[str] = Field(None, max_length=1024)
+    inference_id: Optional[str] = Field(None, max_length=64)
+
+
 # Initialize configuration
 USE_AWS = os.environ.get('USE_AWS', 'true').lower() == 'true'
 model_name = os.environ.get('MODEL_NAME', 'u2net')
@@ -69,23 +77,25 @@ thread_pool = ThreadPoolExecutor(max_workers=max_concurrent_invocations)
 # Initialize processor based on environment
 processor = AWSInferenceProcessor(model_name) if USE_AWS else LocalInferenceProcessor(model_name)
 
-async def process_async_inference(input_location: str, output_location: str, inference_id: str):
+async def process_async_inference(image_data: str, output_location: str, inference_id: str):
     """Process async inference request with queue management"""
     try:
         async with semaphore:
             # Parse locations
-            input_bucket, input_key = processor.parse_location(input_location)
             output_bucket, output_key = processor.parse_location(output_location)
 
-            # Read input image
-            image_data = await processor.read_input_image(input_bucket, input_key)
-            
             # Process image in thread pool to avoid blocking
             loop = asyncio.get_event_loop()
+            # Convert PIL Image to bytes in memory
+            img_byte_arr = io.BytesIO()
+            image_data.save(img_byte_arr, format=image_data.format or 'PNG')
+            img_byte_arr.seek(0)  # Reset buffer position to start
+            img_bytes = img_byte_arr.getvalue()
+            
             output_bytes = await loop.run_in_executor(
                 thread_pool,
                 processor.process_image,
-                image_data
+                img_bytes
             )
             
             # Save output image
@@ -94,8 +104,8 @@ async def process_async_inference(input_location: str, output_location: str, inf
             # Update metrics after processing (AWS only)
             if USE_AWS:
                 backlog_size = max_concurrent_invocations - semaphore._value
-                # FIXME: 適切なエンドポイント名を取得する
-                processor.update_backlog_metric("app", backlog_size)
+                endpoint_name = os.environ.get('SAGEMAKER_ENDPOINT_NAME', 'rembg-async-app')
+                processor.update_backlog_metric(endpoint_name, backlog_size)
             
             return AsyncInferenceResponse(
                 InferenceId=inference_id,
@@ -106,21 +116,14 @@ async def process_async_inference(input_location: str, output_location: str, inf
         logger.error(f"Error processing async inference: {str(e)}")
         if USE_AWS:
             backlog_size = max_concurrent_invocations - semaphore._value
+            endpoint_name = os.environ.get('SAGEMAKER_ENDPOINT_NAME', 'rembg-async-app')
             processor.update_backlog_metric(endpoint_name, backlog_size)
         raise
 
 async def process_request_parameters(
-    input_location: str,
     inference_id: Optional[str] = None,
     custom_attributes: Optional[str] = None
 ) -> dict:
-    """Process and validate request parameters"""
-    # Validate input location format
-    if not input_location.startswith(('https://', 's3://')):
-        raise HTTPException(
-            status_code=400,
-            detail="InputLocation must start with https:// or s3://"
-        )
 
     # Generate output location based on input location or custom attributes
     output_location = None
@@ -131,13 +134,18 @@ async def process_request_parameters(
         except Exception as e:
             logger.warning(f"Failed to parse custom attributes: {e}")
     
-    # Fallback to default output location if not specified in custom attributes
-    if not output_location:
-        input_parts = input_location.split('/')
-        output_location = f"{'/'.join(input_parts[:-1])}/output/{input_parts[-1]}"
-    
     # Generate or use provided inference ID
     final_inference_id = inference_id or str(time.time())
+
+    # Fallback to default output location if not specified in custom attributes
+    if not output_location:
+        output_bucket = os.environ.get('OUTPUT_BUCKET')
+        if not output_bucket:
+            raise HTTPException(
+                status_code=500,
+                detail="OUTPUT_BUCKET environment variable is not set"
+            )
+        output_location = f"s3://{output_bucket}/output/{final_inference_id}.png"
     
     # Check current queue size
     current_backlog = max_concurrent_invocations - semaphore._value
@@ -148,7 +156,6 @@ async def process_request_parameters(
         )
     
     return {
-        "input_location": input_location,
         "output_location": output_location,
         "inference_id": final_inference_id
     }
@@ -170,41 +177,118 @@ def create_inference_response(result: AsyncInferenceResponse) -> JSONResponse:
         headers=headers
     )
 
+async def process_request(request: Request) -> tuple[any, SageMakerHeaders]:
+    """Process and validate the incoming request"""
+    import json
+    import io
+    from PIL import Image
+
+    # Log raw request details
+    headers = dict(request.headers)
+    logger.info("Raw request headers:")
+    logger.info(headers)
+    
+    # Get request body and content type
+    body = await request.body()
+    content_type = request.headers.get("x-amzn-sagemaker-content-type", "").lower()
+    
+    # Process body based on content type
+    logger.info("Raw request body:")
+    if "application/json" in content_type:
+        try:
+            body_content = json.loads(body)
+            logger.info(body_content)
+            raise HTTPException(
+                status_code=415,
+                detail="Text/JSON processing is not implemented"
+            )
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse JSON body: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON format: {str(e)}"
+            )
+    elif "image/" in content_type:
+        try:
+            body_content = Image.open(io.BytesIO(body))
+            logger.info(f"Image details - Format: {body_content.format}, Size: {body_content.size}, Mode: {body_content.mode}")
+        except Exception as e:
+            logger.error(f"Failed to parse image: {e}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid image format: {str(e)}"
+            )
+    else:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported content type: {content_type}. Only application/json and image/* are supported."
+        )
+
+    # Log request metadata
+    query_params = dict(request.query_params)
+    logger.info("Request query parameters:")
+    logger.info(query_params)
+    
+    logger.info("Complete request information:")
+    logger.info({
+        "method": request.method,
+        "url": str(request.url),
+        "headers": headers,
+        "query_params": query_params,
+        "client": request.client,
+        "cookies": request.cookies,
+        "path_params": request.path_params
+    })
+
+    # Log model directory contents
+    model_dir = "/opt/ml/model"
+    if os.path.exists(model_dir):
+        logger.info(f"Contents of {model_dir}:")
+        for root, dirs, files in os.walk(model_dir):
+            logger.info(f"Directory: {root}")
+            if dirs:
+                logger.info(f"Subdirectories: {dirs}")
+            if files:
+                logger.info(f"Files: {files}")
+    else:
+        logger.warning(f"{model_dir} does not exist")
+
+    # Validate and create SageMaker headers
+    sagemaker_headers = SageMakerHeaders(
+        content_type=headers.get("x-amzn-sagemaker-content-type"),
+        accept=headers.get("x-amzn-sagemaker-accept"),
+        custom_attributes=headers.get("x-amzn-sagemaker-custom-attributes"),
+        inference_id=headers.get("x-amzn-sagemaker-inference-id"),
+    )
+
+    # Log validated request details
+    logger.info("Validated SageMaker headers:")
+    logger.info(f"Content type: {sagemaker_headers.content_type}")
+    logger.info(f"Accept: {sagemaker_headers.accept}")
+    logger.info(f"Custom attributes: {sagemaker_headers.custom_attributes}")
+    logger.info(f"Inference ID: {sagemaker_headers.inference_id}")
+
+    return body_content, sagemaker_headers
+
 @app.post("/invocations", response_model=AsyncInferenceResponse, status_code=202)
-async def invoke_endpoint(
-    # request: Request,
-    x_amzn_sagemaker_content_type: str = Header(..., max_length=1024, alias="X-Amzn-SageMaker-Content-Type"),
-    x_amzn_sagemaker_accept: Optional[str] = Header(None, max_length=1024, alias="X-Amzn-SageMaker-Accept"),
-    x_amzn_sagemaker_custom_attributes: Optional[str] = Header(None, max_length=1024, alias="X-Amzn-SageMaker-Custom-Attributes"),
-    x_amzn_sagemaker_inference_id: Optional[str] = Header(None, max_length=64, alias="X-Amzn-SageMaker-Inference-Id"),
-    x_amzn_sagemaker_input_location: str = Header(..., min_length=1, max_length=1024, alias="X-Amzn-SageMaker-InputLocation"),
-    x_amzn_sagemaker_request_ttl_seconds: Optional[int] = Header(None, ge=60, le=21600, alias="X-Amzn-SageMaker-RequestTTLSeconds"),
-    x_amzn_sagemaker_invocation_timeout_seconds: Optional[int] = Header(None, ge=1, le=3600, alias="X-Amzn-SageMaker-InvocationTimeoutSeconds"),
-):
+async def predict_fn(request: Request):
     """
     Endpoint for async model invocation that follows SageMaker async inference format
     See: https://docs.aws.amazon.com/ja_jp/sagemaker/latest/APIReference/API_runtime_InvokeEndpointAsync.html
     """
     try:
-        # Log request details
-        logger.info(f"Content type: {x_amzn_sagemaker_content_type}")
-        logger.info(f"Accept: {x_amzn_sagemaker_accept}")
-        logger.info(f"Custom attributes: {x_amzn_sagemaker_custom_attributes}")
-        logger.info(f"Inference ID: {x_amzn_sagemaker_inference_id}")
-        logger.info(f"Input location: {x_amzn_sagemaker_input_location}")
-        logger.info(f"Request TTL: {x_amzn_sagemaker_request_ttl_seconds}")
-        logger.info(f"Invocation timeout: {x_amzn_sagemaker_invocation_timeout_seconds}")
+        # Process the request and get the body content
+        body_content, sagemaker_headers = await process_request(request)
 
         # Process request parameters
         request_params = await process_request_parameters(
-            x_amzn_sagemaker_input_location,
-            x_amzn_sagemaker_inference_id,
-            x_amzn_sagemaker_custom_attributes
+            sagemaker_headers.inference_id,
+            sagemaker_headers.custom_attributes
         )
             
         # Process the inference request
         result = await process_async_inference(
-            request_params["input_location"],
+            body_content,
             request_params["output_location"],
             request_params["inference_id"]
         )
