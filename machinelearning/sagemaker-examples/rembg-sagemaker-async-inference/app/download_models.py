@@ -22,7 +22,7 @@ MODELS = {
     # "isnet-anime": "isnet-anime.onnx",
     # "sam-encoder": "vit_b-encoder-quant.onnx",
     # "sam-decoder": "vit_b-decoder-quant.onnx",
-    # "birefnet-general": "BiRefNet-general-epoch_244.onnx",
+    "birefnet-general": "BiRefNet-general-epoch_244.onnx",
     # "birefnet-general-lite": "BiRefNet-general-bb_swin_v1_tiny-epoch_232.onnx",
     # "birefnet-portrait": "BiRefNet-portrait-epoch_150.onnx",
     # "birefnet-dis": "BiRefNet-DIS-epoch_590.onnx",
