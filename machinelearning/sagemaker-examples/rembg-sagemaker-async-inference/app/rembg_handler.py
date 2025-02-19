@@ -3,11 +3,15 @@ from PIL import Image
 from rembg.sessions.base import BaseSession
 from rembg import remove, new_session
 import logging
+from dotenv import load_dotenv
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Load environment variables from .env file
+load_dotenv()
 
 model_dir_path = os.environ.get("MODEL_PATH", "/opt/ml/model")
 

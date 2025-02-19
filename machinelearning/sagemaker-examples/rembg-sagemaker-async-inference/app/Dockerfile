@@ -57,7 +57,8 @@ RUN pip install --no-cache-dir \
     pillow \
     boto3 \
     requests \
-    starlette
+    starlette \
+    python-dotenv
 
 # Copy inference code
 COPY inference.py /opt/ml/code/
@@ -65,6 +66,7 @@ COPY inference_processor.py /opt/ml/code/
 COPY rembg_handler.py /opt/ml/code/
 COPY cloudwatch_metrics.py /opt/ml/code/
 COPY serve /opt/ml/code/
+COPY .env /opt/ml/code/
 
 # Make serve script executable
 RUN chmod +x /opt/ml/code/serve

@@ -13,11 +13,16 @@ from pydantic import BaseModel, Field
 
 from inference_processor import LocalInferenceProcessor, AWSInferenceProcessor
 
+from dotenv import load_dotenv
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Initialize the FastAPI app
 app = FastAPI()
@@ -72,6 +77,7 @@ class SageMakerHeaders(BaseModel):
 USE_AWS = os.environ.get("USE_AWS", "true").lower() == "true"
 model_name = os.environ.get("MODEL_NAME", "u2net")
 max_concurrent_invocations = int(os.environ.get("MAX_CONCURRENT_INVOCATIONS", "2"))
+model_dir_path = os.environ.get("MODEL_PATH", "/opt/ml/model")
 semaphore = asyncio.Semaphore(max_concurrent_invocations)
 thread_pool = ThreadPoolExecutor(max_workers=max_concurrent_invocations)
 
@@ -247,7 +253,6 @@ async def process_request(request: Request) -> tuple[any, SageMakerHeaders]:
     )
 
     # Log model directory contents
-    model_dir_path = os.environ.get("MODEL_PATH", "/opt/ml/model")
     if os.path.exists(model_dir_path):
         logger.info(f"Contents of {model_dir_path}:")
         for root, dirs, files in os.walk(model_dir_path):

@@ -7,12 +7,19 @@ import boto3
 from PIL import Image
 from rembg_handler import RembgHandler
 from cloudwatch_metrics import CloudWatchMetricsHandler
+from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+# Load environment variables from .env file
+load_dotenv()
+
+model_dir_path = os.environ.get("MODEL_PATH", "/opt/ml/model")
 
 
 class InferenceProcessor(ABC):
@@ -56,7 +63,6 @@ class InferenceProcessor(ABC):
 
     def _check_models(self) -> str:
         """Download model files if they don't exist"""
-        model_dir_path = os.environ.get("MODEL_PATH", "/opt/ml/model")
         models_dir = Path(model_dir_path)
         model_path = models_dir / f"{self.model_name}.onnx"
         tar_path = models_dir / "model.tar.gz"
