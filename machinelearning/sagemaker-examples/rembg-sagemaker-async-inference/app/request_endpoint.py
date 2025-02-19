@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 import os
-import json
 import time
 import boto3
 import logging
+import mimetypes
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 from dotenv import load_dotenv
 from abc import ABC, abstractmethod
 from sagemaker_client import SageMakerClient
@@ -15,6 +15,10 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+# サードパーティライブラリのログレベルを WARNING に設定
+logging.getLogger('boto3').setLevel(logging.WARNING)
+logging.getLogger('botocore').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # .env ファイルから環境変数を読み込む
@@ -53,7 +57,7 @@ class BackgroundRemovalProcessor(ABC):
         
         Args:
             input_image_path: 入力画像のパス
-            output_path: 出力先のパス
+            output_path: ローカル出力先のパス
         Returns:
             bool: 処理が成功したかどうか
         """
@@ -64,7 +68,7 @@ class BackgroundRemovalProcessor(ABC):
             input_location = self.prepare_input(input_image_path)
             self.logger.info(f"Input location prepared: {input_location}")
             output_location = str(output_path)
-            self.logger.info(f"Output location prepared: {output_location}")
+            self.logger.info(f"Local output location prepared: {output_location}")
             
             # 推論リクエストの送信
             request_info = self.send_inference_request(input_location, output_location)
@@ -95,10 +99,14 @@ class LocalBackgroundRemovalProcessor(BackgroundRemovalProcessor):
         
         self.logger.info(f"Sending async inference request to local endpoint")
         
+        # 入力ファイルのMIMEタイプを取得
+        mime_type, _ = mimetypes.guess_type(input_location)
+        if not mime_type or not mime_type.startswith('image/'):
+            mime_type = 'image/jpeg'  # デフォルトのMIMEタイプ
+        
         response = self.sagemaker_client.invoke_endpoint_async(
             EndpointName=self.endpoint_name,
-            # FIXME: 入力で指定したフォーマットを解析して ContentType を入れたい
-            ContentType='image/jpeg',
+            ContentType=mime_type,
             CustomAttributes=custom_attributes,
             InputLocation=input_location
         )
@@ -128,6 +136,7 @@ class AWSBackgroundRemovalProcessor(BackgroundRemovalProcessor):
         self.endpoint_name = os.environ['SAGEMAKER_ENDPOINT_NAME']
         
         self.output_key = None
+        self.s3_output_location = None
     
     def prepare_input(self, input_image_path: str) -> str:
         input_key = f"input/{Path(input_image_path).name}"
@@ -143,14 +152,23 @@ class AWSBackgroundRemovalProcessor(BackgroundRemovalProcessor):
         return f"s3://{self.input_bucket}/{input_key}"
 
     def send_inference_request(self, input_location: str, output_location: str) -> Any:
-        custom_attributes = f"output_location=s3://{output_location}"
+        # input_locationからファイル名を抽出し、output_locationを構築
+        input_file_name = Path(input_location.split('/')[-1]).stem
+        self.s3_output_location = f"{self.output_bucket}/output/{input_file_name}_output.png"
+        custom_attributes = f"output_location=s3://{self.s3_output_location}"
         
         inference_id = str(time.time())
         self.logger.info(f"Sending async inference request to endpoint: {self.endpoint_name}")
+        self.logger.info(f"Output will be saved to: s3://{self.s3_output_location}")
+
+        # 入力ファイルのMIMEタイプを取得
+        mime_type, _ = mimetypes.guess_type(input_location)
+        if not mime_type or not mime_type.startswith('image/'):
+            mime_type = 'image/jpeg'  # デフォルトのMIMEタイプ
 
         response = self.sagemaker_client.invoke_endpoint_async(
             EndpointName=self.endpoint_name,
-            ContentType='image/jpeg',
+            ContentType=mime_type,
             CustomAttributes=custom_attributes,
             InferenceId=inference_id,
             InputLocation=input_location,
@@ -166,10 +184,34 @@ class AWSBackgroundRemovalProcessor(BackgroundRemovalProcessor):
         self.logger.info(f"Waiting for processing completion. Inference ID: {inference_id}")
         
         try:
-            notification = self._wait_for_sns_notification(inference_id)
-            return notification.get('status') != 'error'
-        except TimeoutError as e:
-            self.logger.error(f"Timeout waiting for processing completion: {str(e)}")
+            # S3出力ファイルの存在をポーリング
+            MAX_ATTEMPTS = 30
+            WAIT_TIME = 2
+            
+            for attempt in range(MAX_ATTEMPTS):
+                self.logger.info(f"Checking output file existence (attempt {attempt + 1}/{MAX_ATTEMPTS})")
+                
+                try:
+                    # S3オブジェクトのメタデータを取得してファイルの存在を確認
+                    self.s3.head_object(Bucket=self.output_bucket, Key=self.output_key)
+                    self.logger.info("Output file found in S3")
+                    return True
+                except self.s3.exceptions.ClientError as e:
+                    if e.response['Error']['Code'] == '404':
+                        if attempt < MAX_ATTEMPTS - 1:
+                            self.logger.info(f"Output file not found yet, waiting {WAIT_TIME} seconds...")
+                            time.sleep(WAIT_TIME)
+                            continue
+                        else:
+                            self.logger.error("Output file not found after maximum attempts")
+                            return False
+                    else:
+                        self.logger.error(f"Error checking S3 object: {str(e)}")
+                        return False
+            
+            return False
+        except Exception as e:
+            self.logger.error(f"Error during wait_for_completion: {str(e)}")
             return False
     
     def save_result(self, output_path: Path) -> bool:
@@ -182,32 +224,6 @@ class AWSBackgroundRemovalProcessor(BackgroundRemovalProcessor):
         except Exception as e:
             self.logger.error(f"Error saving result: {str(e)}")
             return False
-    
-    def _wait_for_sns_notification(self, inference_id: str) -> Dict[str, Any]:
-        """SNS通知をポーリングして処理完了を待機"""
-        MAX_ATTEMPTS = 1
-        WAIT_TIME = 10
-        
-        for attempt in range(MAX_ATTEMPTS):
-            self.logger.info(f"Checking inference status (attempt {attempt + 1}/{MAX_ATTEMPTS})")
-            
-            response = self.sns.list_subscriptions()
-            for sub in response['Subscriptions']:
-                try:
-                    topic_attrs = self.sns.get_topic_attributes(TopicArn=sub['TopicArn'])
-                    if 'Attributes' in topic_attrs and 'LastMessagePublished' in topic_attrs['Attributes']:
-                        message = json.loads(topic_attrs['Attributes']['LastMessagePublished'])
-                        if message.get('inferenceId') == inference_id:
-                            return message
-                except Exception as e:
-                    self.logger.warning(f"Error checking topic {sub['TopicArn']}: {str(e)}")
-                    continue
-            
-            if attempt < MAX_ATTEMPTS - 1:
-                self.logger.info(f"Waiting {WAIT_TIME} seconds before next attempt...")
-                time.sleep(WAIT_TIME)
-        
-        raise TimeoutError(f"Failed to get inference result after {MAX_ATTEMPTS} attempts")
 
 def request_background_removal(input_image_path: str, output_dir: str = "outputs") -> bool:
     """
@@ -226,10 +242,10 @@ def request_background_removal(input_image_path: str, output_dir: str = "outputs
     processor = AWSBackgroundRemovalProcessor() if use_aws else LocalBackgroundRemovalProcessor()
     
     # 出力パスの準備
-    output_path = Path(output_dir) / f"{Path(input_image_path).stem}_output.png"
-    logger.info(f"Output path prepared: {output_path}")
+    local_output_path = Path(output_dir) / f"{Path(input_image_path).stem}_output.png"
+    logger.info(f"Output path prepared: {local_output_path}")
     
-    return processor.process(input_image_path, output_path)
+    return processor.process(input_image_path, local_output_path)
 
 if __name__ == '__main__':
     import argparse
