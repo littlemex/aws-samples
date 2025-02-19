@@ -91,7 +91,7 @@ class InferenceProcessor(ABC):
                         f"Model file not found after extraction: {model_path}"
                     )
             else:
-                logger.error(
+                logger.info(
                     f"Neither model file nor tar archive found: {model_path}, {tar_path}"
                 )
                 raise FileNotFoundError(

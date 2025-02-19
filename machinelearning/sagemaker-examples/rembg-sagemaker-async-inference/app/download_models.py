@@ -14,7 +14,7 @@ BASE_URL = "https://github.com/danielgatis/rembg/releases/download/v0.0.0/"
 # Define models and their filenames, please check models you need
 MODELS = {
     "u2net": "u2net.onnx",
-    # "u2netp": "u2netp.onnx",
+    #u2netp": "u2netp.onnx",
     # "u2net_human_seg": "u2net_human_seg.onnx",
     # "u2net_cloth_seg": "u2net_cloth_seg.onnx",
     # "silueta": "silueta.onnx",
@@ -59,10 +59,11 @@ def main():
     print("Starting model downloads...")
 
     for model_name, filename in MODELS.items():
-        output_path = os.path.join(models_dir, filename)
+        output_filename = f"{model_name}.onnx"
+        output_path = os.path.join(models_dir, output_filename)
 
         if os.path.exists(output_path):
-            print(f"Model {filename} already exists, skipping...")
+            print(f"Model {output_filename} already exists, skipping...")
             continue
 
         url = BASE_URL + filename

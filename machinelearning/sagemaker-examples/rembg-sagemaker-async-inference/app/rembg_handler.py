@@ -14,16 +14,13 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 model_dir_path = os.environ.get("MODEL_PATH", "/opt/ml/model")
+model_name = os.environ.get("MODEL_NAME", "u2net")
 
 
 class RembgHandler:
-    def __init__(self, model_name: str):
-        # 絶対 new_session でgithubからモデルダウンロードするのでモンキーパッチをあてた
-        def custom_download_models(cls, *args, **kwargs):
-            logger.info("Custom download_models method called")
-            return f"{model_dir_path}/{model_name}.onnx"
-
-        BaseSession.download_models = classmethod(custom_download_models)
+    # request_model_name はリクエストヘッダの情報ごとにモデルを切り替える対応用、未実装
+    def __init__(self, request_model_name: str):
+        # 絶対 new_session でgithubからモデルダウンロードする.. /opt/ml/model をロードしても意味ない状態
         self.session = new_session(model_name)
 
     def predict(self, image: Image.Image) -> Image.Image:
