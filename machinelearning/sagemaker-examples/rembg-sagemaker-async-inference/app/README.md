@@ -1,6 +1,7 @@
 # SageMaker 非同期推論による背景除去の実装
 
 このディレクトリには、rembgライブラリを使用した背景除去のためのSageMaker非同期推論エンドポイントの実装が含まれています。
+GPU を利用する場合は CUDA Version, NVCC Version を適切なものにして下さい。
 
 ## 概要
 
@@ -9,6 +10,7 @@
 - `inference.py`: 非同期推論リクエストを処理するFastAPIアプリケーション
   - `inference_processor.py`
   - `cloudwatch_metrics.py`
+  - `rembg_handler.py`
 - `Dockerfile`: 推論エンドポイント用のコンテナ設定
 - `serve`: FastAPIアプリケーションを起動するスクリプト
 - `update_env.py`: CDKデプロイ後の環境変数を.envファイルに反映するスクリプト
