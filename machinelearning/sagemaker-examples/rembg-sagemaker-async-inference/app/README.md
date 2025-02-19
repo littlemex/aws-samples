@@ -104,3 +104,26 @@ bash -x setup_and_deploy.sh --skip-model-upload --skip-image-build
 ```bash
 USE_AWS=true uv run request_endpoint.py local-bucket/examples/anime-girl-3.jpg --output-dir local-bucket/outputs
 ```
+
+```bash
+$ time USE_AWS=true uv run request_endpoint.py local-bucket/examples/anime-girl-3.jpg --output-dir local-bucket/outputs
+2025-02-20 05:51:22,998 - INFO - Mode: AWS
+2025-02-20 05:51:23,152 - INFO - Output path prepared: local-bucket/outputs/anime-girl-3_output.png
+2025-02-20 05:51:23,152 - INFO - Processing input file: local-bucket/examples/anime-girl-3.jpg
+2025-02-20 05:51:23,152 - INFO - Input key prepared: input/anime-girl-3.jpg
+2025-02-20 05:51:23,152 - INFO - Output key prepared: output/anime-girl-3_output.png
+2025-02-20 05:51:23,152 - INFO - Uploading input file to S3: バケット名/input/anime-girl-3.jpg
+2025-02-20 05:51:24,155 - INFO - Input location prepared: s3://バケット名/input/anime-girl-3.jpg
+2025-02-20 05:51:24,155 - INFO - Local output location prepared: local-bucket/outputs/anime-girl-3_output.png
+2025-02-20 05:51:24,155 - INFO - Sending async inference request to endpoint: rembg-async-app
+2025-02-20 05:51:24,155 - INFO - Output will be saved to: s3://バケット名/output/anime-girl-3_output.png
+2025-02-20 05:51:24,979 - INFO - Waiting for processing completion. Inference ID: 1739998284.1555774
+2025-02-20 05:51:24,979 - INFO - Checking output file existence (attempt 1/30)
+2025-02-20 05:51:25,624 - INFO - Output file found in S3
+2025-02-20 05:51:25,624 - INFO - Downloading result from S3: バケット名/output/anime-girl-3_output.png
+2025-02-20 05:51:26,778 - INFO - Output image saved to: local-bucket/outputs/anime-girl-3_output.png
+
+real    0m4.163s
+user    0m0.571s
+sys     0m0.114s
+```
