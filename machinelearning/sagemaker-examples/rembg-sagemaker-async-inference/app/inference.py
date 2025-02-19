@@ -241,17 +241,17 @@ async def process_request(request: Request) -> tuple[any, SageMakerHeaders]:
     })
 
     # Log model directory contents
-    model_dir = "/opt/ml/model"
-    if os.path.exists(model_dir):
-        logger.info(f"Contents of {model_dir}:")
-        for root, dirs, files in os.walk(model_dir):
+    model_dir_path = os.environ.get('MODEL_PATH', '/opt/ml/model')
+    if os.path.exists(model_dir_path):
+        logger.info(f"Contents of {model_dir_path}:")
+        for root, dirs, files in os.walk(model_dir_path):
             logger.info(f"Directory: {root}")
             if dirs:
                 logger.info(f"Subdirectories: {dirs}")
             if files:
                 logger.info(f"Files: {files}")
     else:
-        logger.warning(f"{model_dir} does not exist")
+        logger.warning(f"{model_dir_path} does not exist")
 
     # Validate and create SageMaker headers
     sagemaker_headers = SageMakerHeaders(

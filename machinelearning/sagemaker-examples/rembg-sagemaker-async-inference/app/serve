@@ -2,16 +2,21 @@
 
 import uvicorn
 import logging
+import os
 
 if __name__ == "__main__":
     # Configure uvicorn logger to use standard names
     uvicorn_logger = logging.getLogger("uvicorn")
     uvicorn_logger.propagate = False
     
+    # Get debug mode from environment variable
+    debug_mode = os.getenv('DEBUG', 'false').lower() == 'true'
+    
     # Run the server
     uvicorn.run(
         "inference:app",
         host="0.0.0.0",
         port=8080,
-        log_level="info"
+        log_level="info",
+        reload=debug_mode
     )

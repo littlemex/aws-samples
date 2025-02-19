@@ -24,6 +24,7 @@ def update_env():
         'OUTPUT_BUCKET': '',  # CDKで生成される
         'SUCCESS_TOPIC_ARN': '',  # CDKで生成される
         'ERROR_TOPIC_ARN': '',  # CDKで生成される
+        'MODEL_DATA_URL': '',  # {INPUT_BUCKET}/models/model.tar.gz として設定される
         'LOCAL_ENDPOINT_HOST': 'localhost:8080'
     }
     
@@ -62,11 +63,13 @@ def update_env():
             if 'NotificationTopicArn' in stack_outputs:
                 env_vars['SUCCESS_TOPIC_ARN'] = stack_outputs['NotificationTopicArn']
                 env_vars['ERROR_TOPIC_ARN'] = stack_outputs['NotificationTopicArn']
-            
             # S3バケット名を設定
             if 'InputBucketName' in stack_outputs:
                 env_vars['INPUT_BUCKET'] = stack_outputs['InputBucketName']
+                # MODEL_DATA_URLを設定
+                env_vars['MODEL_DATA_URL'] = f"s3://{stack_outputs['InputBucketName']}/models/model.tar.gz"
             if 'OutputBucketName' in stack_outputs:
+                env_vars['OUTPUT_BUCKET'] = stack_outputs['OutputBucketName']
                 env_vars['OUTPUT_BUCKET'] = stack_outputs['OutputBucketName']
     except FileNotFoundError:
         print("Warning: cdk-outputs.json not found")
@@ -108,7 +111,8 @@ def update_env():
         f.write(f"USE_GPU={env_vars['USE_GPU']}\n")
         f.write(f"MAX_CONCURRENT_INVOCATIONS={env_vars['MAX_CONCURRENT_INVOCATIONS']}\n")
         f.write(f"MODEL_NAME={env_vars['MODEL_NAME']}\n")
-        f.write(f"MODEL_PATH={env_vars['MODEL_PATH']}\n\n")
+        f.write(f"MODEL_PATH={env_vars['MODEL_PATH']}\n")
+        f.write(f"MODEL_DATA_URL={env_vars['MODEL_DATA_URL']}\n\n")
 
         f.write("# [Local use] Request Client Configuration\n")
         f.write(f"LOCAL_ENDPOINT_HOST={env_vars['LOCAL_ENDPOINT_HOST']}\n")

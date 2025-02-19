@@ -69,6 +69,11 @@ docker run --rm -p 8080:8080 -e USE_AWS=false \
 docker run --rm --gpus all -p 8080:8080 -e USE_AWS=false \
   -v $(pwd)/local-bucket:/opt/ml/code/local-bucket \
   -v $(pwd)/models:/opt/ml/model rembg-async-app:gpu
+
+# デバッグモード
+docker run --rm --gpus all -p 8080:8080 -e USE_AWS=false -e DEBUG=true \
+  -v $(pwd):/opt/ml/code \
+  -v $(pwd)/models:/opt/ml/model rembg-async-app:gpu
 ```
 
 3. ローカルでのテスト:
@@ -82,8 +87,10 @@ USE_AWS=false uv run request_endpoint.py local-bucket/examples/anime-girl-3.jpg 
 4. セットアップとデプロイの実行
 
 ```bash
-# image がすでにあると push スキップされることに注意
 bash -x ./setup_and_deploy.sh
+
+# model upload と image ビルドをスキップ
+bash -x setup_and_deploy.sh --skip-model-upload --skip-image-build
 ```
 
 このスクリプトは以下の処理を実行します：

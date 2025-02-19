@@ -37,7 +37,18 @@ def delete_endpoint_config_if_exists(sagemaker_client, endpoint_config_name):
         else:
             raise e
 
-# FIXME: インスタンスの最小台数を 0, 最大台数を 2 にしてもらえますか。
+def delete_model_if_exists(sagemaker_client, model_name):
+    """
+    既存のモデルが存在する場合は削除します
+    """
+    try:
+        sagemaker_client.delete_model(ModelName=model_name)
+        print(f"Deleted existing model: {model_name}")
+    except sagemaker_client.exceptions.ClientError as e:
+        if "Could not find model" in str(e):
+            print(f"No existing model found: {model_name}")
+        else:
+            raise e
 
 def deploy_async_endpoint(
     role_arn=os.getenv('SAGEMAKER_ROLE_ARN'),
@@ -55,10 +66,10 @@ def deploy_async_endpoint(
     """
     sagemaker_client = boto3.client('sagemaker')
     
-    # 既存のエンドポイントとエンドポイント設定を削除
+    # 既存のエンドポイント、エンドポイント設定、モデルを削除
     delete_endpoint_if_exists(sagemaker_client, endpoint_name)
     delete_endpoint_config_if_exists(sagemaker_client, endpoint_name)
-    
+    delete_model_if_exists(sagemaker_client, model_name)
     # Create model
     model = Model(
         image_uri=image_uri,
@@ -133,6 +144,7 @@ def main():
     parser.add_argument('--input-bucket', help='Input S3 bucket')
     parser.add_argument('--output-bucket', help='Output S3 bucket')
     parser.add_argument('--use-gpu', action='store_true', help='Use GPU for inference')
+    parser.add_argument('--model-data-url', help='S3 URL for model data')
     
     args = parser.parse_args()
     
@@ -146,6 +158,7 @@ def main():
         input_bucket=args.input_bucket or os.getenv('INPUT_BUCKET'),
         output_bucket=args.output_bucket or os.getenv('OUTPUT_BUCKET'),
         use_gpu=args.use_gpu if args.use_gpu is not None else os.getenv('USE_GPU', 'true').lower() == 'true',
+        model_data_url=args.model_data_url or os.getenv('MODEL_DATA_URL')
     )
 
 if __name__ == '__main__':
