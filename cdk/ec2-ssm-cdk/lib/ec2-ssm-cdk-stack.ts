@@ -8,18 +8,31 @@ import { Construct } from "constructs";
 
 export class Ec2SsmCdkStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
+    // Get stack name from environment variable or generate with timestamp
+    const timestamp = new Date().getTime();
+    const stackName = process.env.STACK_NAME || `${id}-${timestamp}`;
+
+    super(scope, stackName, {
+      ...props,
+      stackName: stackName
+    });
 
     const region: string = process.env.CDK_DEFAULT_REGION || "us-east-1";
 
-    // Look up the Deep Learning AMI
+    // Get AMI name from environment variable or use default
+    const amiName = process.env.AMI_NAME || "Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.5*Ubuntu*";
+
+    // Look up the AMI
     const ami = new ec2.LookupMachineImage({
-      name: "Deep Learning OSS Nvidia Driver AMI GPU PyTorch 2.5*Ubuntu*",
+      name: amiName,
       owners: ["amazon"],
     });
 
+    // Get VPC name from environment variable
+    const vpcName = process.env.VPC_NAME || "VPC";
+
     // Create a new VPC with public subnets in different AZs
-    const vpc = new ec2.Vpc(this, "VPC", {
+    const vpc = new ec2.Vpc(this, vpcName, {
       maxAzs: 2,
       subnetConfiguration: [
         {
@@ -59,9 +72,29 @@ export class Ec2SsmCdkStack extends Stack {
       resources: ['*']
     }));
 
+    // Get instance class and size from environment variables with type safety
+    const getInstanceClass = (envClass: string | undefined): ec2.InstanceClass => {
+      const defaultClass = ec2.InstanceClass.G6;
+      if (!envClass) return defaultClass;
+      
+      const classKey = envClass.toUpperCase();
+      return ec2.InstanceClass[classKey as keyof typeof ec2.InstanceClass] || defaultClass;
+    };
+
+    const getInstanceSize = (envSize: string | undefined): ec2.InstanceSize => {
+      const defaultSize = ec2.InstanceSize.XLARGE4;
+      if (!envSize) return defaultSize;
+      
+      const sizeKey = envSize.toUpperCase();
+      return ec2.InstanceSize[sizeKey as keyof typeof ec2.InstanceSize] || defaultSize;
+    };
+
+    const instanceClass = getInstanceClass(process.env.EC2_INSTANCE_CLASS);
+    const instanceSize = getInstanceSize(process.env.EC2_INSTANCE_SIZE);
+
     const ec2Instance = new ec2.Instance(this, "Instance", {
       vpc,
-      instanceType: ec2.InstanceType.of(ec2.InstanceClass.G6, ec2.InstanceSize.XLARGE4),
+      instanceType: ec2.InstanceType.of(instanceClass, instanceSize),
       machineImage: ami,
       securityGroup: ec2SecurityGroup,
       role: role,
@@ -75,7 +108,6 @@ export class Ec2SsmCdkStack extends Stack {
         subnetType: ec2.SubnetType.PUBLIC
       }
     });
-
 
     const asset = new Asset(this, "Asset", { path: path.join(__dirname, "../config.sh") });
     const localPath = ec2Instance.userData.addS3DownloadCommand({
@@ -103,5 +135,11 @@ export class Ec2SsmCdkStack extends Stack {
     new cdk.CfnOutput(this, "Access URL", {
       value: "After running the port forward command, access: https://localhost:8080"
     });
+
+    // Output the configuration used
+    new cdk.CfnOutput(this, "Configuration", {
+      value: `Stack Name: ${stackName}\nVPC Name: ${vpcName}\nInstance Class: ${instanceClass.toString()}\nInstance Size: ${instanceSize.toString()}`
+    });
   }    
 }
+
