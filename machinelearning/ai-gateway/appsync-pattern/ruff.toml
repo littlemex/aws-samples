@@ -1,0 +1,31 @@
+# ruff.toml
+
+# 対象とするPythonバージョン
+target-version = "py39"
+
+# 行の長さ
+line-length = 100
+
+[lint]
+# 選択したルール
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "RUF", # ruff-specific rules
+]
+
+# インポートの整理
+[lint.isort]
+force-single-line = true
+lines-between-types = 1
+
+# フォーマット設定
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"

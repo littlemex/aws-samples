@@ -1,0 +1,33 @@
+type Query {
+  getInferenceStatus(jobId: ID!): InferenceStatus!
+}
+
+type Mutation {
+  startInference(input: InferenceInput!): InferenceJob!
+}
+
+input InferenceInput {
+  prompt: String!
+  model: String!
+  parameters: AWSJSON
+}
+
+type InferenceJob {
+  jobId: ID!
+  status: JobStatus!
+}
+
+type InferenceStatus {
+  jobId: ID!
+  status: JobStatus!
+  startTime: AWSDateTime!
+  endTime: AWSDateTime
+  result: AWSJSON
+  error: String
+}
+
+enum JobStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
