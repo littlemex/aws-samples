@@ -1,129 +1,148 @@
 #!/usr/bin/env python3
 """
-非同期での長時間のGenAI API実行をテストするためのスクリプト
+AppSync GraphQL APIを使用した非同期推論のテストスクリプト
 """
 
 import asyncio
-import time
-import uuid
 import json
+import argparse
 from datetime import datetime
+from gql import gql, Client
+from gql.transport.websockets import WebsocketsTransport
+from gql.transport.requests import RequestsHTTPTransport
+import os
+import logging
 
+# ロギングの設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-class MockGenAIClient:
-    """長時間実行するGenAI APIのモッククライアント"""
+# GraphQL Queries/Mutations/Subscriptions
+START_INFERENCE = gql("""
+    mutation StartInference($input: InferenceInput!) {
+        startInference(input: $input) {
+            jobId
+            status
+            startTime
+        }
+    }
+""")
 
-    def __init__(self):
-        # 実行中のジョブを保存する辞書
-        self.running_jobs = {}
+ON_INFERENCE_STATUS_CHANGE = gql("""
+    subscription OnInferenceStatusChange($jobId: ID!) {
+        onInferenceStatusChange(jobId: $jobId) {
+            jobId
+            status
+            startTime
+            endTime
+            result
+            error
+        }
+    }
+""")
 
-    async def start_inference(self, prompt, model="gpt-4", **kwargs):
+class AsyncInferenceClient:
+    """AppSync GraphQL APIクライアント"""
+
+    def __init__(self, api_url, ws_url, auth_token):
+        self.api_url = api_url
+        self.ws_url = ws_url
+        self.auth_token = auth_token
+        
+        # HTTP Transport for mutations
+        self.http_transport = RequestsHTTPTransport(
+            url=api_url,
+            headers={'Authorization': f'Lambda-Auth-{auth_token}'}
+        )
+        
+        # WebSocket Transport for subscriptions
+        self.ws_transport = WebsocketsTransport(
+            url=ws_url,
+            headers={'Authorization': f'Lambda-Auth-{auth_token}'}
+        )
+        
+        # GraphQL clients
+        self.http_client = Client(transport=self.http_transport)
+        self.ws_client = Client(transport=self.ws_transport)
+
+    async def start_inference(self, prompt, model="gpt-4", process_time=None):
         """推論ジョブを開始する"""
-        job_id = str(uuid.uuid4())
-
-        # ジョブ情報を保存
-        self.running_jobs[job_id] = {
-            "status": "RUNNING",
-            "start_time": datetime.now().isoformat(),
-            "prompt": prompt,
-            "model": model,
-            "params": kwargs,
-            "result": None,
+        variables = {
+            "input": {
+                "prompt": prompt,
+                "model": model,
+                "processTime": process_time
+            }
         }
-
-        # 非同期でジョブを実行
-        asyncio.create_task(self._process_job(job_id))
-
-        return {"job_id": job_id, "status": "RUNNING"}
-
-    async def _process_job(self, job_id):
-        """バックグラウンドでジョブを処理する"""
+        
         try:
-            # 実際のAPIでは、ここで外部サービスを呼び出す
-            # このモックでは、単に5〜15秒待機して長時間実行を模擬
-            job_info = self.running_jobs[job_id]
-            prompt = job_info["prompt"]
-
-            # ランダムな処理時間（5〜15秒）
-            import random
-
-            process_time = random.randint(5, 15)
-
-            print(f"ジョブ {job_id} を処理中... 処理時間: {process_time}秒")
-            await asyncio.sleep(process_time)
-
-            # 結果を生成
-            result = f"プロンプト「{prompt}」に対する応答です。処理時間: {process_time}秒"
-
-            # ジョブ情報を更新
-            self.running_jobs[job_id]["status"] = "COMPLETED"
-            self.running_jobs[job_id]["result"] = result
-            self.running_jobs[job_id]["end_time"] = datetime.now().isoformat()
-
-            print(f"ジョブ {job_id} が完了しました")
-
+            result = await self.http_client.execute_async(
+                START_INFERENCE,
+                variable_values=variables
+            )
+            return result["startInference"]
         except Exception as e:
-            # エラー発生時
-            self.running_jobs[job_id]["status"] = "FAILED"
-            self.running_jobs[job_id]["error"] = str(e)
-            print(f"ジョブ {job_id} でエラーが発生しました: {e}")
+            logger.error(f"Failed to start inference: {e}")
+            raise
 
-    async def get_job_status(self, job_id):
-        """ジョブのステータスを取得する"""
-        if job_id not in self.running_jobs:
-            return {"error": "Job not found"}
+    async def subscribe_to_status(self, job_id):
+        """ステータス変更をサブスクライブする"""
+        try:
+            async for result in self.ws_client.subscribe(
+                ON_INFERENCE_STATUS_CHANGE,
+                variable_values={"jobId": job_id}
+            ):
+                yield result["onInferenceStatusChange"]
+        except Exception as e:
+            logger.error(f"Subscription error: {e}")
+            raise
 
-        job_info = self.running_jobs[job_id]
-
-        return {
-            "job_id": job_id,
-            "status": job_info["status"],
-            "start_time": job_info["start_time"],
-            "end_time": job_info.get("end_time"),
-            "result": job_info.get("result") if job_info["status"] == "COMPLETED" else None,
-            "error": job_info.get("error") if job_info["status"] == "FAILED" else None,
-        }
-
-
-async def test_async_inference():
+async def test_async_inference(api_url, ws_url, auth_token, process_time=None):
     """非同期推論のテスト"""
-    client = MockGenAIClient()
-
-    # 複数のジョブを開始
+    client = AsyncInferenceClient(api_url, ws_url, auth_token)
+    
+    # テストジョブを開始
+    prompts = [
+        "テスト用プロンプト 1",
+        "テスト用プロンプト 2",
+        "テスト用プロンプト 3"
+    ]
+    
     jobs = []
-    for i in range(3):
-        prompt = f"テスト用プロンプト {i + 1}"
-        result = await client.start_inference(prompt)
-        jobs.append(result["job_id"])
-        print(f"ジョブ {result['job_id']} を開始しました")
+    for prompt in prompts:
+        try:
+            result = await client.start_inference(prompt, process_time=process_time)
+            jobs.append(result["jobId"])
+            logger.info(f"Started job {result['jobId']} with status {result['status']}")
+        except Exception as e:
+            logger.error(f"Failed to start job for prompt '{prompt}': {e}")
+            continue
 
-    # すべてのジョブが完了するまで定期的にステータスをチェック
-    all_completed = False
-    while not all_completed:
-        all_completed = True
+    # 各ジョブのステータス変更を監視
+    async def monitor_job(job_id):
+        async for status in client.subscribe_to_status(job_id):
+            logger.info(f"Job {job_id} status update: {status['status']}")
+            if status["status"] in ["COMPLETED", "FAILED"]:
+                if status["status"] == "COMPLETED":
+                    logger.info(f"Job {job_id} completed with result: {status['result']}")
+                else:
+                    logger.error(f"Job {job_id} failed with error: {status['error']}")
+                return status
 
-        for job_id in jobs:
-            status = await client.get_job_status(job_id)
-            print(f"ジョブ {job_id} のステータス: {status['status']}")
+    # すべてのジョブを並行して監視
+    tasks = [monitor_job(job_id) for job_id in jobs]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            if status["status"] == "RUNNING":
-                all_completed = False
+    # 結果の表示
+    logger.info("\n=== Test Results ===")
+    for job_id, result in zip(jobs, results):
+        if isinstance(result, Exception):
+            logger.error(f"Job {job_id} monitoring failed: {result}")
+        else:
+            logger.info(f"\nJob ID: {job_id}")
+    if args.process_time:
+        print(f"指定された処理時間: {args.process_time}秒")
+    else:
+        print("処理時間: 5-60秒のランダム")
 
-        if not all_completed:
-            print("まだ実行中のジョブがあります。3秒後に再確認します...")
-            await asyncio.sleep(3)
-
-    # すべてのジョブの結果を表示
-    print("\n=== すべてのジョブが完了しました ===\n")
-    for job_id in jobs:
-        status = await client.get_job_status(job_id)
-        print(f"ジョブ ID: {job_id}")
-        print(f"ステータス: {status['status']}")
-        print(f"開始時間: {status['start_time']}")
-        print(f"終了時間: {status['end_time']}")
-        print(f"結果: {status['result']}")
-        print("-" * 50)
-
-
-if __name__ == "__main__":
-    asyncio.run(test_async_inference())
+    asyncio.run(test_async_inference(args.process_time))

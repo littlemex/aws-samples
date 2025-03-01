@@ -1,33 +1,45 @@
 type Query {
-  getInferenceStatus(jobId: ID!): InferenceStatus!
+  # Required empty type
+  _empty: String
 }
 
 type Mutation {
-  startInference(input: InferenceInput!): InferenceJob!
+  startInference(input: InferenceInput!): InferenceStatus
+    @aws_lambda
+  updateInferenceStatus(input: UpdateStatusInput!): InferenceStatus!
+}
+
+type Subscription {
+  onInferenceStatusChange(jobId: ID!): InferenceStatus
+    @aws_subscribe(mutations: ["updateInferenceStatus"])
 }
 
 input InferenceInput {
+  jobId: ID!
   prompt: String!
-  model: String!
-  parameters: AWSJSON
+  model: String
+  processTime: Int
 }
 
-type InferenceJob {
+input UpdateStatusInput {
   jobId: ID!
-  status: JobStatus!
-}
-
-type InferenceStatus {
-  jobId: ID!
-  status: JobStatus!
-  startTime: AWSDateTime!
-  endTime: AWSDateTime
-  result: AWSJSON
+  status: Status!
+  result: String
   error: String
 }
 
-enum JobStatus {
-  RUNNING
+type InferenceStatus {
+  jobId: ID
+  status: Status
+  startTime: String
+  endTime: String
+  result: String
+  error: String
+}
+
+enum Status {
+  PENDING
+  PROCESSING
   COMPLETED
   FAILED
 }
