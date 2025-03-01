@@ -7,11 +7,14 @@ type Mutation {
   startInference(input: InferenceInput!): InferenceStatus
     @aws_lambda
   updateInferenceStatus(input: UpdateStatusInput!): InferenceStatus!
+    @aws_lambda
+    @aws_iam
 }
 
 type Subscription {
   onInferenceStatusChange(jobId: ID!): InferenceStatus
     @aws_subscribe(mutations: ["updateInferenceStatus"])
+    @aws_lambda
 }
 
 input InferenceInput {

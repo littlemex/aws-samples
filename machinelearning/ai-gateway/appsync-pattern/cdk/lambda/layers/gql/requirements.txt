@@ -1,0 +1,2 @@
+gql==3.5.1
+requests-toolbelt==1.0.0

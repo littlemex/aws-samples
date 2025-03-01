@@ -39,7 +39,7 @@ async def update_inference_status(
     error: Optional[str] = None
 ) -> Dict[str, Any]:
     """AppSync GraphQL APIを呼び出してステータスを更新"""
-    mutation = """
+    mutation = gql("""
     mutation UpdateInferenceStatus($input: UpdateStatusInput!) {
         updateInferenceStatus(input: $input) {
             jobId
@@ -50,7 +50,7 @@ async def update_inference_status(
             error
         }
     }
-    """
+    """)
     
     variables = {
         "input": {
@@ -64,11 +64,9 @@ async def update_inference_status(
     
     try:
         logger.info(f"Updating inference status for job {job_id} to {status}")
-        response = client.post_graphql_operation(
-            apiId=APPSYNC_API_ID,
-            operationName='UpdateInferenceStatus',
-            query=mutation,
-            variables=json.dumps(variables)
+        response = client.execute(
+            mutation,
+            variable_values=variables
         )
         logger.info(f"Successfully updated status for job {job_id}")
         return response
@@ -163,42 +161,26 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Lambda handler関数"""
     logger.info(f"Received event: {json.dumps(event)}")
 
-    # クライアントから提供されたjobIdを取得
-    job_id = event.get('jobId')
-    if not job_id:
-        logger.error("jobId is required but not provided")
-        # 後で appsync mutation で FAILED status に更新する処理を入れる
-    logger.info(f"Using client-provided jobId: {job_id}")
-    
-    start_time = time.time()
-    # 実行時間 (5分 = 300秒)
-    duration = 300
-    # ログ出力間隔 (10秒)
-    interval = 10
+    try:
+        # クライアントから提供されたjobIdを取得
+        job_id = event.get('jobId')
+        if not job_id:
+            raise ValueError("jobId is required but not provided")
+        logger.info(f"Using client-provided jobId: {job_id}")
 
-    while True:
-        # 現在の経過時間を計算
-        elapsed_time = time.time() - start_time
-        
-        # 5分経過したら終了
-        if elapsed_time >= duration:
-            print(f"処理終了: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            break
-            
-        # 現在時刻とともにログを出力
-        print(f"実行中... 経過時間: {int(elapsed_time)}秒 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        # 10秒待機
-        time.sleep(interval)
-
-    # いったんここまでの処理を確認したい
-    return 
-
-    # イベントループを作成
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+        # 初期状態をPENDINGに設定
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(update_inference_status(job_id, "PENDING"))
+        logger.info(f"Status: PENDING.")
+    except Exception as e:
+        logger.error(f"Failed to set initial PENDING status: {str(e)}")
+        raise
     
     try:
+        # メイン処理を実行
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         # メイン処理を実行（戻り値は不要）
         loop.run_until_complete(process_inference(event, job_id))
     except Exception as e:
