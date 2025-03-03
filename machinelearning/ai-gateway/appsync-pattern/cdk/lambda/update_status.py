@@ -1,5 +1,10 @@
 import json
+import logging
 from datetime import datetime
+
+# Configure logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def handler(event, context):
     """
@@ -13,12 +18,16 @@ def handler(event, context):
         InferenceStatus object
     """
     try:
+        logger.info(f"Received event: {json.dumps(event, indent=2)}")
+        
         # Extract input from event
         input_data = event.get('input', {})
         job_id = input_data.get('jobId')
         status = input_data.get('status')
         result = input_data.get('result')
         error = input_data.get('error')
+        
+        logger.info(f"Extracted input - jobId: {job_id}, status: {status}, result: {result}, error: {error}")
 
         # Validate required fields
         if not job_id or not status:
@@ -36,9 +45,10 @@ def handler(event, context):
 
         # Remove None values
         response = {k: v for k, v in response.items() if v is not None}
-
+        
+        logger.info(f"Returning response: {json.dumps(response, indent=2)}")
         return response
 
     except Exception as e:
-        print(f"Error in update_status handler: {str(e)}")
+        logger.error(f"Error in update_status handler: {str(e)}")
         raise e

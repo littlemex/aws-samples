@@ -148,12 +148,22 @@ export class AiGatewayStack extends cdk.Stack {
             handler: authorizerFunction,
           },
         },
-        additionalAuthorizationModes: [{
-          authorizationType: appsync.AuthorizationType.USER_POOL,
-          userPoolConfig: {
-            userPool,
+        additionalAuthorizationModes: [
+          {
+            authorizationType: appsync.AuthorizationType.USER_POOL,
+            userPoolConfig: {
+              userPool,
+            },
           },
-        }],
+          {
+            authorizationType: appsync.AuthorizationType.API_KEY,
+            apiKeyConfig: {
+              name: 'InferenceLambdaApiKey',
+              description: 'API Key for Inference Lambda to call AppSync',
+              expires: cdk.Expiration.after(cdk.Duration.days(365))
+            }
+          }
+        ],
       },
       xrayEnabled: true,
       logConfig: {
@@ -170,19 +180,30 @@ export class AiGatewayStack extends cdk.Stack {
       description: 'Layer containing gql and requests packages',
     });
 
+    // AIOHTTP Layer for async HTTP requests
+    const aiohttpLayer = new lambda.LayerVersion(this, 'AiohttpLayer', {
+      code: lambda.Code.fromAsset('lambda/layers/aiohttp'),
+      compatibleRuntimes: [lambda.Runtime.PYTHON_3_11],
+      description: 'Layer containing aiohttp and its dependencies',
+    });
+
     // Inference Lambda関数の作成
     const inferenceFunction = new lambda.Function(this, 'InferenceFunction', {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: 'inference.handler',
-      code: lambda.Code.fromAsset('lambda'),
+      code: lambda.Code.fromAsset('lambda', {
+        exclude: ['update_status.py']
+      }),
       timeout: cdk.Duration.minutes(15),
-      layers: [gqlLayer],
+      layers: [gqlLayer, aiohttpLayer],
       environment: {
         APPSYNC_API_URL: api.graphqlUrl,
+        APPSYNC_API_KEY: api.apiKey || '',
       },
     });
 
     // Lambda関数にAppSync APIへのアクセス権限を追加
+    // API Key認証を使用するため、一時的にコメントアウト
     inferenceFunction.addToRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ['appsync:GraphQL'],

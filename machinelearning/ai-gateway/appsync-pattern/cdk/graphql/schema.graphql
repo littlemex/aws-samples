@@ -9,6 +9,7 @@ type Mutation {
   updateInferenceStatus(input: UpdateStatusInput!): InferenceStatus!
     @aws_lambda
     @aws_iam
+    @aws_api_key
 }
 
 type Subscription {
@@ -31,7 +32,10 @@ input UpdateStatusInput {
   error: String
 }
 
-type InferenceStatus {
+type InferenceStatus
+  @aws_api_key
+  @aws_iam
+  @aws_lambda {
   jobId: ID
   status: Status
   startTime: String
