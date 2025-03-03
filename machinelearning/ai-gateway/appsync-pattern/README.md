@@ -181,6 +181,37 @@ sequenceDiagram
     AppSync-->>Client: COMPLETED通知
 ```
 
+### 認証フロー
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant LambdaAuth as Lambda Authorizer
+    participant AppSync
+    participant Lambda as Inference Lambda
+
+    rect rgb(200, 220, 255)
+        Note over Client,AppSync: クライアント認証フロー
+        Client->>AppSync: GraphQLリクエスト
+        AppSync->>LambdaAuth: 認証情報を検証
+        LambdaAuth-->>AppSync: 認証結果
+    end
+
+    rect rgb(255, 220, 200)
+        Note over AppSync,Lambda: Lambda実行認証フロー
+        AppSync->>Lambda: IAMロールによる実行
+    end
+
+    rect rgb(220, 255, 200)
+        Note over Lambda,AppSync: AppSync API呼び出し認証フロー
+        alt API Key利用可能
+            Lambda->>AppSync: API Key認証でmutation実行
+        else API Key未設定
+            Lambda->>AppSync: IAMロール認証でmutation実行
+        end
+    end
+```
+
 1. クライアント側
    - startInference mutationの実行
    - WebSocket接続の確立
