@@ -65,7 +65,7 @@ Amazon Bedrock のアプリケーション推論プロファイルを使用す�
 ```mermaid
 graph LR
     subgraph スクリプト
-        IP[inference-profile.py]
+        IP[inference_profile.py]
         PI[profile_inspector.py]
         CA[cost_analysis.py]
     end
@@ -90,19 +90,22 @@ graph LR
 
 ### 1. アプリケーション推論プロファイルの作成
 
+`copyFrom` キーのバリューには、システム定義の推論プロファイルまたはベースモデルの ARN を入力します。
+
 AWS CLIを使用する場合:
 ```bash
-aws bedrock create-inference-profile \
-  --region 'ap-northeast-1' \
-  --inference-profile-name 'your-profile-name' \
+PROFILE_NAME=infra REGION=us-east-1 && aws bedrock create-inference-profile \
+  --region $REGION \
+  --inference-profile-name $PROFILE_NAME \
   --description 'your-description' \
-  --model-source '{"copyFrom": "arn:aws:bedrock:ap-northeast-1::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0"}' \
-  --tags '[{"key": "dept","value": "your-department"}]'
+  --model-source "{\"copyFrom\": \"arn:aws:bedrock:${REGION}::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0\"}" \
+  --tags "[{\"key\": \"BedrockCostAllocateTag\", \"value\": \"${PROFILE_NAME}\"}]"
 ```
 
 Pythonスクリプトを使用する場合:
 ```python
-uv run inference-profile.py
+# 一連の手順を実行するサンプル
+uv run inference_profile.py
 ```
 
 ### 2. プロファイルの確認
@@ -136,18 +139,42 @@ aws resourcegroupstaggingapi get-resources \
 
 ### 3. コスト分析
 
-コスト情報の確認:
+#### 設定ファイルの準備
+
+コスト分析を実行する前に、`config.json`を設定する必要があります。このファイルでは、分析対象の推論プロファイル名を指定します。
+
+```json
+{
+    "profile_names": [
+        "claims_dept_claude_3_sonnet_profile",
+        "underwriting_dept_llama3_70b_profile"
+    ]
+}
+```
+
+- `profile_names`: 分析対象の推論プロファイル名のリスト
+  - 各プロファイルには`dept`タグが設定されている必要があります
+    - dept 以外を tag key に利用する場合はコードを修正してください
+  - タグ情報は自動的にプロファイルから取得されます
+
+設定ファイルが存在しない場合は、デフォルト設定が使用されます。
+
+#### コスト情報の確認
+
+コスト分析の実行:
 ```python
 uv run cost_analysis.py
 ```
 
 表示される情報:
-- 部門別コスト集計
+- 部門別コスト集計（プロファイルのdeptタグに基づく）
 - 使用量メトリクス
   - 呼び出し回数（InvocationCount）
   - 処理時間（ProcessingTime）
   - トークン数（TokenCount）
   - 文字数（CharacterCount）
+
+注意: コスト分析を実行する前に、対象のプロファイルに適切なdeptタグが設定されていることを確認してください。タグが設定されていない場合は警告メッセージが表示されます。
 
 ### 4. モデルの呼び出し
 
@@ -182,9 +209,10 @@ response = converse_stream(profile_arn, messages)
 inference-profile/
 ├── README.md                # このファイル
 ├── requirements.txt         # 依存関係の定義
-├── inference-profile.py     # メインスクリプト
+├── inference_profile.py     # メインスクリプト
 ├── profile_inspector.py     # プロファイル検査ツール
-└── cost_analysis.py        # コスト分析ツール
+├── cost_analysis.py        # コスト分析ツール
+└── config.json             # コスト分析の設定ファイル
 ```
 
 ## 注意事項

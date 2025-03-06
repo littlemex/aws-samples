@@ -464,18 +464,18 @@ def main():
         # ConverseStream APIのテスト
         logger.info("\nConverseStream APIのテスト...")
         stream_response = converse_stream(claims_profile_arn, messages)
-        logger.info(json.dumps(stream_response, indent=2))
+        # logger.info(json.dumps(stream_response, indent=2))
         
         # InvokeModel APIのテスト
         logger.info("\nInvokeModel APIのテスト...")
         input_data = {"prompt": prompt}
         invoke_response = invoke_model(underwriting_profile_arn, input_data)
-        logger.info(json.dumps(invoke_response, indent=2))
+        # logger.info(json.dumps(invoke_response, indent=2))
         
         # InvokeModelWithResponseStream APIのテスト
         logger.info("\nInvokeModelWithResponseStream APIのテスト...")
         stream_invoke_response = invoke_model_with_stream(underwriting_profile_arn, input_data)
-        logger.info(json.dumps(stream_invoke_response, indent=2))
+        # logger.info(json.dumps(stream_invoke_response, indent=2))
         
         # タグ管理のテスト
         logger.info("\n=== タグ管理のテスト ===")
@@ -491,8 +491,8 @@ def main():
         
         # クリーンアップ
         logger.info("\n=== リソースのクリーンアップ ===")
-        delete_inference_profile(claims_profile_arn)
-        delete_inference_profile(underwriting_profile_arn)
+        #delete_inference_profile(claims_profile_arn)
+        #delete_inference_profile(underwriting_profile_arn)
         
     except Exception as e:
         logger.error(f"メイン処理でエラーが発生: {str(e)}")
@@ -500,4 +500,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-t

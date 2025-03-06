@@ -10,10 +10,57 @@ import boto3
 import json
 from datetime import datetime, timezone, timedelta
 import logging
+from profile_inspector import BedrockProfileInspector
 
 # ロギングの設定
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def load_config():
+    """
+    設定ファイルを読み込む関数
+    
+    Returns:
+        dict: 設定情報
+    """
+    try:
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        logger.warning("config.jsonが見つかりません。デフォルト設定を使用します。")
+        config = {
+            "profile_names": [
+                "claims_dept_claude_3_sonnet_profile",
+                "underwriting_dept_llama3_70b_profile"
+            ]
+        }
+    except json.JSONDecodeError as e:
+        logger.error(f"config.jsonの解析に失敗しました: {str(e)}")
+        raise
+    return config
+
+def get_department_tags(profile_names):
+    """
+    プロファイル名からdeptタグの値を取得する関数
+    
+    Args:
+        profile_names (list): プロファイル名のリスト
+    
+    Returns:
+        list: deptタグの値のリスト
+    """
+    inspector = BedrockProfileInspector()
+    dept_values = set()
+    
+    for profile_name in profile_names:
+        try:
+            details = inspector.get_profile_details(profile_name)
+            if 'タグ' in details and 'dept' in details['タグ']:
+                dept_values.add(details['タグ']['dept'])
+        except Exception as e:
+            logger.warning(f"プロファイル {profile_name} のタグ情報取得に失敗: {str(e)}")
+    
+    return list(dept_values)
 
 def get_cost_by_department(start_date, end_date):
     """
@@ -26,6 +73,9 @@ def get_cost_by_department(start_date, end_date):
     Returns:
         dict: 部門ごとのコスト情報
     """
+    config = load_config()
+    dept_values = get_department_tags(config['profile_names'])
+    
     ce_client = boto3.client('ce')
     try:
         response = ce_client.get_cost_and_usage(
@@ -49,7 +99,7 @@ def get_cost_by_department(start_date, end_date):
                     {
                         'Tags': {
                             'Key': 'dept',
-                            'Values': ['claims', 'underwriting']
+                            'Values': dept_values
                         }
                     }
                 ]
@@ -122,16 +172,25 @@ def analyze_department_costs():
         logger.info("\n=== 部門別コスト分析 ===")
         cost_data = get_cost_by_department(start_date, end_date)
         
-        # 部門ごとの使用状況を取得
+        # 設定ファイルからプロファイル名を読み込む
         logger.info("\n=== 部門別使用状況 ===")
-        departments = {
-            'claims': 'claims_dept_claude_3_sonnet_profile',
-            'underwriting': 'underwriting_dept_llama3_70b_profile'
-        }
+        config = load_config()
+        inspector = BedrockProfileInspector()
         
+        # プロファイルごとの使用状況を取得
         usage_data = {}
-        for dept, profile_name in departments.items():
-            usage_data[dept] = get_usage_metrics(profile_name)
+        for profile_name in config['profile_names']:
+            try:
+                # プロファイルのタグ情報を取得
+                details = inspector.get_profile_details(profile_name)
+                dept = details['タグ'].get('dept')
+                
+                if dept:
+                    usage_data[dept] = get_usage_metrics(profile_name)
+                else:
+                    logger.warning(f"プロファイル {profile_name} にdeptタグが設定されていません")
+            except Exception as e:
+                logger.warning(f"プロファイル {profile_name} の使用状況取得に失敗: {str(e)}")
         
         # 結果の表示
         logger.info("\n=== 分析結果 ===")

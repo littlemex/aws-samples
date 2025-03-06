@@ -1,0 +1,7 @@
+{
+    "profile_names": [
+        "claims_dept_claude_3_sonnet_profile",
+        "underwriting_dept_llama3_70b_profile",
+        "infra"
+    ]
+}
