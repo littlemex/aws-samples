@@ -82,6 +82,36 @@ SageMaker Studio の CDK セットアップについての詳細は、以下の�
 
    > **注意**: インスタンスの起動まで約5-10分かかる場合があります
 
+### セットアップ手順
+
+1. ローカル PC に必要なツールをインストールします：
+   - AWS CLI
+   - AWS CDK
+   - Session Manager プラグイン
+   ```bash
+   # AWS CLI のインストール（macOS の例）
+   brew install awscli
+
+   # AWS CDK のインストール
+   npm install -g aws-cdk
+
+   # Session Manager プラグインのインストール（macOS の例）
+   brew install session-manager-plugin
+   ```
+
+
+3. デプロイ完了後、出力される Port Forward コマンドを実行します：
+   ```bash
+   aws ssm start-session --target <インスタンス ID> --document-name AWS-StartPortForwardingSession --parameters "portNumber=8080,localPortNumber=8080"
+   ```
+
+4. ブラウザで http://localhost:8080 にアクセスし、code-server に接続します：
+   - ユーザー名：デフォルト
+   - パスワード：code-server
+
+5. code-server 内で Roo Code をインストールします。
+
+
 ## Code Server の設定
 
 環境のデプロイが完了したら、以下の手順で Code Server をセットアップします：
