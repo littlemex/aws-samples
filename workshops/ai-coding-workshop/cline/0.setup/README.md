@@ -58,7 +58,7 @@ brew install session-manager-plugin
 
 ### B. VS Code Remote SSH を使用する場合
 
-Remote SSH を使用した接続方法の詳細については、[Remote SSH セットアップガイド](./remote-ssh-setup.md)を参照してください。
+Remote SSH を使用した接続方法の詳細については、[Remote SSH セットアップガイド](./0.remotessh/README.md)を参照してください。
 
 ## 4. cline のセットアップ
 

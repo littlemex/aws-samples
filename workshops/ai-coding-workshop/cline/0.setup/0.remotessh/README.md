@@ -54,7 +54,7 @@ echo "コピーした公開鍵" >> ~/.ssh/authorized_keys
 
 ローカルマシンで以下の手順を実行します：
 
-1. SSH configファイルを作成または編集：
+1. SSH config ファイルを作成または編集：
 ```bash
 touch ~/.ssh/config
 chmod 600 ~/.ssh/config
@@ -88,9 +88,9 @@ VS Code の拡張機能タブから「Remote - SSH」を検索してインスト
    - 「Remote-SSH: Connect to Host...」を選択
    - `ec2-via-ssm` を選択
 
-![VS Code Remote SSH接続1](./images/vscode-connect-1.png)
+![VS Code Remote SSH 接続 1](./images/vscode-connect-1.png)
 
-![VS Code Remote SSH接続2](./images/vscode-connect-2.png)
+![VS Code Remote SSH 接続 2](./images/vscode-connect-2.png)
 
 接続が成功すると、左下のステータスバーに「SSH: ec2-via-ssm」と表示されます。
 
