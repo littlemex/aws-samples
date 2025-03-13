@@ -13,17 +13,13 @@ cline/
 │   ├── 0.remotessh/      # Remote Development using SSH 設定
 │   ├── 1.cline/          # cline のインストールと設定
 ├── 1.mcp/                # MCP サーバー実装ワークショップ
-│   ├── 0.mcp             # 天気予報 MCP サーバーの作成
-│   ├── 1.litellm         # LiteLLM Proxy の利用
-│   └── 2.sagemaker       # Amazon SageMaker AI, Inference 機能の利用
-└── 2.claude-code-sample/ # その他のサンプル実装 (TBD)
+├── 2.litellm/            # LiteLLM Proxy の利用
+└── 3.sagemaker/          # Amazon SageMaker AI, Inference 機能の利用
 ```
 
 ## 1. 環境構築
 
 ### 必要な AWS 権限
-
-# FIXME: ディレクトリを見直して必要な権限を 1.cline-sample の step ごとに分けて整理してください。
 
 ワークショップを実施するには以下の AWS 権限が必要です：
 
@@ -60,15 +56,10 @@ cline/
 
 ## 2. ワークショップの進め方
 
-# FIXME: 最新情報に修正してください
-
 1. [環境セットアップ](0.setup/README.md)
    - EC2, cline のインストールと設定
    - Amazon Bedrock の設定
 
-2. [MCP サーバー実装ワークショップ](1.cline-sample/README.md)
+2. [MCP サーバー実装ワークショップ](1.mcp/README.md)
    - 天気予報 MCP サーバーの作成
    - 実装の解説とアーキテクチャの理解
-
-3. [TBD: その他のサンプル実装](2.claude-code-sample/README.md)
-   - 追加のコーディング例と実践的な使用方法
