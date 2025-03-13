@@ -126,9 +126,9 @@ npm run build
 
 ```mermaid
 graph TD
-    A[cline] -->|1. ツール呼び出し| B[MCP Server]
-    B -->|2. 都市名に基づく天気情報| C[Weather Response]
-    C -->|3. 結果返却| A
+    A[cline] -->|1.ツール呼び出し| B[MCP Server]
+    B -->|2.都市名に基づく天気情報| C[Weather Response]
+    C -->|3.結果返却| A
 ```
 
 ### サーバー構造
