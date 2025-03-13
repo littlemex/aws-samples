@@ -1,0 +1,20 @@
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    env_file: .env
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./${CONFIG_FILE:-default_config.yaml}:/app/config.yaml
+    depends_on:
+      - db
+    command: --config /app/config.yaml --detailed_debug
+
+  db:
+    image: postgres:15
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

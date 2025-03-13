@@ -1,0 +1,52 @@
+model_list:
+  - model_name: bedrock-claude-sonnet-3-7
+    litellm_params:
+      model: bedrock/converse/anthropic.claude-3-7-sonnet-20250219-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+      thinking: {"type": "enabled", "budget_tokens": 1024}
+      supports_function_calling: true
+  
+  - model_name: bedrock-claude-sonnet-3-5
+    litellm_params:
+      model: bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+      supports_function_calling: true
+  
+  - model_name: bedrock-claude-haiku-3
+    litellm_params:
+      model: bedrock/converse/anthropic.claude-3-haiku-20240307-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+litellm_settings:
+  fallbacks: [{"bedrock-claude-sonnet-3-5": ["bedrock-claude-sonnet-3-7", "bedrock-claude-haiku-3"]}]
+  num_retries: 2
+  request_timeout: 30
+  aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+  aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+  aws_region_name: us-east-1
+
+general_settings:
+  log_level: debug
+  openai_api_base: "/v1"
+  disable_user_auth: true  # 開発中は認証を無効化（本番環境では使用しないでください）
+
+router_settings:
+  default_model: bedrock-claude-sonnet-3-5
+  failover: true
+  timeout: 30
+  retries: 3
+
+openapi:
+  openapi_version: "3.1.0"
+  title: "LiteLLM API"
+  description: "LiteLLM API for multiple LLM models"
+  servers:
+    - url: "/"
+  info:
+    version: "1.0.0"
