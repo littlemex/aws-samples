@@ -1,6 +1,6 @@
 # AI Coding Agent ワークショップ
 
-このワークショップでは、AI coding agent である Cline を使用して、効率的なコーディング体験を学びます。
+このワークショップでは、AI coding agent である cline を使用して、効率的なコーディング体験を学びます。
 
 ## ワークショップの構成
 
@@ -8,18 +8,22 @@
 
 ```
 cline/
-├── 0.setup/          # 環境セットアップガイド
-│   ├── 1.cline/     # Clineのインストールと設定
-│   └── 2.roocode/   # Roo Codeの設定
-├── 1.cline-sample/   # MCPサーバー実装ワークショップ
-│   ├── step1/       # 天気予報MCPサーバーの作成
-│   └── step2/       # 実装の解説とアーキテクチャ
-└── 2.claude-code-sample/ # その他のサンプル実装
+├── 0.setup/              # 環境セットアップガイド
+│   ├── README.md
+│   ├── 0.remotessh/      # Remote Development using SSH 設定
+│   ├── 1.cline/          # cline のインストールと設定
+├── 1.mcp/                # MCP サーバー実装ワークショップ
+│   ├── 0.mcp             # 天気予報 MCP サーバーの作成
+│   ├── 1.litellm         # LiteLLM Proxy の利用
+│   └── 2.sagemaker       # Amazon SageMaker AI, Inference 機能の利用
+└── 2.claude-code-sample/ # その他のサンプル実装 (TBD)
 ```
 
 ## 1. 環境構築
 
 ### 必要な AWS 権限
+
+# FIXME: ディレクトリを見直して必要な権限を 1.cline-sample の step ごとに分けて整理してください。
 
 ワークショップを実施するには以下の AWS 権限が必要です：
 
@@ -56,52 +60,15 @@ cline/
 
 ## 2. ワークショップの進め方
 
-1. [環境セットアップ](0.setup/README.md)
-   - Clineのインストールと設定
-   - Roo Codeの設定
-   - Amazon Bedrockの設定
+# FIXME: 最新情報に修正してください
 
-2. [MCPサーバー実装ワークショップ](1.cline-sample/README.md)
-   - 天気予報MCPサーバーの作成
+1. [環境セットアップ](0.setup/README.md)
+   - EC2, cline のインストールと設定
+   - Amazon Bedrock の設定
+
+2. [MCP サーバー実装ワークショップ](1.cline-sample/README.md)
+   - 天気予報 MCP サーバーの作成
    - 実装の解説とアーキテクチャの理解
 
-3. [その他のサンプル実装](2.claude-code-sample/README.md)
+3. [TBD: その他のサンプル実装](2.claude-code-sample/README.md)
    - 追加のコーディング例と実践的な使用方法
-
-## 3. ワークショップアンケート
-
-ワークショップにご参加いただき、ありがとうございました。
-以下のアンケートにご回答いただけますと幸いです。
-
-### アンケート項目
-
-1. ワークショップの難易度はいかがでしたか？
-   - とても簡単
-   - 適度
-   - やや難しい
-   - とても難しい
-
-2. AI coding agent の利用価値をどのように感じましたか？
-   - とても有用
-   - まあまあ有用
-   - あまり有用でない
-   - 有用でない
-
-3. 最も印象に残った機能は何ですか？
-   - Roo Code の基本機能
-   - Three.js デモの作成
-   - MCP の活用
-   - その他（自由記述）
-
-4. 実務での活用をイメージできましたか？
-   - はい
-   - いいえ
-   理由：（自由記述）
-
-5. 改善点や追加して欲しい機能はありますか？
-   （自由記述）
-
-6. その他、ご意見・ご感想をお聞かせください。
-   （自由記述）
-
-ご協力ありがとうございました。
