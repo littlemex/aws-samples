@@ -2,6 +2,8 @@
 
 このワークショップでは、SageMaker 上にカスタムモデル（Llama-3.3-Swallow-70B）をデプロイし、LiteLLM Proxy を通じて利用する方法を学びます。
 
+注意：現状、SageMaker Endpoint 自体は動作しますが、LiteLLM 経由での利用がエラーしてしまいます。調査中
+
 ## 概要
 
 - SageMaker エンドポイントとして Llama-3.3-Swallow-70B モデルをデプロイ
