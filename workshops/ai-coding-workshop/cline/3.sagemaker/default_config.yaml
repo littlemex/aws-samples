@@ -1,0 +1,43 @@
+model_list:
+  - model_name: swallow-llama
+    litellm_params:
+      # https://docs.litellm.ai/docs/providers/aws_sagemaker
+      model: sagemaker/llama-3-3-swallow-70b-q4bit
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_region_name: os.environ/AWS_REGION_NAME
+  
+#  - model_name: bedrock-claude-sonnet-3-5
+#    litellm_params:
+#      model: bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0
+#      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+#      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+#      aws_region_name: os.environ/AWS_REGION_NAME
+  
+litellm_settings:
+  #fallbacks: [{"swallow-llama": ["bedrock-claude-sonnet-3-5"]}]
+  num_retries: 2
+  request_timeout: 50
+  aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+  aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+  aws_region_name: us-east-1
+
+general_settings:
+  log_level: debug
+  openai_api_base: "/v1"
+  disable_user_auth: true  # 開発中は認証を無効化（本番環境では使用しないでください）
+
+router_settings:
+  default_model: swallow-llama
+  failover: true
+  timeout: 60
+  retries: 3
+
+openapi:
+  openapi_version: "3.1.0"
+  title: "LiteLLM API"
+  description: "LiteLLM API for multiple LLM models"
+  servers:
+    - url: "/"
+  info:
+    version: "1.0.0"

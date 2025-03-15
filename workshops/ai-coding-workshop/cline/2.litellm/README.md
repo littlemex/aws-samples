@@ -34,7 +34,7 @@ cp .env.example .env
 3. サービスの起動
 
 ```bash
-./start
+./start.sh
 ```
 
 4. 動作確認
