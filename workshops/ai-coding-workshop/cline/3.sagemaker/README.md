@@ -101,6 +101,6 @@ curl -X POST 'http://0.0.0.0:4000/chat/completions' \
    - API Key: 環境変数 `LITELLM_MASTER_KEY` で設定した値
    - Base URL: `http://localhost:4000`
 
-![cline での LiteLLM 設定](images/cline-litellm.png)
+![Cline での LiteLLM 設定](images/cline-litellm.png)
 
 これにより、Cline からのリクエストが LiteLLM Proxy を経由して SageMaker エンドポイントに転送され、エラー発生時には自動的にフォールバックする構成となります。

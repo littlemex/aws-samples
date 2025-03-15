@@ -76,10 +76,10 @@ curl -X POST 'http://0.0.0.0:4000/chat/completions' \
 }'
 ```
 
- ## cline での LiteLLM 設定
+ ## Cline での LiteLLM 設定
 
-作成した LiteLLM Proxy を cline の API Provider に設定します。これによりエラー時には LiteLLM Proxy を介してフェイルオーバーする構成となります。
+作成した LiteLLM Proxy を Cline の API Provider に設定します。これによりエラー時には LiteLLM Proxy を介してフェイルオーバーする構成となります。
 
 API Key: (環境変数 LITELLM_MASTER_KEY で設定した値)
 
-![cline での LiteLLM 設定](images/cline-litellm.png)
+![Cline での LiteLLM 設定](images/cline-litellm.png)

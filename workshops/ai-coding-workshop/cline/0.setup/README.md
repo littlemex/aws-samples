@@ -60,9 +60,9 @@ brew install session-manager-plugin
 
 Remote SSH を使用した接続方法の詳細については、[Remote SSH セットアップガイド](./0.remotessh/README.md)を参照してください。
 
-## 4. cline のセットアップ
+## 4. Cline のセットアップ
 
-cline のインストールと設定方法については、[cline セットアップガイド](./1.cline/README.md)を参照してください。
+Cline のインストールと設定方法については、[Cline セットアップガイド](./1.cline/README.md)を参照してください。
 このガイドには以下の内容が含まれています：
 - Code Server 拡張機能のインストール手順
 - AWS 認証情報の設定方法

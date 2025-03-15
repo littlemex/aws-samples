@@ -1,6 +1,6 @@
 # MCP Server Implementation Workshop
 
-このワークショップでは、cline の利用習熟の題材として、Model Context Protocol (MCP) サーバーの実装方法を学び、AI コーディングエージェントとの連携について理解を深めます。
+このワークショップでは、Cline の利用習熟の題材として、Model Context Protocol (MCP) サーバーの実装方法を学び、AI コーディングエージェントとの連携について理解を深めます。
 
 ## 学習目標と進め方
 
@@ -27,9 +27,9 @@
 
 - Node.js の基本的な知識
 - TypeScript の基本的な理解
-- VSCode と cline の環境セットアップ
+- VSCode と Cline の環境セットアップ
 
-## cline を使った MCP サーバーの実装
+## Cline を使った MCP サーバーの実装
 
 ### Step 1: プロジェクトの作成
 
@@ -41,9 +41,9 @@ npx @modelcontextprotocol/create-server weather-server && \
   npm install
 ```
 
-### Step 2: cline への実装依頼
+### Step 2: Cline への実装依頼
 
-cline に MCP サーバーの実装を依頼します。以下のようなプロンプトを使用してください：
+Cline に MCP サーバーの実装を依頼します。以下のようなプロンプトを使用してください：
 
 ```
 天気予報の MCP サーバーを作成してください。以下の要件で実装をお願いします：
@@ -69,11 +69,11 @@ cline に MCP サーバーの実装を依頼します。以下のようなプロ
 - TypeScript の型定義を活用する
 ```
 
-cline は要件に基づいて必要なファイルを作成し、実装を行います。実装中に質問がある場合は、適切に回答してください。
+Cline は要件に基づいて必要なファイルを作成し、実装を行います。実装中に質問がある場合は、適切に回答してください。
 
 ### Step 3: 実装の確認とテスト
 
-cline が作成したコードをレビューし、必要に応じて以下のような追加の要望を出すことができます：
+Cline が作成したコードをレビューし、必要に応じて以下のような追加の要望を出すことができます：
 
 ```
 以下の点について改善をお願いします：
@@ -112,7 +112,7 @@ npm run build
 ```
 
 3. 動作確認:
-設定が完了したら、cline に天気を質問して動作を確認します。
+設定が完了したら、Cline に天気を質問して動作を確認します。
 
 ![MCP サーバーのテスト](images/vscode-mcp-test.png)
 
@@ -126,7 +126,7 @@ npm run build
 
 ```mermaid
 graph TD
-    A[cline] -->|1.ツール呼び出し| B[MCP Server]
+    A[Cline] -->|1.ツール呼び出し| B[MCP Server]
     B -->|2.都市名に基づく天気情報| C[Weather API Mock]
     C -->|3.結果返却| A
 ```
@@ -154,16 +154,16 @@ classDiagram
 ```mermaid
 sequenceDiagram
     participant User
-    participant cline
+    participant Cline
     participant MCPServer
     participant WeatherData
     
-    User->>cline: 天気を質問
-    cline->>MCPServer: use_mcp_tool呼び出し
+    User->>Cline: 天気を質問
+    Cline->>MCPServer: use_mcp_tool呼び出し
     MCPServer->>WeatherData: 都市名で検索
     WeatherData-->>MCPServer: 天気情報
-    MCPServer-->>cline: レスポンス
-    cline-->>User: 結果表示
+    MCPServer-->>Cline: レスポンス
+    Cline-->>User: 結果表示
 ```
 
 ## MCP の重要性
