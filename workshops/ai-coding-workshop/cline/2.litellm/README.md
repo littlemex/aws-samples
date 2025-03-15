@@ -40,6 +40,8 @@ cp .env.example .env
 4. 動作確認
 
 ```bash
+export LITELLM_MASTER_KEY=sk-litellm-test-key
+
 # モデル一覧の取得
 curl http://localhost:4000/v1/models \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
@@ -49,7 +51,7 @@ curl -X POST 'http://0.0.0.0:4000/chat/completions' \
 -H 'Content-Type: application/json' \
 -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
 -d '{
-      "model": "bedrock-claude-3-5",
+      "model": "bedrock-converse-us-claude-3-7-sonnet-v1",
       "messages": [
         {
           "role": "user",
@@ -63,7 +65,7 @@ curl -X POST 'http://0.0.0.0:4000/chat/completions' \
 -H 'Content-Type: application/json' \
 -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
 -d '{
-  "model": "bedrock-claude-sonnet-3-5",
+  "model": "bedrock-converse-us-claude-3-7-sonnet-v1",
   "messages": [
     {
       "role": "user",
