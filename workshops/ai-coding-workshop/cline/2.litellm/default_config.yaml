@@ -6,28 +6,43 @@ model_list:
       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
       aws_region_name: os.environ/AWS_REGION_NAME
       #thinking: {"type": "enabled", "budget_tokens": 1024}
-  
-  - model_name: bedrock-converse-us-claude-3-5-sonnet-v2
+
+  - model_name: bedrock-us-claude-3-5-sonnet-v2
     litellm_params:
       model: bedrock/converse/us.anthropic.claude-3-5-sonnet-20241022-v2:0
       aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
       aws_region_name: os.environ/AWS_REGION_NAME
   
-  - model_name: bedrock-converse-apac-claude-3-5-sonnet-v2
+  - model_name: bedrock-apac-claude-3-5-sonnet-v2
     litellm_params:
       model: bedrock/converse/apac.anthropic.claude-3-5-sonnet-20241022-v2:0
       aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-      aws_region_name: os.environ/AWS_REGION_NAME
+      aws_region_name: ap-northeast-1
   
+  - model_name: bedrock-claude-3-5-sonnet-v1
+    litellm_params:
+       model: bedrock/converse/anthropic.claude-3-5-sonnet-20240620-v1:0
+       aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+       aws_region_name: os.environ/AWS_REGION_NAME
+
 litellm_settings:
-  fallbacks: [{"bedrock-converse-us-claude-3-7-sonnet-v1": ["bedrock-converse-us-claude-3-5-sonnet-v2", "bedrock-converse-apac-claude-3-5-sonnet-v2"]}]
+  fallbacks: [
+    {"bedrock-converse-us-claude-3-7-sonnet-v1": 
+      [
+        "bedrock-us-claude-3-5-sonnet-v2",
+        "bedrock-apac-claude-3-5-sonnet-v2",
+        "bedrock-claude-3-5-sonnet-v1"
+      ]
+    }
+  ]
   num_retries: 2
   request_timeout: 30
   aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
   aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
-  aws_region_name: us-east-1
+  aws_region_name: os.environ/AWS_REGION_NAME
   drop_params: true # サポート外のパラメータを無視する
 
 general_settings:
