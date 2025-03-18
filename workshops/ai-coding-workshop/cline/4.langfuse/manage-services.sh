@@ -1,18 +1,13 @@
 #!/bin/bash
 
-# 色付きログ出力用の設定
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# デフォルト設定
 CONFIG_FILE="default_config.yaml"
 LANGFUSE_DIR="langfuse"
-USE_NGINX=false
-USE_CODE_SERVER=false
 
-# ログ出力関数
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
 }
@@ -25,7 +20,6 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# 環境変数の読み込み
 load_env_vars() {
     local env_file="${1:-.env}"
     
@@ -40,18 +34,23 @@ load_env_vars() {
             # 値から引用符を削除
             value=$(echo "$value" | sed -e 's/^["\x27]//' -e 's/["\x27]$//')
             
-            # 変数展開を処理
-            eval "value=$value"
-            
-            # 環境変数としてエクスポート
-            export "$key=$value"
+            # 特殊文字や URL を含む場合は直接使用、それ以外は変数展開を処理
+            if [[ "$value" == *"{"* ]] || [[ "$value" == *"}"* ]] || [[ "$value" == "http://"* ]] || [[ "$value" == "https://"* ]]; then
+                # 特殊文字や URL を含む場合は直接使用
+                export "$key=$value"
+            else
+                # 変数展開を含む場合のみ eval を使用
+                if [[ "$value" == *'$'* ]] || [[ "$value" == *'`'* ]]; then
+                    eval "value=$value"
+                fi
+                export "$key=$value"
+            fi
         done < "$env_file"
     else
         log_warn "$env_file ファイルが見つかりません"
     fi
 }
 
-# Langfuse のセットアップ
 setup_langfuse() {
     if [ ! -d "$LANGFUSE_DIR" ]; then
         log_info "Langfuse リポジトリをクローンしています..."
@@ -63,41 +62,8 @@ setup_langfuse() {
     fi
 }
 
-# Nginxサービスの起動
-start_nginx() {
-    if [ "$USE_NGINX" = true ]; then
-        log_info "Nginxを起動しています..."
-        
-        # 環境変数の設定
-        export USE_CODE_SERVER="$USE_CODE_SERVER"
-        
-        if [ -f ".env" ]; then
-            log_info "Nginx の .env ファイルを使用します"
-            docker compose -f nginx-compose.yml --env-file .env up -d
-        else
-            log_info "環境変数ファイルなしで起動します"
-            docker compose -f nginx-compose.yml up -d
-        fi
-        
-        if [ $? -ne 0 ]; then
-            log_error "Nginx の起動に失敗しました"
-            exit 1
-        fi
-    fi
-}
-
-# Nginxサービスの停止
-stop_nginx() {
-    if [ "$USE_NGINX" = true ]; then
-        log_info "Nginxを停止しています..."
-        docker stop nginx-proxy >/dev/null 2>&1 || true
-        docker rm nginx-proxy >/dev/null 2>&1 || true
-    fi
-}
-
-# サービスの起動
-start_services() {
-    log_info "サービスを起動しています..."
+start_langfuse() {
+    log_info "Langfuse のみを起動しています..."
     
     # Langfuse の起動
     cd "$LANGFUSE_DIR"
@@ -110,16 +76,16 @@ start_services() {
     # 環境変数ファイルを指定して起動
     if [ -f ".env" ] && [ -f "../.env" ]; then
         log_info "両方の .env ファイルを使用します"
-        docker compose --env-file .env --env-file ../.env up -d
+        docker compose --env-file .env --env-file ../.env -f docker-compose.yml -f ../docker-compose.override.yml up -d --build
     elif [ -f ".env" ]; then
         log_info "Langfuse の .env ファイルを使用します"
-        docker compose --env-file .env up -d
+        docker compose --env-file .env -f docker-compose.yml -f ../docker-compose.override.yml up -d --build
     elif [ -f "../.env" ]; then
         log_info "親ディレクトリの .env ファイルを使用します"
-        docker compose --env-file ../.env up -d
+        docker compose --env-file ../.env -f docker-compose.yml -f ../docker-compose.override.yml up -d --build
     else
         log_info "環境変数ファイルなしで起動します"
-        docker compose up -d
+        docker compose -f docker-compose.yml -f ../docker-compose.override.yml up -d --build
     fi
     
     if [ $? -ne 0 ]; then
@@ -128,6 +94,26 @@ start_services() {
         exit 1
     fi
     cd ..
+    
+    log_info "Langfuse が起動しました"
+}
+
+stop_langfuse() {
+    log_info "Langfuse のみを停止しています..."
+    
+    # Langfuseサービスを停止
+    if [ -d "$LANGFUSE_DIR" ]; then
+        log_info "Langfuseサービスを停止しています..."
+        cd "$LANGFUSE_DIR"
+        docker compose down
+        cd ..
+    fi
+    
+    log_info "Langfuse が停止しました"
+}
+
+start_litellm() {
+    log_info "LiteLLM のみを起動しています..."
     
     # LiteLLM の設定を適用
     log_info "LiteLLM の設定を適用しています..."
@@ -146,47 +132,46 @@ start_services() {
         exit 1
     fi
     
-    log_info "全てのサービスが起動しました"
-    
-    # Nginxの起動（オプション）
-    start_nginx
+    log_info "LiteLLM が起動しました"
 }
 
-# サービスの停止
-stop_services() {
-    log_info "サービスを停止しています..."
-    
-    # LiteLLMサービスを停止
+stop_litellm() {
     log_info "LiteLLMサービスを停止しています..."
     docker compose -f docker-compose.yml down
     
-    # Langfuseサービスを停止
-    if [ -d "$LANGFUSE_DIR" ]; then
-        log_info "Langfuseサービスを停止しています..."
-        cd "$LANGFUSE_DIR"
-        docker compose down
-        cd ..
-    fi
-    
-    # Nginxの停止（オプション）
-    stop_nginx
-    
+    log_info "LiteLLM が停止しました"
+}
+
+start_services() {
+    log_info "全てのサービスを起動しています..."
+    start_langfuse
+    start_litellm
+    log_info "全てのサービスが起動しました"
+}
+
+stop_services() {
+    log_info "全てのサービスを停止しています..."
+    stop_litellm
+    stop_langfuse
     log_info "全てのサービスが停止しました"
 }
 
-# ヘルプメッセージの表示
 show_help() {
     echo "Usage: $0 [OPTIONS] COMMAND"
     echo
     echo "Commands:"
-    echo "  start    - サービスを起動"
-    echo "  stop     - サービスを停止"
-    echo "  restart  - サービスを再起動"
+    echo "  start           - 全てのサービスを起動"
+    echo "  stop            - 全てのサービスを停止"
+    echo "  restart         - 全てのサービスを再起動"
+    echo "  start-langfuse  - Langfuse のみを起動"
+    echo "  stop-langfuse   - Langfuse のみを停止"
+    echo "  restart-langfuse - Langfuse のみを再起動"
+    echo "  start-litellm   - LiteLLM のみを起動"
+    echo "  stop-litellm    - LiteLLM のみを停止"
+    echo "  restart-litellm - LiteLLM のみを再起動"
     echo
     echo "Options:"
     echo "  -c, --config FILE  - LiteLLM の設定ファイルを指定 (デフォルト: default_config.yaml)"
-    echo "  -n, --nginx       - Nginxリバースプロキシを使用"
-    echo "  --code-server    - Code Server用のプロキシ設定を有効化（--nginxと共に使用）"
     echo "  -h, --help        - このヘルプメッセージを表示"
 }
 
@@ -200,18 +185,12 @@ COMMAND=""
 # コマンドライン引数の処理
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        start|stop|restart|start-nginx|stop-nginx)
+        start|stop|restart|start-langfuse|stop-langfuse|restart-langfuse|start-litellm|stop-litellm|restart-litellm)
             COMMAND="$1"
             ;;
         -c|--config)
             CONFIG_FILE="$2"
             shift
-            ;;
-        -n|--nginx)
-            USE_NGINX=true
-            ;;
-        --code-server)
-            USE_CODE_SERVER=true
             ;;
         -h|--help)
             show_help
@@ -226,37 +205,50 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# コマンドが指定されていない場合
 if [ -z "$COMMAND" ]; then
     log_error "コマンドが指定されていません"
     show_help
     exit 1
 fi
 
-# 設定ファイルの存在確認
-if [ ! -f "$CONFIG_FILE" ]; then
+if [[ "$COMMAND" == *"litellm"* || "$COMMAND" == "start" || "$COMMAND" == "stop" || "$COMMAND" == "restart" ]] && [ ! -f "$CONFIG_FILE" ]; then
     log_error "設定ファイル $CONFIG_FILE が見つかりません"
     exit 1
 fi
 
-# コマンドの実行
 case "$COMMAND" in
     start)
         setup_langfuse
         start_services
         ;;
-    start-nginx)
-        start_nginx
-        ;;
     stop)
         stop_services
-        ;;
-    stop-nginx)
-        stop_nginx
         ;;
     restart)
         stop_services
         setup_langfuse
         start_services
+        ;;
+    start-langfuse)
+        setup_langfuse
+        start_langfuse
+        ;;
+    stop-langfuse)
+        stop_langfuse
+        ;;
+    restart-langfuse)
+        stop_langfuse
+        setup_langfuse
+        start_langfuse
+        ;;
+    start-litellm)
+        start_litellm
+        ;;
+    stop-litellm)
+        stop_litellm
+        ;;
+    restart-litellm)
+        stop_litellm
+        start_litellm
         ;;
 esac
