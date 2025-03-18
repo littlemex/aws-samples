@@ -47,10 +47,17 @@ brew install session-manager-plugin
 
 ### A. code-server を使用する場合
 
-1. デプロイ完了後、出力される Port Forward コマンドを実行します：
-   ```bash
-   aws ssm start-session --target <インスタンス ID> --document-name AWS-StartPortForwardingSession --parameters "portNumber=8080,localPortNumber=8080"
-   ```
+1. デプロイ完了後、出力される Port Forward コマンドをローカル PC のターミナルから実行します：
+
+
+
+```bash
+aws ssm start-session --target <インスタンス ID> --document-name AWS-StartPortForwardingSession --parameters "portNumber=8080,localPortNumber=8080"
+# もしくは以下を実行する
+cd workshops/ai-coding-workshop/cline/scripts
+uv venv && source .venv/bin/activate && uv sync
+uv run port_forward.py --instance-id <インスタンス ID>
+```
 
 2. ブラウザで http://localhost:8080 にアクセスし、code-server に接続します：
    - ユーザー名：デフォルト
