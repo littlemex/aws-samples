@@ -1,0 +1,24 @@
+# SSMポートフォワーディング設定
+# インスタンスIDは以下の優先順位で取得されます:
+# 1. コマンドライン引数 (-i, --instance-id)
+# 2. 環境変数 (EC2_INSTANCE_ID)
+# 3. この設定ファイルの値
+instance_id: i-XXXXXXXXXX  # EC2インスタンスID（フォールバック値）
+
+# リージョンは以下の優先順位で取得されます:
+# 1. コマンドライン引数 (-r, --region)
+# 2. 環境変数 (AWS_REGION)
+# 3. この設定ファイルの値
+# 4. デフォルト値 (us-east-1)
+region: us-east-1  # AWSリージョン
+
+# ポートマッピング設定
+# local: ローカルポート番号
+# remote: リモート（EC2）ポート番号
+ports:
+  - local: 8080
+    remote: 8080
+  - local: 4000
+    remote: 4000
+  - local: 2222
+    remote: 22
