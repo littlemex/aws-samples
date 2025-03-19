@@ -42,11 +42,49 @@ def start_port_forwarding_with_boto3(instance_id: str, region: str, local_port: 
     process = subprocess.Popen(cmd)
     return process
 
+def prioritize_ports(port_configs: List[Dict[str, int]]) -> List[Dict[str, int]]:
+    """
+    ポート設定を優先順位付けする
+    SSHポート(22)を最優先にする
+    """
+    ssh_ports = []
+    other_ports = []
+    
+    for port_config in port_configs:
+        if port_config['remote'] == 22:
+            ssh_ports.append(port_config)
+        else:
+            other_ports.append(port_config)
+    
+    return ssh_ports + other_ports
+
+def start_port_forwarding_with_delay(instance_id: str, region: str, port_configs: List[Dict[str, int]], delay: float = 2.0) -> List[subprocess.Popen]:
+    """
+    各ポートフォワーディングを順番に開始し、間に遅延を入れる
+    """
+    processes = []
+    
+    # ポートを優先順位付けする（SSHポートを最初に）
+    prioritized_ports = prioritize_ports(port_configs)
+    
+    for port_config in prioritized_ports:
+        local_port = port_config['local']
+        remote_port = port_config['remote']
+        process = start_port_forwarding_with_boto3(instance_id, region, local_port, remote_port)
+        processes.append(process)
+        
+        # 次のポートフォワーディングを開始する前に少し待機
+        print(f"次のポートフォワーディングを開始するまで {delay} 秒待機します...")
+        time.sleep(delay)
+    
+    return processes
+
 def main():
     parser = argparse.ArgumentParser(description='EC2インスタンスへのSSMポートフォワーディング')
     parser.add_argument('-c', '--config', default='config.yaml', help='設定ファイルのパス')
     parser.add_argument('-i', '--instance-id', help='EC2インスタンスID（環境変数 EC2_INSTANCE_ID より優先）')
     parser.add_argument('-r', '--region', help='AWSリージョン（環境変数 AWS_REGION より優先）')
+    parser.add_argument('-d', '--delay', type=float, default=3.0, help='ポートフォワーディング間の遅延（秒）')
     args = parser.parse_args()
     
     # 設定ファイルのパスを解決
@@ -76,14 +114,10 @@ def main():
         print("エラー: ポート設定が見つかりません")
         sys.exit(1)
     
-    # 各ポートのフォワーディングを開始
+    # 各ポートのフォワーディングを順番に開始（遅延あり）
     processes = []
     try:
-        for port_config in config['ports']:
-            local_port = port_config['local']
-            remote_port = port_config['remote']
-            process = start_port_forwarding_with_boto3(instance_id, region, local_port, remote_port)
-            processes.append(process)
+        processes = start_port_forwarding_with_delay(instance_id, region, config['ports'], args.delay)
         
         print(f"\nすべてのポートフォワーディングが開始されました。インスタンスID: {instance_id}, リージョン: {region}")
         print("Ctrl+Cで終了します。")
@@ -97,8 +131,12 @@ def main():
     finally:
         # すべてのプロセスを終了
         for process in processes:
-            process.send_signal(signal.SIGTERM)
-            process.wait()
+            try:
+                process.send_signal(signal.SIGTERM)
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                # 5秒待っても終了しない場合は強制終了
+                process.kill()
         
         print("すべてのポートフォワーディングが終了しました。")
 
