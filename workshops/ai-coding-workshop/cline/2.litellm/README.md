@@ -22,7 +22,7 @@ cp .env.example .env
 
 2. 設定ファイルの説明
 
-`default_config.yaml` では以下の設定が可能です：
+`default_config.yml` では以下の設定が可能です：
 
 - モデルの優先順位とフォールバック設定
 - 各モデルの最大トークン数
@@ -34,7 +34,17 @@ cp .env.example .env
 3. サービスの起動
 
 ```bash
-./start.sh
+# サービスの起動
+./manage-services.sh start
+
+# サービスの停止
+./manage-services.sh stop
+
+# サービスの再起動
+./manage-services.sh restart
+
+# ヘルプの表示
+./manage-services.sh --help
 ```
 
 4. 動作確認
@@ -150,7 +160,7 @@ LiteLLM のログ機能では、以下の情報が確認できます：
 
 ### リクエスト/レスポンス内容のログ記録を有効にする方法
 
-ログページでリクエストとレスポンスの内容を表示したい場合は、以下の設定を `default_config.yaml` に追加する必要があります：
+ログページでリクエストとレスポンスの内容を表示したい場合は、以下の設定を `default_config.yml` に追加する必要があります：
 
 ```yaml
 general_settings:

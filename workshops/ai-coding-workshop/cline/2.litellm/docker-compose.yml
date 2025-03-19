@@ -5,16 +5,28 @@ services:
     ports:
       - "4000:4000"
     volumes:
-      - ./${CONFIG_FILE:-default_config.yaml}:/app/config.yaml
+      - ./${CONFIG_FILE:-default_config.yml}:/app/config.yaml
     depends_on:
-      - db
+      - postgres
     command: --config /app/config.yaml --detailed_debug
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "3"
+    networks:
+      - app-network
 
-  db:
+  postgres:
     image: postgres:15
     env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   postgres_data:
