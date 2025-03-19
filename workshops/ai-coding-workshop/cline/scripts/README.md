@@ -1,8 +1,16 @@
-# SSMポートフォワーディングスクリプト
+# スクリプト集
+
+このディレクトリには、ワークショップで使用する様々なユーティリティスクリプトが含まれています。
+
+## 目次
+
+- [SSMポートフォワーディングスクリプト](#ssmポートフォワーディングスクリプト)
+
+## SSMポートフォワーディングスクリプト
 
 このスクリプトは、AWS SSMを使用してEC2インスタンスへの複数のポートフォワーディングを一括で行います。
 
-## 必要なライブラリ
+### 必要なライブラリ
 
 以下のライブラリが必要です（uvを使用して管理）：
 
@@ -11,7 +19,7 @@ pyyaml
 boto3
 ```
 
-## 設定ファイル
+### 設定ファイル
 
 `config.yaml`ファイルに以下の設定を記述します：
 
@@ -30,34 +38,35 @@ ports:
     remote: 22
 ```
 
-## 使用方法
+### 使用方法
 
-### 基本的な使用方法
+#### 基本的な使用方法
 
 ```bash
-python port_forward.py
+uv venv && source .venv/bin/activate && uv sync
+uv run port_forward.py
 ```
 
 これにより、設定ファイル（`config.yaml`）に定義されたポートフォワーディングが開始されます。
 
-### コマンドラインオプション
+#### コマンドラインオプション
 
 ```bash
-python port_forward.py -i <instance-id> -r <region> -c <config-file>
+uv run port_forward.py -i <instance-id> -r <region> -c <config-file>
 ```
 
 - `-i`, `--instance-id`: EC2インスタンスID（環境変数 `EC2_INSTANCE_ID` より優先）
 - `-r`, `--region`: AWSリージョン（環境変数 `AWS_REGION` より優先）
 - `-c`, `--config`: 設定ファイルのパス（デフォルト: `config.yaml`）
 
-### 環境変数
+#### 環境変数
 
 以下の環境変数を設定することもできます：
 
 - `EC2_INSTANCE_ID`: EC2インスタンスID
 - `AWS_REGION`: AWSリージョン
 
-## インスタンスIDの優先順位
+### インスタンスIDの優先順位
 
 インスタンスIDは以下の優先順位で取得されます：
 
@@ -65,7 +74,7 @@ python port_forward.py -i <instance-id> -r <region> -c <config-file>
 2. 環境変数 (`EC2_INSTANCE_ID`)
 3. 設定ファイルの値
 
-## リージョンの優先順位
+### リージョンの優先順位
 
 リージョンは以下の優先順位で取得されます：
 
@@ -74,7 +83,7 @@ python port_forward.py -i <instance-id> -r <region> -c <config-file>
 3. 設定ファイルの値
 4. デフォルト値 (`us-east-1`)
 
-## 注意事項
+### 注意事項
 
 - このスクリプトを実行するには、AWS CLIとSession Managerプラグインがインストールされている必要があります。
 - 適切なIAM権限が必要です（`AmazonSSMManagedInstanceCore`など）。
