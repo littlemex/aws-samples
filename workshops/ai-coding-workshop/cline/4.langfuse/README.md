@@ -1,152 +1,293 @@
-# LiteLLM と Langfuse を用いた LLM コスト可視化
-Cline VSCode Plugin で LiteLLM を API Provider として使用する際に発生する料金表示の問題（$0 と表示される）を解決するため、Langfuse を統合しました。この実装により、以下が可能になります：
+# LiteLLM と Langfuse を用いた LLM 利用状況の分析
 
-1. **コスト可視化の実現**
-   - LiteLLM を通じて利用される様々なモデル（Bedrock 上の Claude 等）の使用状況を追跡
-   - モデルごとのトークン使用量と料金の詳細な分析
-   - 総コストの可視化とモニタリング
+Cline VSCode Plugin で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するため、Langfuse を統合しました。
 
-2. **アーキテクチャの特徴**
-   - LiteLLM Proxy が Langfuse にコールバックを送信
-   - 共有 PostgreSQL データベースでデータを管理
-   - Langfuse ダッシュボードで使用状況を可視化
+## ファイル構成
 
-> **企業での利用に関する推奨事項**: 本リポジトリは開発環境での利用を想定しています。実際の企業組織での本番環境での LiteLLM Proxy と Langfuse の利用には、AWS ECS (Elastic Container Service) や AWS Fargate でのコンテナ化デプロイ、Amazon RDS や Aurora PostgreSQL でのデータベース管理、AWS Secrets Manager での認証情報管理など、適切なクラウドサービスを活用したアーキテクチャを推奨します。また、セキュリティ、スケーラビリティ、高可用性を考慮した設計が必要です。
+```
+.
+├── .env.example          # 環境変数のテンプレート
+├── debug_langfuse.sh     # デバッグ用スクリプト
+├── litellm_config.yml    # LiteLLM の設定ファイル
+├── manage-langfuse.sh    # Langfuse 管理スクリプト
+├── network-architecture.md # ネットワーク構成の詳細
+├── requirements.txt      # Python 依存パッケージ
+└── test_litellm_langfuse.py # テストスクリプト
+```
 
 ## アーキテクチャ
 
 ```mermaid
 graph TB
-    A[Cline VSCode Plugin] -->|API Requests| B[LiteLLM Proxy]
-    B -->|Callbacks| C[Langfuse]
-    B -->|Requests| D[Bedrock Models]
-    C -->|Store Data| E[PostgreSQL]
-    
-    subgraph Docker Compose
-        B
-        C
-        E
+    subgraph "Local PC"
+        MB[Local PC]
     end
 
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#bbf,stroke:#333,stroke-width:2px
-    style C fill:#bfb,stroke:#333,stroke-width:2px
-    style D fill:#fbb,stroke:#333,stroke-width:2px
-    style E fill:#ddd,stroke:#333,stroke-width:2px
+    subgraph "EC2 Instance"
+        subgraph "Host OS"
+            CS[code-server<br/>:8080]
+            VSC[VSCode Server]
+            PF1[":3000 Port Forward"]
+            PF2[":8080 Port Forward"]
+            PF3[":4000 Port Forward"]
+        end
+
+        subgraph "Docker Network: langfuse_default"
+            direction LR
+            LF[Langfuse Web<br/>langfuse-web:3000]
+            PG1[Postgres<br/>postgres:5432]
+            CH[Clickhouse<br/>clickhouse:8123]
+            RD[Redis<br/>redis:6379]
+            MN[MinIO<br/>minio:9090]
+            LL[LiteLLM Proxy<br/>localhost:4000]
+            PG2[Postgres<br/>postgres:5432]
+            
+            LF --- PG1
+            LF --- CH
+            LF --- RD
+            LF --- MN
+            LL --- PG2
+        end
+
+        CS -- "Proxy" --> LF
+        CS -- "Proxy" --> LL
+        VSC -- "Direct" --> LF
+        VSC -- "Direct" --> LL
+    end
+
+    MB -- "SSH Port Forward" --> PF1
+    MB -- "SSH Port Forward" --> PF2
+    MB -- "SSH Port Forward" --> PF3
 ```
 
-## 環境要件
+## ネットワーク構成
 
-- Docker
-- Python 3.9 以上
-- AWS 認証情報（Bedrock へのアクセス権限必須）
+### コンテナネットワーク
+- すべてのサービスは `langfuse_default` ネットワーク内で実行
+- コンテナ間通信には Docker DNS 名を使用（例：`langfuse-web`, `postgres`）
+- 内部ポートはネットワーク内で公開
+
+### 重要な注意点
+- コンテナ内では `localhost` は自身のコンテナを指すため、使用を避ける
+- 代わりに Docker サービス名を使用（例：`http://langfuse-web:3000`）
+- MinIO は内部で 9000 ポートを使用（外部からは 9090）
 
 ## セットアップ手順
 
 1. 環境変数の設定
-
 ```bash
-# .env ファイルを作成
 cp .env.example .env
-# .env ファイルを編集して必要な環境変数を設定
+# .env ファイルを編集
 ```
 
-主な環境変数：
-- AWS_ACCESS_KEY_ID: AWS アクセスキー
-- AWS_SECRET_ACCESS_KEY: AWS シークレットキー
-- AWS_REGION_NAME: AWS リージョン
-- POSTGRES_USER: PostgreSQL ユーザー名
-- POSTGRES_PASSWORD: PostgreSQL パスワード
-- POSTGRES_DB: データベース名
-- LITELLM_MASTER_KEY: LiteLLM API キー
-- NEXTAUTH_SECRET: Langfuse 認証用シークレット
-- SALT: Langfuse 暗号化用ソルト
-- CLICKHOUSE_URL: ClickHouse 接続 URL
-- REDIS_AUTH: Redis 認証パスワード
-
-2. 設定ファイルの説明
-
-`default_config.yaml` では以下の設定が可能です：
-
-- モデルの優先順位とフォールバック設定
-- 各モデルの最大トークン数
-- リトライ設定
-- レート制限
-- Langfuse コールバック設定
+2. 依存パッケージのインストール
+```bash
+pip install -r requirements.txt
+```
 
 3. サービスの起動
-
 ```bash
-# 実行権限を付与
-chmod +x manage-services.sh
-
-# サービスの起動
-./manage-services.sh start
-
-# サービスの停止
-./manage-services.sh stop
-
-# サービスの再起動
-./manage-services.sh restart
-
-# ヘルプの表示
-./manage-services.sh --help
+./manage-langfuse.sh start
 ```
 
-初回起動時には Langfuse リポジトリが自動的にクローンされ、必要なサービスが起動します。
+## 設定ファイル
 
-4. 動作確認
+### litellm_config.yml
+- モデルの設定（Bedrock Claude など）
+- フォールバックとリトライの設定
+- Langfuse コールバックの設定
 
-```bash
-export LITELLM_MASTER_KEY=sk-litellm-test-key
+### 環境変数の設定例
+```env
+# データベース設定
+DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
 
-# モデル一覧の取得
-curl http://localhost:4000/v1/models \
-  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
+# Langfuse 設定
+LANGFUSE_HOST=http://langfuse-web:3000
+NEXTAUTH_URL=http://localhost:3000
 
-# 基本的な補完リクエスト
-curl -X POST 'http://0.0.0.0:4000/chat/completions' \
--H 'Content-Type: application/json' \
--H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
--d '{
-      "model": "bedrock-converse-us-claude-3-7-sonnet-v1",
-      "messages": [
-        {
-          "role": "user",
-          "content": "what llm are you"
-        }
-      ]
-    }'
+# MinIO 設定
+LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=http://minio:9000
 ```
 
-## Langfuse での使用状況確認
+## デバッグツール
 
-1. Langfuse UI へのアクセス
-   - ブラウザで http://localhost:3000 にアクセス
+`debug_langfuse.sh` スクリプトを使用してトラブルシューティングを行えます：
 
-2. 確認可能な情報
-   - モデルごとの使用量
-   - トークン数
-   - 推定コスト
-   - レイテンシ
-   - エラー率
+```bash
+./debug_langfuse.sh
+```
 
-## Cline での LiteLLM 設定
-
-作成した LiteLLM Proxy を Cline の API Provider に設定します。これによりエラー時には LiteLLM Proxy を介してフェイルオーバーする構成となります。
-
-API Key: (環境変数 LITELLM_MASTER_KEY で設定した値)
-
-![Cline での LiteLLM 設定](images/cline-litellm.png)
+このスクリプトは以下を確認します：
+- Langfuse と LiteLLM コンテナの状態
+- 環境変数の設定
+- コンテナのログ
+- ネットワーク接続状態
 
 ## トラブルシューティング
 
-1. Langfuse UI にアクセスできない場合
-   - コンテナの起動状態を確認: `docker compose ps`
-   - ログの確認: `docker compose logs langfuse`
-   - 環境変数の設定を確認
+### 一般的な問題
 
-2. コスト情報が表示されない場合
-   - LiteLLM の callback_settings を確認
-   - Langfuse への接続状態を確認
-   - リクエストが正しく送信されているか確認
+1. コンテナ間の接続エラー
+   - Docker DNS 名が正しく使用されているか確認
+   - 環境変数内の `localhost` 参照を修正
+   - `debug_langfuse.sh` でログを確認
+
+2. MinIO 接続エラー
+   - エンドポイントが `minio:9000` を使用しているか確認
+   - バケットが正しく作成されているか確認
+
+3. データベース接続エラー
+   - PostgreSQL 接続文字列が Docker サービス名を使用しているか確認
+   - データベースが初期化されているか確認
+
+### デバッグ手順
+
+1. サービスの状態確認
+```bash
+./debug_langfuse.sh
+```
+
+2. 個別のログ確認
+```bash
+docker logs langfuse-langfuse-web-1 --tail 50
+docker logs 2litellm-litellm-1 --tail 50
+```
+
+3. ネットワーク設定の確認
+```bash
+docker network inspect langfuse_default
+```
+
+## テストの実行
+
+```bash
+python test_litellm_langfuse.py
+```
+
+テストスクリプトは以下を実行します：
+- LiteLLM を通じた Bedrock Claude の呼び出し
+- Langfuse へのログ送信
+- 接続テストとデバッグ情報の出力
+
+## 企業での利用に関する推奨事項
+
+本リポジトリは開発環境での利用を想定しています。本番環境では以下を推奨します：
+
+- AWS ECS/Fargate でのコンテナ化デプロイ
+- Amazon RDS/Aurora PostgreSQL の使用
+- AWS Secrets Manager での認証情報管理
+- 適切なセキュリティ、スケーラビリティ設定
+
+## Langfuse の利用方法
+
+Langfuse は LLM アプリケーションの観察とモニタリングを行うためのオープンソースプラットフォームです。
+
+### 基本概念
+
+1. **トレース (Trace)**
+   - LLM アプリケーションの1回の実行単位
+   - ユーザーリクエストから応答までの一連の処理を追跡
+   - 複数のスパンやイベントを含むことが可能
+
+2. **スパン (Span)**
+   - トレース内の個別の処理単位
+   - LLM の推論、プロンプトの生成、外部APIコールなど
+   - 処理時間、入出力、メタデータを記録
+
+3. **イベント (Event)**
+   - トレースやスパン内で発生する重要な出来事
+   - エラー、警告、状態変更などを記録
+
+### 主な機能
+
+1. **LLM 利用状況の分析**
+   - モデルごとの使用量とコスト
+   - レイテンシと応答時間の分布
+   - エラー率とその原因分析
+
+2. **プロンプトの評価**
+   - プロンプトのバージョン管理
+   - A/Bテストの実施と結果分析
+   - プロンプトの効果測定
+
+3. **品質管理**
+   - 応答品質のモニタリング
+   - ユーザーフィードバックの収集
+   - カスタム評価指標の設定
+
+### 実装手順
+
+1. **Python SDK のインストール**
+```python
+pip install langfuse
+```
+
+2. **Langfuse クライアントの初期化**
+```python
+from langfuse import Langfuse
+
+langfuse = Langfuse(
+    public_key="your-public-key",
+    secret_key="your-secret-key",
+    host="http://langfuse-web:3000"  # Docker 環境の場合
+)
+```
+
+3. **トレースの作成と管理**
+```python
+# トレースの開始
+trace = langfuse.trace(name="my-llm-request")
+
+# スパンの記録
+with trace.span(name="llm-inference") as span:
+    response = llm.generate(prompt)
+    span.update(
+        input={"prompt": prompt},
+        output={"response": response},
+        metadata={"model": "claude-3"}
+    )
+
+# イベントの記録
+trace.event(
+    name="user-feedback",
+    metadata={"rating": 5}
+)
+
+# トレースの完了
+trace.update(status="success")
+```
+
+### 分析とモニタリング
+
+1. **ダッシュボード**
+   - Langfuse UI (http://localhost:3000) にアクセス
+   - プロジェクトの概要を確認
+   - 詳細な利用統計を表示
+
+2. **トレース検索**
+   - 特定のトレースを検索
+   - フィルタリングと並び替え
+   - 詳細な実行ログの確認
+
+3. **メトリクスの確認**
+   - レイテンシグラフ
+   - エラー率の推移
+   - コスト分析
+
+### カスタマイズと拡張
+
+1. **カスタムメトリクス**
+   - 独自の評価指標を定義
+   - スコアリングルールの設定
+   - ダッシュボードのカスタマイズ
+
+2. **通知設定**
+   - エラー発生時の通知
+   - しきい値超過のアラート
+   - 定期レポートの設定
+
+3. **データエクスポート**
+   - S3へのデータエクスポート
+   - カスタム分析の実施
+   - 外部システムとの連携
