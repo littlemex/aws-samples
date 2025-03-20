@@ -1,6 +1,11 @@
 # LiteLLM と Langfuse を用いた LLM 利用状況の分析
 
-Cline VSCode Plugin で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するため、Langfuse を統合しました。この構成により、LLM の利用状況やコスト、パフォーマンスを詳細に把握することが可能になります。
+本セクションでは、Cline VSCode Plugin で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するための Langfuse 統合について説明します。この構成により、以下のような情報を詳細に把握することが可能になります：
+
+- LLM の利用状況とコスト分析
+- リクエスト・レスポンスの詳細な記録
+- パフォーマンスとレイテンシの監視
+- エラー発生時のトラブルシューティング
 
 ## ファイル構成
 
@@ -22,14 +27,13 @@ graph TB
 
     subgraph "Amazon EC2 Instance"
         subgraph "Host OS"
-            CS[code-server<br/>ポート:8080]
             
-            subgraph "VSCode Server (Code Server)"
-                CP[Cline Plugin<br/>設定: localhost:4000]
+            subgraph "code-server"
+               PF2[":8080 Port Forward"]
+               CP[Cline]
             end
             
             PF1[":3000 Port Forward"]
-            PF2[":8080 Port Forward"]
             PF3[":4000 Port Forward"]
         end
 
@@ -50,9 +54,9 @@ graph TB
             LL --- PG2
         end
 
-        CS -- "Proxy" --> LF
-        CS -- "Proxy" --> LL
         CP -- "API リクエスト" --> LL
+        PF1 -- "Port Mapping" --> LF
+        PF3 -- "Port Mapping" --> LL
     end
 
     MB -- "SSH Port Forward" --> PF1
@@ -70,21 +74,36 @@ graph TB
 ### 重要な注意点
 - コンテナ内では `localhost` は自身のコンテナを指すため、使用を避ける
 - 代わりに Docker サービス名を使用（例：`http://langfuse-web:3000`）
-- MinIO は内部で 9000 ポートを使用（外部からは 9090）
+- MinIO は 9000 ポートを使用
 
 ## セットアップ手順
 
 1. 環境変数の設定
-```bash
-cp .env.example .env
-# .env ファイルを編集
-```
+   ```bash
+   cp .env.example .env
+   ```
+   以下の環境変数を設定します：
+   - `LANGFUSE_INIT_USER_EMAIL`: 初期管理者アカウントのメールアドレス
+   - `LANGFUSE_INIT_USER_PASSWORD`: 初期管理者アカウントのパスワード
+   - その他必要な環境変数は `.env.example` を参照してください
 
 2. サービスの起動
-```bash
-./manage-langfuse.sh start         # Langfuse コンテナの起動
-./manage-langfuse.sh update-config # LiteLLM Proxy の設定更新
-```
+   ```bash
+   # Langfuse コンテナの起動
+   ./manage-langfuse.sh start
+   
+   # LiteLLM Proxy の設定更新（Langfuse との連携設定）
+   ./manage-langfuse.sh update-config
+   ```
+
+3. 動作確認
+   ```bash
+   # ポートフォワーディングの設定 (Local PC で実行してください)
+   ../scripts/port_forward.py
+   
+   # ブラウザで Langfuse Web UI にアクセス
+   # http://localhost:3000
+   ```
 
 ## 設定ファイル
 
@@ -143,38 +162,29 @@ python test_litellm_langfuse.py
 6. **包括的な API**：
    Langfuse は API を通じて提供される基本要素を使用しながら、カスタム LLMOps ワークフローを強化するために頻繁に使用されます。OpenAPI 仕様、Postman コレクション、Python や JS/TS 用の型付き SDK が利用可能です。
 
-### 主な機能
+### Langfuse Web UI の利用方法
 
-1. **LLM 利用状況の分析**
-   - モデルごとの使用量とコスト
-   - レイテンシと応答時間の分布
-   - エラー率とその原因分析
+#### ログイン方法
 
-2. **プロンプトの評価**
-   - プロンプトのバージョン管理
-   - A/Bテストの実施と結果分析
-   - プロンプトの効果測定
+1. ブラウザで http://localhost:3000 にアクセスします
+   - `cline/scripts/port_forward.py` でポートフォワーディングが必要です
 
-3. **品質管理**
-   - 応答品質のモニタリング
-   - ユーザーフィードバックの収集
-   - カスタム評価指標の設定
-
-### Lanfuse Web UI
-
-#### ログイン
-
-localhost:3000 にアクセス(cline/scripts/port-forward.sh でフォワードしている前提)
-
-.env の以下の設定で初期 ID, パスワードを設定しているのですぐログイン可能。
- LANGFUSE_INIT_USER_EMAIL="admin@example.com"
-LANGFUSE_INIT_USER_PASSWORD="password123"
+2. 初期アカウントでログイン
+   - メールアドレス：`.env` ファイルの `LANGFUSE_INIT_USER_EMAIL` の値
+   - パスワード：`.env` ファイルの `LANGFUSE_INIT_USER_PASSWORD` の値
 
 ![](./images/langfuse-login.png)
 
 #### Dashboard
 
-ダッシュボードで、トレース、モデルごとのコスト、レイテンシーなどの情報を見ることができる。
+ダッシュボードでは、以下のような重要な情報をグラフィカルに確認することができます：
+
+- **トレース概要**: 時系列でのリクエスト数とエラー率の推移
+- **モデル使用状況**: モデルごとの使用量とコスト分析
+- **パフォーマンス指標**: 平均レイテンシや応答時間の分布
+- **エラー分析**: エラーの種類と発生頻度の統計
+
+これらの情報を活用することで、LLM の利用状況を包括的に把握し、最適化のための意思決定を行うことができます。
 
 ![](./images/langfuse-dashboard.png)
 
