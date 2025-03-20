@@ -13,20 +13,12 @@ services:
       options:
         max-size: "50m"
         max-file: "3"
-    networks:
-      - app-network
 
   postgres:
     image: postgres:15
     env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-
-networks:
-  app-network:
-    driver: bridge
 
 volumes:
   postgres_data:
