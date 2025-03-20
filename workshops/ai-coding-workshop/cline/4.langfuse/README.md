@@ -1,17 +1,14 @@
 # LiteLLM と Langfuse を用いた LLM 利用状況の分析
 
-Cline VSCode Plugin で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するため、Langfuse を統合しました。
+Cline VSCode Plugin で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するため、Langfuse を統合しました。この構成により、LLM の利用状況やコスト、パフォーマンスを詳細に把握することが可能になります。
 
 ## ファイル構成
 
 ```
 .
-├── .env.example          # 環境変数のテンプレート
-├── debug_langfuse.sh     # デバッグ用スクリプト
-├── litellm_config.yml    # LiteLLM の設定ファイル
-├── manage-langfuse.sh    # Langfuse 管理スクリプト
-├── network-architecture.md # ネットワーク構成の詳細
-├── requirements.txt      # Python 依存パッケージ
+├── .env.example             # 環境変数のテンプレート
+├── litellm_config.yml       # LiteLLM の設定ファイル
+├── manage-langfuse.sh       # Langfuse 管理スクリプト
 └── test_litellm_langfuse.py # テストスクリプト
 ```
 
@@ -25,8 +22,12 @@ graph TB
 
     subgraph "Amazon EC2 Instance"
         subgraph "Host OS"
-            CS[code-server<br/>:8080]
-            VSC[VSCode Server]
+            CS[code-server<br/>ポート:8080]
+            
+            subgraph "VSCode Server (Code Server)"
+                CP[Cline Plugin<br/>設定: localhost:4000]
+            end
+            
             PF1[":3000 Port Forward"]
             PF2[":8080 Port Forward"]
             PF3[":4000 Port Forward"]
@@ -38,7 +39,7 @@ graph TB
             PG1[Postgres<br/>postgres:5432]
             CH[Clickhouse<br/>clickhouse:8123]
             RD[Redis<br/>redis:6379]
-            MN[MinIO<br/>minio:9090]
+            MN[MinIO<br/>minio:9000]
             LL[LiteLLM Proxy<br/>localhost:4000]
             PG2[Postgres<br/>postgres:5432]
             
@@ -51,8 +52,7 @@ graph TB
 
         CS -- "Proxy" --> LF
         CS -- "Proxy" --> LL
-        VSC -- "Direct" --> LF
-        VSC -- "Direct" --> LL
+        CP -- "API リクエスト" --> LL
     end
 
     MB -- "SSH Port Forward" --> PF1
@@ -80,14 +80,10 @@ cp .env.example .env
 # .env ファイルを編集
 ```
 
-2. 依存パッケージのインストール
+2. サービスの起動
 ```bash
-pip install -r requirements.txt
-```
-
-3. サービスの起動
-```bash
-./manage-langfuse.sh start
+./manage-langfuse.sh start         # Langfuse コンテナの起動
+./manage-langfuse.sh update-config # LiteLLM Proxy の設定更新
 ```
 
 ## 設定ファイル
@@ -97,25 +93,12 @@ pip install -r requirements.txt
 - フォールバックとリトライの設定
 - Langfuse コールバックの設定
 
-### 環境変数の設定例
-```env
-# データベース設定
-DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
-
-# Langfuse 設定
-LANGFUSE_HOST=http://langfuse-web:3000
-NEXTAUTH_URL=http://localhost:3000
-
-# MinIO 設定
-LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=http://minio:9000
-```
-
 ## デバッグツール
 
-`debug_langfuse.sh` スクリプトを使用してトラブルシューティングを行えます：
+`../scripts/debug_langfuse.sh` スクリプトを使用してトラブルシューティングを行えます：
 
 ```bash
-./debug_langfuse.sh
+bash -x ../scripts/debug_langfuse.sh
 ```
 
 このスクリプトは以下を確認します：
@@ -124,44 +107,10 @@ LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT=http://minio:9000
 - コンテナのログ
 - ネットワーク接続状態
 
-## トラブルシューティング
-
-### 一般的な問題
-
-1. コンテナ間の接続エラー
-   - Docker DNS 名が正しく使用されているか確認
-   - 環境変数内の `localhost` 参照を修正
-   - `debug_langfuse.sh` でログを確認
-
-2. MinIO 接続エラー
-   - エンドポイントが `minio:9000` を使用しているか確認
-   - バケットが正しく作成されているか確認
-
-3. データベース接続エラー
-   - PostgreSQL 接続文字列が Docker サービス名を使用しているか確認
-   - データベースが初期化されているか確認
-
-### デバッグ手順
-
-1. サービスの状態確認
-```bash
-./debug_langfuse.sh
-```
-
-2. 個別のログ確認
-```bash
-docker logs langfuse-langfuse-web-1 --tail 50
-docker logs 2litellm-litellm-1 --tail 50
-```
-
-3. ネットワーク設定の確認
-```bash
-docker network inspect langfuse_default
-```
-
 ## テストの実行
 
 ```bash
+pip install langfuse
 python test_litellm_langfuse.py
 ```
 
@@ -170,34 +119,29 @@ python test_litellm_langfuse.py
 - Langfuse へのログ送信
 - 接続テストとデバッグ情報の出力
 
-## 企業での利用に関する推奨事項
-
-本リポジトリは開発環境での利用を想定しています。本番環境では以下を推奨します：
-
-- Amazon Elastic Container Service (Amazon ECS)/AWS Fargate でのコンテナ化デプロイ
-- Amazon Relational Database Service (Amazon RDS)/Amazon Aurora PostgreSQL の使用
-- AWS Secrets Manager での認証情報管理
-- 適切なセキュリティ、スケーラビリティ設定
-
 ## Langfuse の利用方法
 
-Langfuse は LLM アプリケーションの観察とモニタリングを行うためのオープンソースプラットフォームです。
+[Langfuse](https://langfuse.com/) は LLM アプリケーションの観察とモニタリングを行うためのオープンソースプラットフォームです。
 
-### 基本概念
+### Langfuse の主要機能
 
-1. **トレース (Trace)**
-   - LLM アプリケーションの1回の実行単位
-   - ユーザーリクエストから応答までの一連の処理を追跡
-   - 複数のスパンやイベントを含むことが可能
+1. **LLM アプリケーション観測性（Observability）**：
+   アプリケーションを計測し、Langfuse にトレースを取り込むことで、LLM 呼び出しや検索、埋め込み、エージェントアクションなどの関連ロジックを追跡します。複雑なログやユーザーセッションを検査・デバッグできます。
 
-2. **スパン (Span)**
-   - トレース内の個別の処理単位
-   - LLM の推論、プロンプトの生成、外部APIコールなど
-   - 処理時間、入出力、メタデータを記録
+2. **プロンプト管理**：
+   プロンプトを一元管理し、バージョン管理や共同反復作業を行えます。サーバーとクライアント側の強力なキャッシングにより、アプリケーションのレイテンシを増加させることなくプロンプトを改善できます。
 
-3. **イベント (Event)**
-   - トレースやスパン内で発生する重要な出来事
-   - エラー、警告、状態変更などを記録
+3. **評価システム**：
+   LLM アプリケーション開発ワークフローの重要な部分として、Langfuse はニーズに合わせた評価を提供します。LLM-as-a-judge、ユーザーフィードバック収集、手動ラベリング、API/SDK を介したカスタム評価パイプラインをサポートしています。
+
+4. **データセット機能**：
+   LLM アプリケーションを評価するためのテストセットとベンチマークを提供します。継続的な改善、デプロイ前テスト、構造化された実験、柔軟な評価、LangChain や LlamaIndex などのフレームワークとのシームレスな統合をサポートします。
+
+5. **LLM プレイグラウンド**：
+   プロンプトやモデル設定をテストし反復するためのツールで、フィードバックループを短縮し開発を加速します。トレースで問題のある結果を見つけた場合、直接プレイグラウンドに移動して改善できます。
+
+6. **包括的な API**：
+   Langfuse は API を通じて提供される基本要素を使用しながら、カスタム LLMOps ワークフローを強化するために頻繁に使用されます。OpenAPI 仕様、Postman コレクション、Python や JS/TS 用の型付き SDK が利用可能です。
 
 ### 主な機能
 
@@ -216,78 +160,27 @@ Langfuse は LLM アプリケーションの観察とモニタリングを行う
    - ユーザーフィードバックの収集
    - カスタム評価指標の設定
 
-### 実装手順
+### Lanfuse Web UI
 
-1. **Python SDK のインストール**
-```python
-pip install langfuse
-```
+#### ログイン
 
-2. **Langfuse クライアントの初期化**
-```python
-from langfuse import Langfuse
+localhost:3000 にアクセス(cline/scripts/port-forward.sh でフォワードしている前提)
 
-langfuse = Langfuse(
-    public_key="your-public-key",
-    secret_key="your-secret-key",
-    host="http://langfuse-web:3000"  # Docker 環境の場合
-)
-```
+.env の以下の設定で初期 ID, パスワードを設定しているのですぐログイン可能。
+ LANGFUSE_INIT_USER_EMAIL="admin@example.com"
+LANGFUSE_INIT_USER_PASSWORD="password123"
 
-3. **トレースの作成と管理**
-```python
-# トレースの開始
-trace = langfuse.trace(name="my-llm-request")
+![](./images/langfuse-login.png)
 
-# スパンの記録
-with trace.span(name="llm-inference") as span:
-    response = llm.generate(prompt)
-    span.update(
-        input={"prompt": prompt},
-        output={"response": response},
-        metadata={"model": "claude-3"}
-    )
+#### Dashboard
 
-# イベントの記録
-trace.event(
-    name="user-feedback",
-    metadata={"rating": 5}
-)
+ダッシュボードで、トレース、モデルごとのコスト、レイテンシーなどの情報を見ることができる。
 
-# トレースの完了
-trace.update(status="success")
-```
+![](./images/langfuse-dashboard.png)
 
-### 分析とモニタリング
+#### Traces
 
-1. **ダッシュボード**
-   - Langfuse UI (http://localhost:3000) にアクセス
-   - プロジェクトの概要を確認
-   - 詳細な利用統計を表示
+トレースとは LLM アプリケーションの実行フローを記録したものです。各 LLM 呼び出しの詳細情報（入力プロンプト、出力レスポンス、実行時間、コストなど）を時系列で追跡できます。トレースからリクエストとレスポンスの詳細を見ることができ、アプリケーションの動作を詳細に分析することが可能です。
 
-2. **トレース検索**
-   - 特定のトレースを検索
-   - フィルタリングと並び替え
-   - 詳細な実行ログの確認
-
-3. **メトリクスの確認**
-   - レイテンシグラフ
-   - エラー率の推移
-   - コスト分析
-
-### カスタマイズと拡張
-
-1. **カスタムメトリクス**
-   - 独自の評価指標を定義
-   - スコアリングルールの設定
-   - ダッシュボードのカスタマイズ
-
-2. **通知設定**
-   - エラー発生時の通知
-   - しきい値超過のアラート
-   - 定期レポートの設定
-
-3. **データエクスポート**
-   - Amazon Simple Storage Service (Amazon S3) へのデータエクスポート
-   - カスタム分析の実施
-   - 外部システムとの連携
+![](./images/langfuse-traces.png)
+![](./images/langfuse-traces-detail.png)
