@@ -1,6 +1,6 @@
 # AI エージェントワークショップ環境構築手順
 
-このガイドでは、AI エージェントワークショップの開発環境をセットアップするための手順を説明します。開発環境として EC2 を使用し、code-server または Remote SSH で接続して開発を行うことができます。
+このガイドでは、AI エージェントワークショップの開発環境をセットアップするための手順を説明します。開発環境として Amazon Elastic Compute Cloud (Amazon EC2) を使用し、code-server または Remote SSH で接続して開発を行うことができます。
 
 ## 1. 前提条件
 
@@ -12,13 +12,13 @@
 ### 必要なツールのインストール
 
 ```bash
-# AWS CLI のインストール（macOS の例）
+# AWS Command Line Interface (AWS CLI) のインストール（macOS の例）
 brew install awscli
 
 # AWS CDK のインストール
 npm install -g aws-cdk
 
-# Session Manager プラグインのインストール（macOS の例）
+# AWS Systems Manager Session Manager プラグインのインストール（macOS の例）
 # See: https://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
 brew install session-manager-plugin
 ```
@@ -76,7 +76,7 @@ Cline のインストールと設定方法については、[Cline セットア�
 - 動作確認手順
 - トラブルシューティング
 
-### Bedrock モデルアクセスの設定
+### Amazon Bedrock モデルアクセスの設定
 
 1. AWS コンソールの Bedrock サービスに移動
 2. 左側メニューから「Model access」を選択

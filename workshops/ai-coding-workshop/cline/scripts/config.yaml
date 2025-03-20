@@ -3,7 +3,7 @@
 # 1. コマンドライン引数 (-i, --instance-id)
 # 2. 環境変数 (EC2_INSTANCE_ID)
 # 3. この設定ファイルの値
-instance_id: i-XXXXXXXXXX  # EC2インスタンスID（フォールバック値）
+instance_id: i-XXXXXXXXXX  # Amazon Elastic Compute Cloud (Amazon EC2) インスタンスID（フォールバック値）
 
 # リージョンは以下の優先順位で取得されます:
 # 1. コマンドライン引数 (-r, --region)
@@ -14,7 +14,7 @@ region: us-east-1  # AWSリージョン
 
 # ポートマッピング設定
 # local: ローカルポート番号
-# remote: リモート（EC2）ポート番号
+# remote: リモート（Amazon EC2）ポート番号
 ports:
   - local: 8080
     remote: 8080

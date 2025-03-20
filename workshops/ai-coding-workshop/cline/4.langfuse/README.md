@@ -23,7 +23,7 @@ graph TB
         MB[Local PC]
     end
 
-    subgraph "EC2 Instance"
+    subgraph "Amazon EC2 Instance"
         subgraph "Host OS"
             CS[code-server<br/>:8080]
             VSC[VSCode Server]
@@ -174,8 +174,8 @@ python test_litellm_langfuse.py
 
 本リポジトリは開発環境での利用を想定しています。本番環境では以下を推奨します：
 
-- AWS ECS/Fargate でのコンテナ化デプロイ
-- Amazon RDS/Aurora PostgreSQL の使用
+- Amazon Elastic Container Service (Amazon ECS)/AWS Fargate でのコンテナ化デプロイ
+- Amazon Relational Database Service (Amazon RDS)/Amazon Aurora PostgreSQL の使用
 - AWS Secrets Manager での認証情報管理
 - 適切なセキュリティ、スケーラビリティ設定
 
@@ -288,6 +288,6 @@ trace.update(status="success")
    - 定期レポートの設定
 
 3. **データエクスポート**
-   - S3へのデータエクスポート
+   - Amazon Simple Storage Service (Amazon S3) へのデータエクスポート
    - カスタム分析の実施
    - 外部システムとの連携

@@ -8,7 +8,7 @@
 
 ## SSMポートフォワーディングスクリプト
 
-このスクリプトは、AWS SSMを使用してEC2インスタンスへの複数のポートフォワーディングを一括で行います。
+このスクリプトは、AWS Systems Manager を使用して Amazon Elastic Compute Cloud (Amazon EC2) インスタンスへの複数のポートフォワーディングを一括で行います。
 
 ### 必要なライブラリ
 
@@ -25,13 +25,13 @@ boto3
 
 ```yaml
 # SSMポートフォワーディング設定
-instance_id: i-0XXXXXXXXXX  # EC2インスタンスID（フォールバック値）
+instance_id: i-0XXXXXXXXXX  # Amazon EC2 インスタンスID（フォールバック値）
 region: us-east-1           # AWSリージョン
 
 # ポートマッピング設定
 ports:
   - local: 8080    # ローカルポート番号
-    remote: 8080   # リモート（EC2）ポート番号
+    remote: 8080   # リモート（Amazon EC2）ポート番号
   - local: 4000
     remote: 4000
   - local: 2222
@@ -55,7 +55,7 @@ uv run port_forward.py
 uv run port_forward.py -i <instance-id> -r <region> -c <config-file>
 ```
 
-- `-i`, `--instance-id`: EC2インスタンスID（環境変数 `EC2_INSTANCE_ID` より優先）
+- `-i`, `--instance-id`: Amazon EC2 インスタンスID（環境変数 `EC2_INSTANCE_ID` より優先）
 - `-r`, `--region`: AWSリージョン（環境変数 `AWS_REGION` より優先）
 - `-c`, `--config`: 設定ファイルのパス（デフォルト: `config.yaml`）
 
@@ -63,7 +63,7 @@ uv run port_forward.py -i <instance-id> -r <region> -c <config-file>
 
 以下の環境変数を設定することもできます：
 
-- `EC2_INSTANCE_ID`: EC2インスタンスID
+- `EC2_INSTANCE_ID`: Amazon EC2 インスタンスID
 - `AWS_REGION`: AWSリージョン
 
 ### インスタンスIDの優先順位
@@ -86,5 +86,5 @@ uv run port_forward.py -i <instance-id> -r <region> -c <config-file>
 ### 注意事項
 
 - このスクリプトを実行するには、AWS CLIとSession Managerプラグインがインストールされている必要があります。
-- 適切なIAM権限が必要です（`AmazonSSMManagedInstanceCore`など）。
+- 適切な AWS Identity and Access Management (IAM) 権限が必要です（`AmazonSSMManagedInstanceCore`など）。
 - Ctrl+Cでスクリプトを終了すると、すべてのポートフォワーディングセッションが終了します。

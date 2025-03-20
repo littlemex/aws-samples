@@ -8,11 +8,12 @@
 
 ```
 cline/
+├── scripts/              # スクリプト
 ├── 0.setup/              # 環境セットアップガイド
-│   ├── README.md        # メインセットアップガイド
-│   ├── 0.remotessh/     # Remote Development using SSH 設定
-│   ├── 1.cline/         # cline のインストールと設定
-│   └── 2.roocode/       # Roo Code の設定
+│   ├── README.md         # メインセットアップガイド
+│   ├── 0.remotessh/      # Remote Development using SSH 設定
+│   ├── 1.cline/          # cline のインストールと設定
+│   └── 2.roocode/        # Roo Code の設定
 ├── 1.mcp/                # MCP サーバー実装ワークショップ
 ├── 2.litellm/            # LiteLLM Proxy の利用
 └── 3.sagemaker/          # Amazon SageMaker AI, Inference 機能の利用
