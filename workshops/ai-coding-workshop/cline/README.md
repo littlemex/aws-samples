@@ -16,7 +16,8 @@ cline/
 │   └── 2.roocode/        # Roo Code の設定
 ├── 1.mcp/                # MCP サーバー実装ワークショップ
 ├── 2.litellm/            # LiteLLM Proxy の利用
-└── 3.sagemaker/          # Amazon SageMaker AI, Inference 機能の利用
+├── 3.sagemaker/          # Amazon SageMaker AI, Inference 機能の利用
+└── 4.langfuse/           # Langfuse による LLM 利用状況の分析
 ```
 
 ## 1. 環境要件
@@ -101,6 +102,14 @@ cline/
    - LiteLLM Proxy との統合
    - Cline からの利用設定
 
+### 2.5 Langfuse による LLM 利用状況の分析
+1. [Langfuse 統合ガイド](4.langfuse/README.md)
+   - LLM の利用状況とコスト分析
+   - リクエスト・レスポンスの詳細な記録
+   - パフォーマンスとレイテンシの監視
+   - エラー発生時のトラブルシューティング
+   - Langfuse Web UI の利用方法
+
 ## 3. セキュリティ考慮事項
 
 - SSH キーと設定ファイルの適切な権限設定
@@ -117,6 +126,7 @@ cline/
 - [Cline の設定問題](0.setup/1.cline/README.md)
 - [LiteLLM Proxy の問題](2.litellm/README.md)
 - [SageMaker エンドポイントの問題](3.sagemaker/README.md)
+- [Langfuse 関連の問題](4.langfuse/README.md)
 
 ## 参考リソース
 
@@ -126,3 +136,4 @@ cline/
 - [Model Context Protocol Documentation](https://modelcontextprotocol.github.io/)
 - [AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html)
 - [VS Code Remote Development](https://code.visualstudio.com/docs/remote/remote-overview)
+- [Langfuse Documentation](https://langfuse.com/docs)
