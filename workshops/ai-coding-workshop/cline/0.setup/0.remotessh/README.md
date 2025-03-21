@@ -52,7 +52,8 @@ echo "コピーした公開鍵" >> ~/.ssh/authorized_keys
 
 ## 3. SSH 設定ファイルの作成
 
-ローカルマシンで以下の手順を実行します：
+ローカルマシンで以下の手順を実行します。
+すでに `../../scripts/port_forward.py` でポートフォワードされている前提です。
 
 1. SSH config ファイルを作成または編集：
 ```bash
@@ -71,6 +72,16 @@ Host ec2-via-ssm
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     ServerAliveInterval 60
+
+Host ec2-via-ssm-forward-4000-4000
+    HostName localhost
+    User coder
+    Port 2222
+    StrictHostKeyChecking no
+    IdentityFile ~/.ssh/id_rsa  # 秘密鍵ファイルのパスを指定
+    UserKnownHostsFile /dev/null
+    ServerAliveInterval 60
+    LocalForward 4000 localhost:4000 # http://127.0.0.1:4000 で LiteLLM に接続する場合必要
 ```
 
 ## 4. VS Code の設定と接続
@@ -116,6 +127,14 @@ ssh -v -p 2222 coder@localhost
 ```bash
 # 実行中のポート転送を確認
 netstat -an | grep LISTEN
+```
+
+
+Cline にコンテナで起動した LiteLLM の URL を設定する場合 Remote SSH 経由での利用の際には以下のように指定します。
+`localhost:4000` だと connection error となります。
+
+```
+Base URL: http://127.0.0.1:4000
 ```
 
 ## セキュリティに関する注意点
