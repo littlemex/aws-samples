@@ -27,6 +27,27 @@ model_list:
        aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
        aws_region_name: os.environ/AWS_REGION_NAME
 
+  - model_name: bedrock-converse-us-deepseek-r1-v1
+    litellm_params:
+       model: bedrock/converse/us.deepseek.r1-v1:0
+       aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+       aws_region_name: os.environ/AWS_REGION_NAME
+
+  - model_name: bedrock-converse-us-nova-pro-v1
+    litellm_params:
+       model: bedrock/converse/us.amazon.nova-pro-v1:0
+       aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+       aws_region_name: os.environ/AWS_REGION_NAME
+
+  - model_name: bedrock-converse-apac-nova-pro-v1
+    litellm_params:
+       model: bedrock/converse/apac.amazon.nova-pro-v1:0
+       aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+       aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+       aws_region_name: ap-northeast-1
+
 litellm_settings:
   fallbacks: [
     {"bedrock-converse-us-claude-3-7-sonnet-v1": 
@@ -34,6 +55,12 @@ litellm_settings:
         "bedrock-us-claude-3-5-sonnet-v2",
         "bedrock-apac-claude-3-5-sonnet-v2",
         "bedrock-claude-3-5-sonnet-v1"
+      ]
+    },
+    {"bedrock-converse-us-deepseek-r1-v1":
+      [
+        "bedrock-converse-us-nova-pro-v1",
+        "bedrock-converse-us-nova-pro-v1"
       ]
     }
   ]
