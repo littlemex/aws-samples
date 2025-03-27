@@ -70,18 +70,33 @@ litellm_settings:
   aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
   aws_region_name: os.environ/AWS_REGION_NAME
   drop_params: true
-  success_callback: ["langfuse", "mlflow_callback.mlflow_callback_instance"]
-  failure_callback: ["langfuse", "mlflow_callback.mlflow_callback_instance"]
-  callbacks: ["langfuse", "mlflow_callback.mlflow_callback_instance"]
-  langfuse_default_tags: [
-    "cache_hit",
-    "cache_key",
-    "proxy_base_url",
-    "user_api_key_alias",
-    "user_api_key_user_id",
-    "user_api_key_user_email",
-    "user_api_key_team_alias"
-  ]
+  success_callback: ["mlflow"]
+  failure_callback: ["mlflow"]
+  callbacks: ["mlflow"]
+  # MLflow の設定（AWS環境用）
+  mlflow:
+    tracking_uri: os.environ/MLFLOW_TRACKING_URI
+    experiment_name: os.environ/MLFLOW_EXPERIMENT_NAME
+    # MLflow に記録するメトリクス
+    metrics:
+      - latency
+      - prompt_tokens
+      - completion_tokens
+      - total_tokens
+      - cost_usd  # AWS環境ではコストも記録
+    # MLflow に記録するパラメータ
+    params:
+      - model
+      - messages
+      - max_tokens
+      - region  # AWS リージョン情報
+    # MLflow に記録するタグ
+    tags:
+      - request_id
+      - deployment
+      - user
+      - aws_account_id  # AWS アカウント情報
+      - sagemaker_endpoint  # SageMaker エンドポイント情報
 
 general_settings:
   log_level: debug
