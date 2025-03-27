@@ -29,7 +29,6 @@
 ├── docker-compose.yml          # MLflow の Docker Compose 設定
 ├── litellm_config.yml         # LiteLLM の設定ファイル（MLflow 連携用）
 ├── mlflow_callback.py         # MLflow コールバック実装
-├── detect_sagemaker_mlflow.py # SageMaker MLflow エンドポイント検出スクリプト
 ├── manage-mlflow.sh          # MLflow 管理スクリプト
 └── test_litellm_mlflow.py    # テストスクリプト
 ```
@@ -38,77 +37,54 @@
 
 ```mermaid
 graph TB
-    subgraph "Local Development"
-        direction LR
-        CP[Cline Plugin] --> LL[LiteLLM Proxy<br/>(2.litellm)]
-        LL --> LF[Langfuse<br/>(4.langfuse)]
-        LL --> MF[MLflow Server<br/>(5.mlflow)]
-        
-        subgraph "Docker Networks"
-            subgraph "langfuse_default"
-                LF
-            end
-            subgraph "mlflow-network"
-                MF
-                DB[(PostgreSQL)]
-                MF --> DB
-                VOL[Artifacts<br/>Volume]
-                MF --> VOL
-            end
-        end
-    end
+    direction LR
+    CP[Cline Plugin] --> LL[LiteLLM Proxy<br/>(2.litellm)]
+    LL --> LF[Langfuse<br/>(4.langfuse)]
+    LL --> SM[SageMaker MLflow<br/>(5.mlflow)]
     
-    subgraph "AWS Deployment"
-        direction LR
-        CP2[Cline Plugin] --> LL2[LiteLLM Proxy]
-        LL2 --> LF2[Langfuse]
-        LL2 --> SM[SageMaker MLflow]
+    subgraph "AWS Services"
+        SM --> S3[(S3<br/>Artifacts)]
+        SM --> RDS[(RDS<br/>Metadata)]
     end
 ```
 
 ## コンポーネント構成
 
-1. **MLflow Server**
-   - バックエンドストア: PostgreSQL
-   - アーティファクトストア: ローカルファイルシステム（Docker ボリューム）
-   - デバッグログ有効化
-   - Gunicorn ワーカー設定
-
-2. **PostgreSQL**
-   - MLflow のメタデータ保存
-   - 実験、パラメータ、メトリクスの管理
-   - データの永続化（Docker ボリューム）
-
-3. **Docker ボリューム**
-   - `postgres-data`: PostgreSQL データの永続化
-   - `mlflow-artifacts`: MLflow アーティファクトの永続化
+1. **AWS SageMaker MLflow**
+   - バックエンドストア: AWS RDS (PostgreSQL)
+   - アーティファクトストア: Amazon S3
+   - セキュアなアクセス制御
+   - スケーラブルなインフラストラクチャ
 
 ## セットアップ手順
 
 1. 環境変数の設定
    ```bash
-   cp .env.example .env
+   # 環境変数の設定
+   ../scripts/setup_env.sh .
    ```
-   以下の環境変数を設定します：
-   - MLflow 関連の設定
-   - AWS 認証情報（SageMaker MLflow 使用時）
+   以下の環境変数が設定されます：
+   - AWS 認証情報（AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY）
+   - AWS リージョン（AWS_REGION_NAME）
+   - MLflow トラッキングサーバー名（MLFLOW_TRACKING_SERVER_NAME）
+   - MLflow 実験名（MLFLOW_EXPERIMENT_NAME）
 
-2. MLflow サーバーの起動
+2. MLflow サーバーの起動と設定
    ```bash
-   # MLflow コンテナの起動
-   ./manage-mlflow.sh start
+   # MLflow トラッキングサーバーの起動
+   sudo ./manage-mlflow.sh start
    
-   # LiteLLM の設定を MLflow 用に更新（既存の LiteLLM を MLflow に接続）
-   ./manage-mlflow.sh update-config
+   # LiteLLM の設定を MLflow 用に更新
+   sudo ./manage-mlflow.sh update-config
    ```
 
-3. 動作確認
+git3. 動作確認
    ```bash
-   # ポートフォワーディングの設定 (Local PC で実行してください)
-   ../scripts/port_forward.py
+   # トラッキングサーバーの情報を取得
+   sudo ./manage-mlflow.sh get-tracking-info
    
-   # ブラウザで MLflow UI にアクセス
-   # MLflow: http://localhost:5000
+   # presigned URL を取得して MLflow UI にアクセス
+   sudo ./manage-mlflow.sh get-url
    ```
 
 ## MLflow の利用方法
@@ -134,16 +110,25 @@ graph TB
 
 ### MLflow Web UI の利用方法
 
-#### ローカル環境
+AWS SageMaker MLflow の Web UI にアクセスするには、以下の手順を実行します：
 
-1. ブラウザで http://localhost:5000 にアクセス
-2. 実験一覧から "litellm-monitoring" を選択
-3. 各実行の詳細を確認：
-   - パラメータ（モデル、設定など）
-   - メトリクス（レイテンシ、トークン数など）
-   - アーティファクト（プロンプト、レスポンス）
+1. presigned URL の取得
+   ```bash
+   sudo ./manage-mlflow.sh get-url
+   ```
+   - URL の有効期限: 5分（AWS の制限により）
+   - セッション有効期限: 約5.5時間
+   - 一度のみ使用可能
 
-#### AWS SageMaker MLflow
+2. ブラウザでアクセス
+   - 取得した presigned URL を使用
+   - 実験一覧から "litellm-monitoring" を選択
+   - 各実行の詳細を確認：
+     - パラメータ（モデル、設定など）
+     - メトリクス（レイテンシ、トークン数など）
+     - アーティファクト（プロンプト、レスポンス）
+
+### AWS SageMaker MLflow の管理
 
 AWS SageMaker MLflow は CDK を使用してインフラストラクチャをコードとして管理します。
 
@@ -162,37 +147,32 @@ AWS SageMaker MLflow は CDK を使用してインフラストラクチャをコ
 
 2. **デプロイ手順**
    ```bash
-   # 環境変数の設定
-   cp .env.example .env
-   # 必要に応じて CDK_COMMAND を設定（デフォルトは "npx cdk"）
-   # export CDK_COMMAND="cdk"  # システムにグローバルインストールされている場合
+   # 環境変数が設定されていることを確認
+   env | grep -E "AWS_|MLFLOW_"
    
-   # デプロイの実行
+   # CDKのデプロイ
    cd cdk
-   ${CDK_COMMAND:-npx cdk} deploy
+   npm install
+   npx cdk deploy
    ```
 
 #### MLflow トラッキングサーバーへのアクセス
 
 1. **presigned URL の取得**
    ```bash
-   ./manage-mlflow.sh get-url
+   sudo ./manage-mlflow.sh get-url
    ```
-   - URL の有効期限: 30分（AWS の制限により）
-   - セッション有効期限: 30分（最小値）
-   - 一度のみ使用可能
+   - URL の有効期限: 5分（AWS の制限により）
+   - セッション有効期限: 約5.5時間（20,000秒）
+   - 一度のみ使用可能（セキュリティのため）
 
-2. **エンドポイントの検出**
+2. **環境変数の確認**
    ```bash
-   ./manage-mlflow.sh detect-aws
+   # 環境変数が正しく設定されているか確認
+   env | grep -E "AWS_|MLFLOW_"
    ```
 
-3. **環境変数の更新を確認**
-   ```bash
-   cat .env
-   ```
-
-4. **MLflow UI からの実験データ確認**
+3. **MLflow UI からの実験データ確認**
    - 取得した presigned URL を使用してアクセス
    - 実験データの閲覧と分析
    - メトリクスの可視化
@@ -201,7 +181,7 @@ AWS SageMaker MLflow は CDK を使用してインフラストラクチャをコ
 - AWS CLI のインストールが必要
 - 適切な AWS 認証情報の設定が必要
 - CDK スタックのデプロイが必要
-- presigned URL は一度のみ使用可能で、有効期限は 30 分
+- presigned URL は一度のみ使用可能で、有効期限は 30 分に設定している
 
 ### カスタムメトリクスの追加
 
@@ -226,26 +206,24 @@ metrics = {
 
 1. **接続エラー**
    ```bash
-   # MLflow サービスのステータス確認
-   ./manage-mlflow.sh status
-   
-   # ログの確認
-   ./manage-mlflow.sh logs
-   ```
-
-2. **SageMaker エンドポイント検出の問題**
-   ```bash
    # AWS 認証情報の確認
    aws configure list
+   aws sts get-caller-identity
    
-   # エンドポイント再検出
-   ./manage-mlflow.sh detect-aws
+   # トラッキングサーバーの情報を再取得
+   sudo ./manage-mlflow.sh get-tracking-info
+   ```
+
+2. **presigned URL の問題**
+   ```bash
+   # 新しい presigned URL を取得
+   sudo ./manage-mlflow.sh get-url
    ```
 
 3. **メトリクス記録の問題**
    ```bash
    # テストの実行
-   ./manage-mlflow.sh test
+   sudo ./manage-mlflow.sh test
    ```
 
 ## 参考リンク
