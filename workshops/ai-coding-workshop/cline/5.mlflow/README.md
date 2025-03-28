@@ -33,21 +33,6 @@
 └── test_litellm_mlflow.py    # テストスクリプト
 ```
 
-## アーキテクチャ
-
-```mermaid
-graph TB
-    direction LR
-    CP[Cline Plugin] --> LL[LiteLLM Proxy<br/>(2.litellm)]
-    LL --> LF[Langfuse<br/>(4.langfuse)]
-    LL --> SM[SageMaker MLflow<br/>(5.mlflow)]
-    
-    subgraph "AWS Services"
-        SM --> S3[(S3<br/>Artifacts)]
-        SM --> RDS[(RDS<br/>Metadata)]
-    end
-```
-
 ## コンポーネント構成
 
 1. **AWS SageMaker MLflow**
