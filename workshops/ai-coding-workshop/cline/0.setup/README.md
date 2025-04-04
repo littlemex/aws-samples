@@ -6,8 +6,8 @@
 
 - AWS アカウント（適切な権限が付与されていること）
 - AWS CLI がインストールされていること
-- AWS CDK v2.x 以上がインストールされていること
-- Node.js v14.x 以上と npm v6.x 以上がインストールされていること
+- AWS CDK v2.92.0 以上がインストールされていること
+- Node.js v18.x 以上と npm v9.x 以上がインストールされていること（推奨: Node.js v20.x LTS）
 
 ### 必要なツールのインストール
 
@@ -61,7 +61,7 @@ uv run port_forward.py --instance-id <インスタンス ID>
 
 2. ブラウザで http://localhost:8080 にアクセスし、code-server に接続します：
    - ユーザー名：デフォルト
-   - パスワード：code-server
+   - パスワード：環境構築時に設定したパスワード(CDK 実装を参照ください、Default: code-server)
 
 ### B. VS Code Remote SSH を使用する場合
 
