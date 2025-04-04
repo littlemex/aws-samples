@@ -1,6 +1,10 @@
 # LiteLLM と Langfuse/MLflow を用いた LLM 利用状況の分析
 
-本セクションでは、Cline VSCode Plugin で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するための Langfuse と MLflow の統合について説明します。この構成により、以下のような情報を詳細に把握することが可能になります：
+2025/03/28 現在、LiteLLM Proxy から MLflow への Callback は動かないことが判明しました。callback の tracking uri が設定できません。[LiteLLM Proxy, All settings](https://docs.litellm.ai/docs/proxy/config_settings) ページにも mlflow 設定がありません。
+
+--
+
+本セクションでは、Cline VSCode Plugin で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するための MLflow の統合について説明します。この構成により、以下のような情報を詳細に把握することが可能になります：
 
 - LLM の利用状況とコスト分析（Langfuse）
 - リクエスト・レスポンスの詳細な記録（Langfuse）
