@@ -34,6 +34,8 @@ region = us-east-1
   - Bedrock のサービスが利用可能なリージョンを指定
 - ☑️ Use cross-region inference
   - このオプションは必ず有効にしてください
+- ☑️ Use prompt caching
+  - [Amazon Bedrock プロンプトキャッシュ](https://aws.amazon.com/jp/bedrock/prompt-caching/) が有効になります。
 - Model: 最新の Claude 3 Sonnet モデル（例: anthropic.claude-3-sonnet-*）
   - 利用可能な最新のモデルを選択してください
   - UI に表示される最新のものを選択
