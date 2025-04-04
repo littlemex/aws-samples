@@ -2,6 +2,74 @@
 
 LiteLLM を使用して Amazon Bedrock 上の Claude (Sonnet 3.7, 3.5) を利用するためのサーバーです。エラーが発生した場合は自動的にフォールバックする機能を備えています。
 
+## Amazon Bedrock へのアクセス方法
+
+Amazon Bedrock へのアクセスには、以下の2つの方法があります：
+
+### 1. IAM ロールを使用する方法（推奨）
+
+EC2 インスタンスに IAM ロールを割り当てることで、アクセスキーを使用せずに Amazon Bedrock にアクセスできます。この方法には以下のメリットがあります：
+
+- セキュリティの向上：アクセスキーをコード内や環境変数で管理する必要がない
+- 運用の簡素化：アクセスキーのローテーションが不要
+- 監査の容易さ：IAM ロールの権限変更履歴を追跡可能
+- 最小権限の原則：必要な権限のみを付与可能
+
+#### セットアップ手順
+
+1. .env の作成
+
+```bash
+../scripts/setup_env.sh # .env.example から .env を作成する。
+# CONFIG_FILE="iam_role_config.yml" であることを確認する。
+```
+
+このスクリプトは以下の処理を実行します：
+- .env.example をコピーして .env ファイルを作成
+- AWS 認証情報（アクセスキー）を取得して .env ファイルに設定 (IAM ロール利用の場合はアクセスキー不要)
+
+2. IAM ロールの設定
+```bash
+# IAM ロールに必要なポリシーを設定
+./manage-litellm.sh set-policy
+```
+
+このコマンドは以下の処理を実行します：
+- EC2 インスタンスに関連付けられた IAM ロールを特定
+- Bedrock アクセスに必要な最小限の権限をポリシーとして設定
+
+3. サービスの起動
+```bash
+# 既存のサービスを停止してから起動（docker コマンドに sudo が必要な場合は sudo をつける）
+sudo ./manage-litellm.sh start
+```
+
+注意：IAM ロールを使用する場合、アクセスキーの設定は不要です。また、LiteLLM 公式ドキュメントで言及されている `aws_role_name` の設定は、別の IAM ロールを assume する場合にのみ必要で、EC2 インスタンスの IAM ロールを使用する場合は設定不要です。
+
+### 2. アクセスキーを使用する方法
+
+アクセスキーを使用しても Amazon Bedrock にアクセスできます。
+
+#### セットアップ手順
+
+1. .env の作成
+
+```bash
+../scripts/setup_env.sh # .env.example から .env を作成する。
+# CONFIG_FILE="default_config.yml" であることを確認する。
+```
+
+2. サービスの起動とテスト
+```bash
+# サービスの起動
+sudo ./manage-litellm.sh start
+
+# LiteLLM Proxy 動作確認
+export LITELLM_MASTER_KEY=sk-litellm-test-key
+curl http://localhost:4000/v1/models \
+  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
+```
+
 ## 環境要件
 
 - Docker
@@ -10,17 +78,8 @@ LiteLLM を使用して Amazon Bedrock 上の Claude (Sonnet 3.7, 3.5) を利用
 
 ## セットアップ手順
 
-1. 環境変数の設定
 
-```bash
-# .env ファイルを作成
-cp .env.example .env
-# .env ファイルを編集して必要な環境変数を設定
-# AWS_ACCESS_KEY_ID=your-access-key-id
-# AWS_SECRET_ACCESS_KEY=your-secret-access-key
-```
-
-2. 設定ファイルの説明
+1. 設定ファイルの説明
 
 `default_config.yml` では以下の設定が可能です：
 
@@ -31,7 +90,7 @@ cp .env.example .env
 
 詳細な設定例は[設定例](#設定例)セクションを参照してください。
 
-3. サービスの起動
+2. サービスの起動
 
 ```bash
 # サービスの起動
@@ -47,7 +106,7 @@ cp .env.example .env
 ./manage-services.sh --help
 ```
 
-4. 動作確認
+3. 動作確認
 
 ```bash
 export LITELLM_MASTER_KEY=sk-litellm-test-key
