@@ -2,6 +2,28 @@
 
 このディレクトリには、 AWS Systems Manager アクセス可能な Amazon EC2 インスタンスをセットアップするための 2 つの AWS CloudFormation テンプレートが含まれています。
 
+## 実行環境の選択
+
+以下のいずれかの環境でコマンドを実行できます：
+
+### AWS CloudShell を使用する場合
+
+AWS CloudShell は AWS マネジメントコンソールから直接利用できる、ブラウザベースのシェル環境です。コンソール右上の CloudShell アイコンをクリックして起動できます。
+
+![CloudShell アイコン](./images/cloudshell-icon.png) 
+
+> **利点**:
+> - 追加料金なしで使用可能
+> - AWS CLI が事前にインストール済み
+> - AWS 認証情報が自動的に設定済み
+
+### ローカル環境を使用する場合
+
+> **必要なツール**:
+> - AWS CLI がインストールされていること
+> - AWS 認証情報が適切に設定されていること
+
+
 ## テンプレートの選択
 
 1. `ec2-ssm.yml` - 新しい Amazon VPC を作成する場合
@@ -81,28 +103,6 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
-## パラメータ説明
-
-### 共通パラメータ
-
-- `UserName`: リソース名の競合を防ぐための識別子（最大 20 文字）
-- `Environment`: 環境名（ dev/stg/prod ）
-- `InstanceType`: Amazon EC2 インスタンスタイプ
-- `Region`: AWS リージョン
-- `AmiId`: EC2 インスタンスの AMI ID
-- `EbsVolumeSize`: Amazon EBS ボリュームサイズ（ GB ）
-- `KeyPairName`: SSH アクセス用のキーペア名（オプション）
-- `CodeServerPassword`: code-server のパスワード
-
-### ec2-ssm.yml 固有のパラメータ
-
-- `VpcCidr`: Amazon VPC の CIDR ブロック
-- `PublicSubnet1Cidr`: パブリックサブネット 1 の CIDR
-- `PublicSubnet2Cidr`: パブリックサブネット 2 の CIDR
-- `AvailabilityZone1`: アベイラビリティゾーン 1
-- `AvailabilityZone2`: アベイラビリティゾーン 2
-- `AllowedIpRange`: Systems Manager アクセスを許可する IP レンジ
-
 ## アクセス方法
 
 1. AWS CLI と AWS Systems Manager Session Manager プラグインをインストール
@@ -147,7 +147,9 @@ aws cloudformation deploy \
 2. ブラウザで http://localhost:18080 にアクセスし、code-server に接続します：
    - パスワード：環境構築時に設定した `CodeServerPassword` の値（デフォルト: code-server）
 
-## パラメータの説明
+## パラメータ一覧
+
+### 共通パラメータ
 
 | パラメータ名 | 説明 | デフォルト値 |
 |------------|------|------------|
@@ -155,10 +157,21 @@ aws cloudformation deploy \
 | Environment | 環境名（ dev/stg/prod ） | dev |
 | InstanceType | Amazon EC2 インスタンスタイプ | m5.xlarge |
 | Region | AWS リージョン | us-east-1 |
-| VpcCidr | Amazon VPC の CIDR ブロック | 10.0.0.0/16 |
-| EbsVolumeSize | Amazon EBS ボリュームサイズ（ GB ） | 20 |
+| AmiId | EC2 インスタンスの AMI ID | ami-084568db4383264d4 |
+| EbsVolumeSize | Amazon EBS ボリュームサイズ（ GB ） | 50 |
 | KeyPairName | SSH アクセス用のキーペア名 | (任意) |
 | CodeServerPassword | code-server のパスワード | code-server |
+
+### ec2-ssm.yml 固有のパラメータ
+
+| パラメータ名 | 説明 | デフォルト値 |
+|------------|------|------------|
+| VpcCidr | Amazon VPC の CIDR ブロック | 10.0.0.0/16 |
+| PublicSubnet1Cidr | パブリックサブネット 1 の CIDR | 10.0.1.0/24 |
+| PublicSubnet2Cidr | パブリックサブネット 2 の CIDR | 10.0.2.0/24 |
+| AvailabilityZone1 | アベイラビリティゾーン 1 | us-east-1a |
+| AvailabilityZone2 | アベイラビリティゾーン 2 | us-east-1b |
+| AllowedIpRange | Systems Manager アクセスを許可する IP レンジ | 0.0.0.0/0 |
 
 ## セキュリティに関する注意事項
 

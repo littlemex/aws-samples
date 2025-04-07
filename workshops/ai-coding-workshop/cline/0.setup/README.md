@@ -24,7 +24,7 @@ brew install session-manager-plugin
 
 開発環境のデプロイには、AWS CDK または AWS CloudFormation を使用できます。どちらの方法も AWS CloudShell からブラウザ上で直接実行することが可能です。
 
-[AWS CDK を使用したデプロイ](./cdk/README.md)は、Infrastructure as Code の利点を活かした柔軟なカスタマイズが可能です。ただし、CDK bootstrap の実行に管理者権限が必要となるため、権限が制限されている環境では利用できない場合があります。
+[AWS CDK を使用したデプロイ](./cdk/README.md)は、Infrastructure as Code の利点を活かした柔軟なカスタマイズが可能です。ただし、cdk bootstrap の実行に管理者権限が必要となるため、権限が制限されている環境では利用できない場合があります。
 
 [AWS CloudFormation を使用したデプロイ](./cfn/README.md)は、管理者権限を必要とせず、より広い環境で利用できます。CloudFormation テンプレートは事前に検証済みのため、安定した環境構築が可能です。
 
