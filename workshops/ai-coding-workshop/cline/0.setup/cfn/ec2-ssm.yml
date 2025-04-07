@@ -1,0 +1,358 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 instance with SSM access and code-server setup
+
+Parameters:
+  # 識別子関連
+  UserName:
+    Type: String
+    Description: User name to prevent resource naming conflicts (max 20 characters)
+    AllowedPattern: "[a-zA-Z0-9-]{1,20}"
+    ConstraintDescription: Must contain only alphanumeric characters and hyphens (max 20 characters)
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, stg, prod]
+    Description: Environment name (dev/stg/prod)
+
+  # インスタンス設定関連
+  InstanceType:
+    Type: String
+    Default: m5.xlarge
+    Description: EC2 instance type
+
+  Region:
+    Type: String
+    Default: us-east-1
+    Description: AWS Region
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Default: ami-084568db4383264d4
+    Description: Ubuntu Server 22.04 LTS (HVM),EBS General Purpose (SSD) Volume Type. Support available from Canonical (http://www.ubuntu.com/cloud/services).
+
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block for VPC
+  EbsVolumeSize:
+    Type: Number
+    Default: 50
+    Description: Size of EBS volume in GB
+    MinValue: 8
+    MaxValue: 16384
+
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: (Optional) Name of an existing EC2 KeyPair to enable SSH access to the instance
+
+  CodeServerPassword:
+    Type: String
+    Default: code-server
+    Description: Password for code-server web interface
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 41
+
+  # ネットワーク設定関連
+  AvailabilityZone1:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1a
+    Description: Availability Zone for the first public subnet
+  AvailabilityZone2:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Default: us-east-1b
+    Description: Availability Zone for the second public subnet
+
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 10.0.0.0/24
+    Description: CIDR block for the first public subnet
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CIDR block for the second public subnet
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+
+  AllowedIpRange:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: The IP address range that can access the instance via Session Manager
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-${Environment}
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZone1
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-PublicSubnet
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZone1
+      CidrBlock: !Ref PublicSubnet1Cidr
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-PrivateSubnet
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-IGW
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-PublicRouteTable
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-PrivateRouteTable
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for EC2 instance
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: !Ref AllowedIpRange
+          Description: Allow inbound access to code-server
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedIpRange
+          Description: Allow SSH access
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: !Ref AllowedIpRange
+          Description: Allow all outbound traffic by default
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-${Environment}-sg
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${UserName}-${Environment}-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: !Sub ${UserName}-${Environment}-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssmmessages:CreateControlChannel
+                  - ssmmessages:CreateDataChannel
+                  - ssmmessages:OpenControlChannel
+                  - ssmmessages:OpenDataChannel
+                Resource: '*'
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub ${UserName}-${Environment}-instance-profile
+      Roles:
+        - !Ref EC2Role
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref AmiId
+      SubnetId: !Ref PrivateSubnet
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: !Ref EbsVolumeSize
+      KeyName: !If 
+        - HasKeyPair
+        - !Ref KeyPairName
+        - !Ref AWS::NoValue
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+
+          # Update package list
+          apt-get update
+
+          # Install basic utilities
+          apt-get install -y \
+              curl \
+              wget \
+              unzip \
+              htop \
+              jq
+
+          echo "apt-get install done."
+
+          # Install code-server
+          export HOME=/root
+          curl -fsSL https://code-server.dev/install.sh | sh
+
+          # Add helper server for redirect
+          git clone https://github.com/bpmct/coder-cloud-redirect-server
+          cd coder-cloud-redirect-server
+          cp coder-cloud-redirect.service /etc/systemd/system/
+          cp coder-cloud-redirect.py /usr/bin/
+
+          # Create code-server user
+          adduser --disabled-password --gecos "" coder
+          echo "coder ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/coder
+          usermod -aG sudo coder
+
+          # Configure code-server
+          mkdir -p /home/coder/.config/code-server
+          touch /home/coder/.config/code-server/config.yaml
+          chown -R coder:coder /home/coder/.config
+          chmod -R 775 /home/coder/.config
+
+          cat > /home/coder/.config/code-server/config.yaml << EOF
+          bind-addr: 0.0.0.0:8080
+          auth: password
+          password: ${CodeServerPassword}
+          cert: false
+          EOF
+
+          # Start and enable services
+          systemctl enable --now code-server@coder
+          systemctl enable --now coder-cloud-redirect
+
+          systemctl restart code-server@coder
+          systemctl restart coder-cloud-redirect
+
+          systemctl status code-server@coder
+          systemctl status coder-cloud-redirect
+
+          echo "Configuration complete"
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-${Environment}-instance
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref EC2Instance
+
+  Prerequisites:
+    Description: Required prerequisites
+    Value: |
+      1. Install AWS CLI
+      2. Install Session Manager plugin (https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
+
+  PortForwardCommand:
+    Description: Command to forward port 8080 to local port 18080
+    Value: !Sub |
+      aws ssm start-session \
+        --target ${EC2Instance} \
+        --region ${Region} \
+        --document-name AWS-StartPortForwardingSession \
+        --parameters '{"portNumber":["8080"],"localPortNumber":["18080"]}'
+
+  AccessURL:
+    Description: URL to access after port forwarding
+    Value: "After running the port forward command, access: http://localhost:18080"
+
+  Configuration:
+    Description: Stack configuration details
+    Value: !Sub |
+      Stack Name: ${UserName}-${Environment}
+      Region: ${Region}
+      Instance Type: ${InstanceType}
+      AMI ID: ${AmiId}
+      VPC CIDR: ${VpcCidr}
+      EBS Volume Size: ${EbsVolumeSize} GB

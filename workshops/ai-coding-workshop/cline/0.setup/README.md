@@ -6,18 +6,15 @@
 
 - AWS アカウント（適切な権限が付与されていること）
 - AWS CLI がインストールされていること
-- AWS CDK v2.92.0 以上がインストールされていること
-- Node.js v18.x 以上と npm v9.x 以上がインストールされていること（推奨: Node.js v20.x LTS）
+- AWS Systems Manager Session Manager プラグイン
 
-### 必要なツールのインストール
+### ローカル PC に必要なツールのインストール
+
+> **注意**: 
+> - Session Manager プラグインは、EC2 インスタンスへの接続に必要なツールです
+> - このツールはローカル PC にインストールする必要があります（CloudShell では使用できません）
 
 ```bash
-# AWS Command Line Interface (AWS CLI) のインストール（macOS の例）
-brew install awscli
-
-# AWS CDK のインストール
-npm install -g aws-cdk
-
 # AWS Systems Manager Session Manager プラグインのインストール（macOS の例）
 # See: https://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html
 brew install session-manager-plugin
@@ -25,31 +22,17 @@ brew install session-manager-plugin
 
 ## 2. EC2 環境のデプロイ
 
-1. リファレンス用の CDK リポジトリをクローンします：
-   ```bash
-   git clone https://github.com/littlemex/aws-samples
-   cd aws-samples/cdk/ec2-ssm-cdk
-   ```
+開発環境のデプロイには、AWS CDK または AWS CloudFormation を使用できます。どちらの方法も AWS CloudShell からブラウザ上で直接実行することが可能です。
 
-2. 依存関係をインストールします：
-   ```bash
-   npm install
-   ```
+[AWS CDK を使用したデプロイ](./cdk/README.md)は、Infrastructure as Code の利点を活かした柔軟なカスタマイズが可能です。ただし、CDK bootstrap の実行に管理者権限が必要となるため、権限が制限されている環境では利用できない場合があります。
 
-3. CDK スタックをデプロイします：
-   ```bash
-   cdk deploy
-   ```
-
-   > **注意**: インスタンスの起動まで約5-10分かかる場合があります
+[AWS CloudFormation を使用したデプロイ](./cfn/README.md)は、管理者権限を必要とせず、より広い環境で利用できます。CloudFormation テンプレートは事前に検証済みのため、安定した環境構築が可能です。
 
 ## 3. 開発環境へのアクセス方法
 
 ### A. code-server を使用する場合
 
-1. デプロイ完了後、出力される Port Forward コマンドをローカル PC のターミナルから実行します：
-
-
+1. デプロイ完了後、出力される Port Forward コマンドをローカル PC のターミナルから実行します（CloudShell では実行できません）：
 
 ```bash
 aws ssm start-session --target <インスタンス ID> --document-name AWS-StartPortForwardingSession --parameters "portNumber=8080,localPortNumber=8080"
@@ -61,7 +44,7 @@ uv run port_forward.py --instance-id <インスタンス ID>
 
 2. ブラウザで http://localhost:8080 にアクセスし、code-server に接続します：
    - ユーザー名：デフォルト
-   - パスワード：環境構築時に設定したパスワード(CDK 実装を参照ください、Default: code-server)
+   - パスワード：環境構築時に設定したパスワード（デプロイガイドを参照, default: code-server）
 
 ### B. VS Code Remote SSH を使用する場合
 
@@ -86,7 +69,7 @@ Cline のインストールと設定方法については、[Cline セットア�
 
 > **注意**: モデルアクセスの承認には数分かかる場合があります
 
-![Bedrockモデルアクセスの設定](./bedrock-setup.png)
+![Bedrock モデルアクセスの設定](./bedrock-setup.png)
 
 ## 参考リソース
 
