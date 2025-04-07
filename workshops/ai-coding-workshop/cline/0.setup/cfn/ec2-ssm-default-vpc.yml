@@ -1,0 +1,300 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 instance with SSM access and code-server setup (using default VPC)
+
+Parameters:
+  # 識別子関連
+  UserName:
+    Type: String
+    Description: User name to prevent resource naming conflicts (max 20 characters)
+    AllowedPattern: "[a-zA-Z0-9-]{1,20}"
+    ConstraintDescription: Must contain only alphanumeric characters and hyphens (max 20 characters)
+
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, stg, prod]
+    Description: Environment name (dev/stg/prod)
+
+  # インスタンス設定関連
+  InstanceType:
+    Type: String
+    Default: m5.xlarge
+    Description: EC2 instance type
+
+  Region:
+    Type: String
+    Default: us-east-1
+    Description: AWS Region
+
+  AmiId:
+    Type: AWS::EC2::Image::Id
+    Default: ami-084568db4383264d4
+    Description: Ubuntu Server 22.04 LTS (HVM),EBS General Purpose (SSD) Volume Type. Support available from Canonical (http://www.ubuntu.com/cloud/services).
+
+  EbsVolumeSize:
+    Type: Number
+    Default: 50
+    Description: Size of EBS volume in GB
+    MinValue: 8
+    MaxValue: 16384
+
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: (Optional) Name of an existing EC2 KeyPair to enable SSH access to the instance
+
+  CodeServerPassword:
+    Type: String
+    Default: code-server
+    Description: Password for code-server web interface
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 41
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+
+Resources:
+  DefaultVPCSubnet:
+    Type: Custom::DefaultVPCSubnet
+    Properties:
+      ServiceToken: !GetAtt DefaultVPCSubnetFunction.Arn
+      Region: !Ref Region
+
+  DefaultVPCSubnetFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt DefaultVPCSubnetFunctionRole.Arn
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          def handler(event, context):
+              try:
+                  if event['RequestType'] in ['Create', 'Update']:
+                      ec2 = boto3.client('ec2')
+                      # デフォルトVPCを取得
+                      vpcs = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
+                      if not vpcs['Vpcs']:
+                          raise Exception('Default VPC not found')
+                      vpc_id = vpcs['Vpcs'][0]['VpcId']
+                      
+                      # デフォルトVPCのパブリックサブネットを取得
+                      subnets = ec2.describe_subnets(
+                          Filters=[
+                              {'Name': 'vpc-id', 'Values': [vpc_id]},
+                              {'Name': 'map-public-ip-on-launch', 'Values': ['true']}
+                          ]
+                      )
+                      if not subnets['Subnets']:
+                          raise Exception('No public subnet found in default VPC')
+                      
+                      # 最初のパブリックサブネットを使用
+                      subnet_id = subnets['Subnets'][0]['SubnetId']
+                      
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {
+                          'SubnetId': subnet_id,
+                          'VpcId': vpc_id
+                      })
+                  else:
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+
+      Runtime: python3.9
+      Timeout: 30
+
+  DefaultVPCSubnetFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: EC2DescribeAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSubnets
+                Resource: '*'
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !GetAtt DefaultVPCSubnet.VpcId
+      GroupDescription: Security group for EC2 instance
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+          Description: Allow inbound access to code-server
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+          Description: Allow SSH access
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-${Environment}-sg
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${UserName}-${Environment}-ec2-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: !Sub ${UserName}-${Environment}-ssm-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssmmessages:CreateControlChannel
+                  - ssmmessages:CreateDataChannel
+                  - ssmmessages:OpenControlChannel
+                  - ssmmessages:OpenDataChannel
+                Resource: '*'
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub ${UserName}-${Environment}-instance-profile
+      Roles:
+        - !Ref EC2Role
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref AmiId
+      SubnetId: !GetAtt DefaultVPCSubnet.SubnetId
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: !Ref EbsVolumeSize
+      KeyName: !If 
+        - HasKeyPair
+        - !Ref KeyPairName
+        - !Ref AWS::NoValue
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+
+          # Update package list
+          apt-get update
+
+          # Install basic utilities
+          apt-get install -y \
+              curl \
+              wget \
+              unzip \
+              htop \
+              jq
+
+          echo "apt-get install done."
+
+          # Install code-server
+          export HOME=/root
+          curl -fsSL https://code-server.dev/install.sh | sh
+
+          # Add helper server for redirect
+          git clone https://github.com/bpmct/coder-cloud-redirect-server
+          cd coder-cloud-redirect-server
+          cp coder-cloud-redirect.service /etc/systemd/system/
+          cp coder-cloud-redirect.py /usr/bin/
+
+          # Create code-server user
+          adduser --disabled-password --gecos "" coder
+          echo "coder ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/coder
+          usermod -aG sudo coder
+
+          # Configure code-server
+          mkdir -p /home/coder/.config/code-server
+          touch /home/coder/.config/code-server/config.yaml
+          chown -R coder:coder /home/coder/.config
+          chmod -R 775 /home/coder/.config
+
+          cat > /home/coder/.config/code-server/config.yaml << EOF
+          bind-addr: 0.0.0.0:8080
+          auth: password
+          password: ${CodeServerPassword}
+          cert: false
+          EOF
+
+          # Start and enable services
+          systemctl enable --now code-server@coder
+          systemctl enable --now coder-cloud-redirect
+
+          systemctl restart code-server@coder
+          systemctl restart coder-cloud-redirect
+
+          systemctl status code-server@coder
+          systemctl status coder-cloud-redirect
+
+          echo "Configuration complete"
+      Tags:
+        - Key: Name
+          Value: !Sub ${UserName}-${Environment}-instance
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref EC2Instance
+
+  Prerequisites:
+    Description: Required prerequisites
+    Value: |
+      1. Install AWS CLI
+      2. Install Session Manager plugin (https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html)
+
+  PortForwardCommand:
+    Description: Command to forward port 8080 to local port 18080
+    Value: !Sub |
+      aws ssm start-session \
+        --target ${EC2Instance} \
+        --region ${Region} \
+        --document-name AWS-StartPortForwardingSession \
+        --parameters '{"portNumber":["8080"],"localPortNumber":["18080"]}'
+
+  AccessURL:
+    Description: URL to access after port forwarding
+    Value: "After running the port forward command, access: http://localhost:18080"
+
+  Configuration:
+    Description: Stack configuration details
+    Value: !Sub |
+      Stack Name: ${UserName}-${Environment}
+      Region: ${Region}
+      Instance Type: ${InstanceType}
+      AMI ID: ${AmiId}
+      EBS Volume Size: ${EbsVolumeSize} GB
