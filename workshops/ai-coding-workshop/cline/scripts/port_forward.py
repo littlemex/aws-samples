@@ -81,7 +81,7 @@ def start_port_forwarding_with_delay(instance_id: str, region: str, port_configs
 
 def main():
     parser = argparse.ArgumentParser(description='EC2インスタンスへのSSMポートフォワーディング')
-    parser.add_argument('-c', '--config', default='config.yaml', help='設定ファイルのパス')
+    parser.add_argument('-c', '--config', default='config.yml', help='設定ファイルのパス')
     parser.add_argument('-i', '--instance-id', help='EC2インスタンスID（環境変数 EC2_INSTANCE_ID より優先）')
     parser.add_argument('-r', '--region', help='AWSリージョン（環境変数 AWS_REGION より優先）')
     parser.add_argument('-d', '--delay', type=float, default=3.0, help='ポートフォワーディング間の遅延（秒）')

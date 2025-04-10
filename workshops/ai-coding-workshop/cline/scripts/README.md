@@ -21,7 +21,7 @@ boto3
 
 ### 設定ファイル
 
-`config.yaml`ファイルに以下の設定を記述します：
+`config.yml`ファイルに以下の設定を記述します：
 
 ```yaml
 # SSMポートフォワーディング設定
@@ -47,7 +47,7 @@ uv venv && source .venv/bin/activate && uv sync
 uv run port_forward.py
 ```
 
-これにより、設定ファイル（`config.yaml`）に定義されたポートフォワーディングが開始されます。
+これにより、設定ファイル（`config.yml`）に定義されたポートフォワーディングが開始されます。
 
 #### コマンドラインオプション
 
@@ -57,7 +57,7 @@ uv run port_forward.py -i <instance-id> -r <region> -c <config-file>
 
 - `-i`, `--instance-id`: Amazon EC2 インスタンスID（環境変数 `EC2_INSTANCE_ID` より優先）
 - `-r`, `--region`: AWSリージョン（環境変数 `AWS_REGION` より優先）
-- `-c`, `--config`: 設定ファイルのパス（デフォルト: `config.yaml`）
+- `-c`, `--config`: 設定ファイルのパス（デフォルト: `config.yml`）
 
 #### 環境変数
 
