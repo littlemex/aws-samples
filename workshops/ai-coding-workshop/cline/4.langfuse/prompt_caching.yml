@@ -1,0 +1,45 @@
+model_list:
+  - model_name: bedrock-converse-us-claude-3-7-sonnet-v1
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+      aws_region_name: os.environ/AWS_REGION_NAME
+      aws_session_name: "claude-3-7-sonnet-session"
+
+litellm_settings:
+  num_retries: 5
+  request_timeout: 30
+  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_session_name: "litellm-bedrock-session"
+  drop_params: true # サポート外のパラメータを無視する
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  callbacks: ["langfuse"]
+  langfuse_default_tags: [
+    "cache_hit",
+    "cache_key",
+    "proxy_base_url",
+    "user_api_key_alias",
+    "user_api_key_user_id",
+    "user_api_key_user_email",
+    "user_api_key_team_alias"
+  ]
+
+general_settings:
+  log_level: debug
+  openai_api_base: "/v1"
+  disable_user_auth: true
+
+router_settings:
+  default_model: bedrock-converse-us-claude-3-7-sonnet-v1
+  failover: false
+  timeout: 30
+  retries: 3
+
+openapi:
+  openapi_version: "3.1.0"
+  title: "LiteLLM API"
+  description: "LiteLLM API for multiple LLM models"
+  servers:
+    - url: "/"
+  info:
+    version: "1.0.0"

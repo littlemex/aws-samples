@@ -12,7 +12,8 @@
 ```
 .
 ├── .env.example             # 環境変数のテンプレート
-├── litellm_config.yml       # LiteLLM の設定ファイル
+├── default_config.yml       # LiteLLM の基本設定ファイル
+├── prompt_caching.yml       # Prompt Caching 機能用の設定ファイル
 ├── manage-langfuse.sh       # Langfuse 管理スクリプト
 └── test_litellm_langfuse.py # テストスクリプト
 ```
@@ -107,10 +108,11 @@ graph TB
 
 ## 設定ファイル
 
-### litellm_config.yml
+### default_config.yml
 - モデルの設定（Bedrock Claude など）
 - フォールバックとリトライの設定
 - Langfuse コールバックの設定
+- アクセスキーによる Amazon Bedrock アクセス (IAM role によるアクセスについては [../2.litellm/README.md](../2.litellm/README.md) を参照)
 
 ## デバッグツール
 
@@ -194,3 +196,31 @@ python test_litellm_langfuse.py
 
 ![](./images/langfuse-traces.png)
 ![](./images/langfuse-traces-detail.png)
+
+## Prompt Caching 機能と Langfuse の連携
+
+LiteLLM config ファイルの認証情報に関する設定の詳細は [2.litellm の README.md](../2.litellm/README.md) を参照ください。
+
+### Langfuse と Prompt Caching の組み合わせ
+
+`prompt_caching.yml` を使用することで、Prompt Caching 機能を利用しつつ Langfuse でログを確認することができます。
+
+### 利用方法
+
+1. IAM ロールの設定（既に `set-policy` を実行済みであることを前提とします）
+   ```bash
+   cd ../2.litellm/ && ./manage-litellm.sh set-policy
+   ```
+
+2. Prompt Caching 設定ファイルを指定して LiteLLM を起動
+   ```bash
+   ./manage-langfuse.sh -c prompt_caching.yml start
+   ```
+
+3. Cline の設定で LiteLLM Proxy を API Provider として設定し、Prompt Caching 設定を有効化
+
+### Langfuse でのキャッシュヒット確認
+
+Langfuse の Traces 詳細では、キャッシュヒットした場合の json 情報を確認することができます。
+
+![](./images/langfuse-cache-hit.png)

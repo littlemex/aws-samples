@@ -7,7 +7,8 @@ NC='\033[0m' # No Color
 
 LANGFUSE_DIR="langfuse"
 LITELLM_DIR="../2.litellm"
-LITELLM_CONFIG="litellm_config.yml"
+CONFIG_FILE="default_config.yml"
+ENV_FILE=".env"
 
 log_info() {
     echo -e "${GREEN}[INFO]${NC} $1"
@@ -53,7 +54,10 @@ load_env_vars() {
 setup_langfuse() {
     if [ ! -d "$LANGFUSE_DIR" ]; then
         log_info "Langfuse リポジトリをクローンしています..."
-        git clone https://github.com/langfuse/langfuse.git
+        # 安定バージョンを指定してクローン
+        LANGFUSE_VERSION="v3.49.1"
+        log_info "Langfuse バージョン $LANGFUSE_VERSION を使用します"
+        git -c advice.detachedHead=false clone -b $LANGFUSE_VERSION --single-branch --depth=1 https://github.com/langfuse/langfuse.git
         if [ $? -ne 0 ]; then
             log_error "Langfuse リポジトリのクローンに失敗しました"
             exit 1
@@ -139,7 +143,8 @@ update_litellm_config() {
     cd "$LITELLM_DIR"
     ./manage-litellm.sh stop
     log_info "LiteLLM を Langfuse 設定で起動しています..."
-    ./manage-litellm.sh -c "../4.langfuse/$LITELLM_CONFIG" start
+    log_info "設定ファイル: ../4.langfuse/$CONFIG_FILE を使用します"
+    ./manage-litellm.sh -c "../4.langfuse/$CONFIG_FILE" start
     
     # LiteLLMコンテナをLangfuseのネットワークに追加
     log_info "LiteLLM を Langfuse のネットワークに追加しています..."
@@ -206,12 +211,13 @@ show_help() {
     echo "  update-config   - LiteLLM の設定を更新"
     echo
     echo "Options:"
+    echo "  -c, --config FILE - 設定ファイルを指定 (デフォルト: $CONFIG_FILE)"
     echo "  -h, --help     - このヘルプメッセージを表示"
 }
 
 # 環境変数を最初に読み込む
 log_info "環境変数を読み込んでいます..."
-load_env_vars
+load_env_vars "$ENV_FILE"
 
 # メイン処理
 COMMAND=""
@@ -221,6 +227,10 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         start|stop|restart|update-config)
             COMMAND="$1"
+            ;;
+        -c|--config)
+            CONFIG_FILE="$2"
+            shift
             ;;
         -h|--help)
             show_help
