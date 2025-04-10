@@ -229,3 +229,59 @@ general_settings:
 この設定を有効にすると、ログページで各リクエストの詳細な内容（プロンプトや回答）を確認できるようになります。
 
 ![ログ画面](images/litellm-logs.png)
+
+## Prompt Caching 機能
+
+Amazon Bedrock の [Prompt Caching](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html) 機能を使用すると、同一のプロンプトに対する応答をキャッシュし、API コールを削減することができます。これにより、以下のメリットが得られます：
+
+- レスポンス時間の短縮
+- API 使用量とコストの削減
+
+### Amazon Bedrock Claude 3.7 Sonnet v1 での Prompt Caching
+
+コーディング能力の高さから Cline と相性の良い Amazon Bedrock Claude 3.7 Sonnet v1 でも Prompt Caching 機能が利用可能になりました。Cline の API Provider から直接 Amazon Bedrock を指定して Prompt Caching を利用することができますし、API Provider として LiteLLM を選択した場合でも Prompt Caching を利用することができます。
+
+専用の設定ファイル `prompt_caching.yml` を使用し Cline 設定画面上で有効化することで、簡単に利用できます。
+
+![](./images/litellm-prompt-caching.png)
+
+### EC2 上での利用方法
+
+EC2 インスタンス上で Prompt Caching を利用する場合は、以下の手順で設定します：
+
+1. IAM ロールの設定（既に `set-policy` を実行済みであることを前提とします）
+   ```bash
+   ./manage-litellm.sh set-policy
+   ```
+
+2. Prompt Caching 設定ファイルを指定して LiteLLM を起動
+   ```bash
+   ./manage-litellm.sh -c prompt_caching.yml start
+   ```
+
+### ローカル環境での利用方法
+
+ローカル環境等で Prompt Caching を利用する場合は、AWS 認証情報の設定とが必要です。
+そして、`default_config.yml` に記載の例のようにアクセスキー情報を渡す必要があります。
+詳細は LiteLLM Proxy の[公式ドキュメント](https://docs.litellm.ai/docs/simple_proxy)を参照ください。
+
+3. Prompt Caching 設定ファイルを指定して LiteLLM を起動
+   ```bash
+   ./manage-litellm.sh -c prompt_caching.yml start
+   ```
+
+4. Cline の設定で LiteLLM Proxy を API Provider として設定
+
+### 重要な注意事項 (2025/04/11 時点)
+
+1. **モデルの可用性**：
+   - Claude 3.7 Sonnet v1 は us-east-1 リージョンで cross region inference を有効にするケースのみで利用可能です。
+   - モデルアクセスを有効化する場合は、us-east-1、us-east-2、us-west-2 すべてのリージョンで Claude 3.7 Sonnet v1 を有効化することを推奨します。
+
+2. **モデルの特性と互換性**：
+   - Claude 3.7 Sonnet v1 は高精度なコーディングが可能で、Prompt Caching 機能も利用できます。
+   - Claude 3.5 Sonnet v2 は高精度なコーディングが可能ですが Prompt Caching 機能に対応していません。
+
+3. **フォールバック設定の注意点**：
+   - LiteLLM Proxy 経由で利用する場合、Prompt Caching が有効にできないモデル（例：Claude 3.5 Sonnet v2）を fallbacks に指定するとエラーが発生します。
+   - フォールバック設定を行う場合は、Prompt Caching 対応モデルのみを指定するようにしてください。

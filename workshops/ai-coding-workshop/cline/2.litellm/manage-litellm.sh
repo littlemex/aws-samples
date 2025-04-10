@@ -143,6 +143,10 @@ while [[ "$#" -gt 0 ]]; do
             ENV_FILE="$2"
             shift
             ;;
+        -c|--config)
+            CONFIG_FILE="$2"
+            shift
+            ;;
         -h|--help)
             show_help
             exit 0
@@ -161,6 +165,13 @@ if [ -z "$COMMAND" ]; then
     show_help
     exit 1
 fi
+
+if [ ! -f "$CONFIG_FILE" ]; then
+    log_error "設定ファイル $CONFIG_FILE が見つかりません"
+    exit 1
+fi
+
+export CONFIG_FILE
 
 case "$COMMAND" in
     start)
