@@ -12,14 +12,59 @@ VSCode の Extentions メニューから「Cline」を検索し、インスト�
 - API Provider: Amazon Bedrock
 - 認証方式: AWS Profile
 
-AWS認証情報は以下の形式で `~/.aws/credentials` に設定する必要があります：
+AWS 認証情報の設定には、以下の 2 つの方法があります：
+
+#### 方法 1: AWS アクセスキーを使用する方法（`aws configure`）
+
+AWS CLI の `aws configure` コマンドを使用して、アクセスキーとシークレットキーを `~/.aws/credentials` ファイルに設定します：
+
+```bash
+aws configure
+```
+
+コマンド実行後、以下の情報の入力を求められます：
+- AWS Access Key ID: [アクセスキー ID を入力]
+- AWS Secret Access Key: [シークレットアクセスキーを入力]
+- Default region name: us-east-1
+- Default output format: json (または希望の形式)
+
+設定後、`~/.aws/credentials` ファイルは以下のようになります：
 
 ```
-cat ~/.aws/credentials 
-[cline]
-aws_access_key_id = XXX
-aws_secret_access_key = XXX
+[Cline]
+aws_access_key_id = AKIAXXXXXXXXXXXXXXXX
+aws_secret_access_key = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 region = us-east-1
+```
+
+#### 方法 2: AWS SSO を使用する方法（`aws configure sso`）
+
+AWS SSO を使用すると、アクセスキーを手動で管理する必要がなく、より安全に認証を行えるメリットがあります。
+
+```bash
+aws configure sso
+```
+
+コマンド実行後、以下の情報の入力を求められます：
+- SSO start URL: [SSO のスタート URL を入力]
+- SSO Region: [SSO のリージョンを入力]
+- SSO registration scopes: sso:account:access
+
+ブラウザが開き、AWS SSO へのログインを求められます。ログイン後、アクセスするアカウントとロールを選択します。
+
+設定後、`~/.aws/config` ファイルは以下のようになります：
+
+```
+[profile Cline]
+sso_session = sso-session-name
+sso_account_id = 123456789012
+sso_role_name = RoleName
+region = us-east-1
+
+[sso-session sso-session-name]
+sso_start_url = https://example.awsapps.com/start
+sso_region = us-east-1
+sso_registration_scopes = sso:account:access
 ```
 
 ![Bedrock認証設定](images/cline-setup2.png)
@@ -28,7 +73,7 @@ region = us-east-1
 
 以下の設定項目を正確に入力してください：
 
-- AWS Profile Name: cline
+- AWS Profile Name: Cline
   - credentials ファイルで設定したプロファイル名と一致させてください
 - AWS Region: us-east-1
   - Bedrock のサービスが利用可能なリージョンを指定
