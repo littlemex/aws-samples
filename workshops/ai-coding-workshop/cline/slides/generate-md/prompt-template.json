@@ -1,0 +1,120 @@
+{
+  "role": "presentation_specialist",
+  "task": "markdown_to_presentation_conversion",
+  "input_requirements": {
+    "file_type": "markdown",
+    "input_format": "multiple_files",
+    "expected_content": [
+      "technical_documentation",
+      "architecture_diagrams",
+      "code_samples"
+    ]
+  },
+  "output_requirements": {
+    "file_type": "markdown",
+    "output_format": "single_file",
+    "slide_structure": {
+      "title_slide": {
+        "required": true,
+        "elements": ["title", "subtitle", "date"]
+      },
+      "agenda_slide": {
+        "required": true,
+        "max_items": 7
+      },
+      "content_slides": {
+        "max_items_per_slide": 7,
+        "information_density": "optimal",
+        "heading_structure": "hierarchical",
+        "continuation": {
+          "enabled": true,
+          "suffix": " (続き)",
+          "style": "same_as_original"
+        },
+        "slide_separator": "---"
+      }
+    },
+    "visual_elements": {
+      "mermaid_diagrams": {
+        "placement": "centered",
+        "size": {
+          "width": "80%",
+          "height": "auto"
+        },
+        "style": "professional",
+        "single_slide": true,
+        "explanation": {
+          "required": true,
+          "position": "after"
+        }
+      },
+      "images": {
+        "sizing": {
+          "type": "contain",
+          "width": "80%",
+          "height": "50%",
+          "maintain_aspect_ratio": true
+        },
+        "placement": "centered"
+      },
+      "code_blocks": {
+        "formatting": "syntax_highlighted",
+        "max_lines_per_slide": 15,
+        "font_size": "readable",
+        "background_color": "262626",
+        "comment_color": "00FF00",
+        "code_color": "FFFFFF",
+        "font_family": "Courier New"
+      },
+      "emphasis": {
+        "bold": "key_points",
+        "italics": "technical_terms",
+        "lists": "hierarchical"
+      }
+    },
+    "design_guidelines": {
+      "consistency": {
+        "fonts": "professional",
+        "colors": "corporate",
+        "spacing": "balanced"
+      },
+      "readability": {
+        "font_size_minimum": "20pt",
+        "content_density": "moderate",
+        "white_space": "sufficient"
+      }
+    }
+  },
+  "processing_instructions": {
+    "analysis_phase": {
+      "document_structure": "analyze_and_optimize",
+      "key_concepts": "identify_and_highlight",
+      "visual_elements": "optimize_for_presentation"
+    },
+    "structuring_phase": {
+      "logical_flow": "ensure_coherence",
+      "section_breaks": "optimize_for_comprehension",
+      "information_hierarchy": "clear_and_logical"
+    },
+    "optimization_phase": {
+      "slide_breaks": "natural_and_logical",
+      "visual_enhancement": "professional_and_clear",
+      "content_simplification": "maintain_technical_accuracy"
+    }
+  },
+  "quality_checks": {
+    "technical_accuracy": {
+      "required": true,
+      "maintain_original_meaning": true
+    },
+    "visual_quality": {
+      "professional_appearance": true,
+      "consistent_styling": true
+    },
+    "content_structure": {
+      "logical_flow": true,
+      "appropriate_depth": true,
+      "clear_hierarchy": true
+    }
+  }
+}

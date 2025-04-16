@@ -1,0 +1,29 @@
+# Markdown プレゼンテーション変換プロンプト
+
+このディレクトリには、複数のファイル情報から魅力的なプレゼンテーション用の単一 Markdown ファイルに変換するためのプロンプトが含まれています。
+
+## ファイル構成
+
+- `prompt-template.json`: JSON 形式のプロンプト定義テンプレート
+- `prompt-template.txt`: テキスト形式の詳細なプロンプト
+
+## 指示
+
+1. 対象ファイル：
+
+変換対象のファイル：
+- ../../blog/01_introduction.md
+- ../../blog/02_about_cline.md
+- ../../blog/03_architecture.md
+- ../../blog/architecture.md
+
+2. まず、`prompt-template.txt` の内容、プロンプトの全体像を理解してください。
+
+3. `prompt-template.json` を確認してください。
+
+4. 出力ファイル名: ./presentation.md
+
+
+## 補足情報
+
+生成された Markdown は、`../slides/generate-pptx` ディレクトリの変換スクリプトで PowerPoint に変換されます。
