@@ -9,7 +9,10 @@ const imageSize = require('image-size');
  */
 async function convertHtmlToSlides() {
     // HTML ファイルを読み込む
-    const htmlFile = path.join(__dirname, 'preview-with-images.html');
+    const htmlFile = process.argv[2] || path.join(__dirname, 'test-preview.html');
+    if (!fs.existsSync(htmlFile)) {
+        throw new Error(`HTML ファイルが見つかりません: ${htmlFile}`);
+    }
     const htmlContent = fs.readFileSync(htmlFile, 'utf-8');
     
     // HTML を解析
@@ -484,8 +487,9 @@ async function convertHtmlToSlides() {
         }
     });
     
-    // プレゼンテーションを保存
-    const outputPath = path.join(__dirname, 'html-output-with-images.pptx');
+    // プレゼンテーションを保存（入力ファイル名に基づいて出力ファイル名を生成）
+    const baseName = path.basename(htmlFile, '.html');
+    const outputPath = path.join(__dirname, `${baseName}.pptx`);
     await pres.writeFile({ fileName: outputPath });
     console.log(`スライドを生成しました: ${outputPath}`);
 }

@@ -7,11 +7,12 @@ const execAsync = util.promisify(exec);
 
 /**
  * Markdown を HTML に変換し、Mermaid 図を画像として埋め込む
+ * @param {string} inputFile - 入力Markdownファイル名
  */
-async function convertMarkdownToHtml() {
+async function convertMarkdownToHtml(inputFile) {
     // Markdown ファイルを読み込む
-    const testFile = path.join(__dirname, 'test-links.md');
-    const markdownContent = fs.readFileSync(testFile, 'utf-8');
+    const mdFile = path.join(__dirname, inputFile);
+    const markdownContent = fs.readFileSync(mdFile, 'utf-8');
     
     // Mermaid 図を抽出して画像に変換
     const mermaidMatch = markdownContent.match(/```mermaid\n([\s\S]*?)```/);
@@ -170,10 +171,18 @@ async function convertMarkdownToHtml() {
 </body>
 </html>`;
     
-    // HTML ファイルを保存
-    const outputPath = path.join(__dirname, 'preview-with-images.html');
-    fs.writeFileSync(outputPath, outputHtml);
-    console.log(`HTML ファイルを生成しました: ${outputPath}`);
+    // 出力ファイル名を生成（入力ファイル名に基づく）
+    const baseName = path.basename(inputFile, path.extname(inputFile));
+    const htmlOutputPath = path.join(__dirname, `${baseName}-preview.html`);
+    fs.writeFileSync(htmlOutputPath, outputHtml);
+    console.log(`HTML ファイルを生成しました: ${htmlOutputPath}`);
+    
+    // 出力ファイルパスを返す（html-to-pptx-with-images.js で使用するため）
+    return htmlOutputPath;
 }
 
-convertMarkdownToHtml().catch(console.error);
+// コマンドライン引数からMarkdownファイルを取得
+const inputFile = process.argv[2] || 'test.md';
+console.log(`Markdownファイル '${inputFile}' を処理します...`);
+
+convertMarkdownToHtml(inputFile).catch(console.error);
