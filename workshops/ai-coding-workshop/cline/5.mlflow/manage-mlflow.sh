@@ -143,6 +143,9 @@ get_tracking_server_info() {
     # トラッキングサーバーの詳細情報を取得
     log_info "トラッキングサーバーの詳細情報を取得しています..."
     local tracking_server_url
+    local tracking_server_arn
+    
+    # URL を取得
     tracking_server_url=$(aws sagemaker describe-mlflow-tracking-server \
         --tracking-server-name "$tracking_server_name" \
         --region "$region" \
@@ -150,12 +153,25 @@ get_tracking_server_info() {
         --output text)
     
     if [ $? -ne 0 ] || [ -z "$tracking_server_url" ]; then
-        log_error "トラッキングサーバーの情報取得に失敗しました"
+        log_error "トラッキングサーバーの URL 取得に失敗しました"
+        return 1
+    fi
+    
+    # ARN を取得
+    tracking_server_arn=$(aws sagemaker describe-mlflow-tracking-server \
+        --tracking-server-name "$tracking_server_name" \
+        --region "$region" \
+        --query 'TrackingServerArn' \
+        --output text)
+    
+    if [ $? -ne 0 ] || [ -z "$tracking_server_arn" ]; then
+        log_error "トラッキングサーバーの ARN 取得に失敗しました"
         return 1
     fi
     
     # 環境変数に直接設定
     export MLFLOW_TRACKING_URI="$tracking_server_url"
+    export MLFLOW_TRACKING_ARN="$tracking_server_arn"
     log_info "MLflow Tracking URI: $MLFLOW_TRACKING_URI"
     return 0
 }
@@ -192,7 +208,9 @@ get_presigned_url() {
     
     # 環境変数に直接設定
     export MLFLOW_TRACKING_URI="$presigned_url"
+    export MLFLOW_TRACKING_ARN="$presigned_url"
     log_info "MLflow presigned URL: $MLFLOW_TRACKING_URI"
+    log_info "MLflow Tracking ARN: $MLFLOW_TRACKING_ARN"
     return 0
 }
 
@@ -218,34 +236,60 @@ update_env_file() {
     log_info "環境変数を更新しました: $key"
 }
 
-# LiteLLM の環境変数を更新
-update_litellm_env() {
-    local env_file="../2.litellm/.env"
-    log_info "LiteLLM の環境変数を更新しています..."
+# 変数のデフォルト値
+CONFIG_FILE="default_config.yml"
+ENV_FILE=".env"
+
+# LiteLLM サービスを開始
+start_litellm_service() {
+    log_info "LiteLLM サービスを開始します..."
     
-    # .envファイルが存在しない場合は作成
-    if [ ! -f "$env_file" ]; then
-        touch "$env_file"
+    # 環境変数オプションを構築
+    local cmd="docker compose"
+    if [ -f "$ENV_FILE" ]; then
+        log_info "環境変数ファイルを使用します: $ENV_FILE"
+        cmd="$cmd --env-file $ENV_FILE"
+    else
+        log_warn "環境変数ファイルが見つかりません: $ENV_FILE"
     fi
     
-    # 一時ファイルを作成
-    local temp_file=$(mktemp)
-    
-    # 既存のファイルから MLflow 設定以外をコピー
-    if [ -f "$env_file" ]; then
-        grep -v "^# MLflow Configuration" "$env_file" | grep -v "^MLFLOW_TRACKING_URI=" | grep -v "^MLFLOW_EXPERIMENT_NAME=" > "$temp_file"
+    # 設定ファイルを確認
+    if [ ! -f "$CONFIG_FILE" ]; then
+        log_error "設定ファイル $CONFIG_FILE が見つかりません"
+        return 1
     fi
     
-    # 新しいMLflow設定を追加
-    log_info "MLflow の設定を更新しています..."
-    {
-        echo "# MLflow Configuration"
-        echo "MLFLOW_TRACKING_URI=\"$MLFLOW_TRACKING_URI\""
-        echo "MLFLOW_EXPERIMENT_NAME=\"$MLFLOW_EXPERIMENT_NAME\""
-    } >> "$temp_file"
+    # 設定ファイルを環境変数として渡す
+    export CONFIG_FILE
+    log_info "設定ファイルを使用します: $CONFIG_FILE"
     
-    # 一時ファイルを元のファイルに移動
-    mv "$temp_file" "$env_file"
+    cmd="$cmd -f docker-compose.yml up -d"
+    log_info "実行コマンド: $cmd"
+    eval "$cmd"
+    
+    if [ $? -ne 0 ]; then
+        log_error "LiteLLM の起動に失敗しました"
+        return 1
+    fi
+    
+    log_info "LiteLLM が起動しました"
+    return 0
+}
+
+# LiteLLM サービスを停止
+stop_litellm_service() {
+    log_info "LiteLLM サービスを停止しています..."
+    docker compose -f docker-compose.yml down
+    log_info "LiteLLM が停止しました"
+    return 0
+}
+
+# LiteLLM サービスを再起動
+restart_litellm_service() {
+    log_info "LiteLLM サービスを再起動します..."
+    stop_litellm_service
+    start_litellm_service
+    return $?
 }
 
 # LiteLLM の設定を更新
@@ -268,22 +312,13 @@ update_litellm_config() {
     
     # 環境変数ファイルを更新
     update_env_file "MLFLOW_TRACKING_URI" "$MLFLOW_TRACKING_URI"
+    update_env_file "MLFLOW_TRACKING_ARN" "$MLFLOW_TRACKING_ARN"
     
-    # 環境変数を更新
-    update_litellm_env
-    
-    # 設定ファイルを指定
-    local config_file="../5.mlflow/litellm_config.yml"
-    log_info "設定ファイルを使用します: $config_file"
+    log_info "設定ファイルを使用します: $CONFIG_FILE"
     
     # LiteLLM の再起動
-    cd "../2.litellm"
-    ./manage-litellm.sh stop
-    log_info "LiteLLM を MLflow 設定で起動しています..."
-    # 明示的に LiteLLM の環境変数ファイルを指定
-    ./manage-litellm.sh -c "$config_file" -e .env start
+    restart_litellm_service
     
-    cd - > /dev/null
     log_info "LiteLLM の設定を更新しました"
 }
 
@@ -336,8 +371,32 @@ stop_mlflow_service() {
 }
 
 
+# コマンドラインオプションの解析
+parse_options() {
+    while [[ "$#" -gt 0 ]]; do
+        case $1 in
+            -c|--config)
+                CONFIG_FILE="$2"
+                shift
+                ;;
+            -e|--env-file)
+                ENV_FILE="$2"
+                shift
+                ;;
+            *)
+                # 不明なオプションは無視
+                ;;
+        esac
+        shift
+    done
+}
+
 # コマンドライン引数の解析
-case "$1" in
+COMMAND="$1"
+shift
+parse_options "$@"
+
+case "$COMMAND" in
     start)
         start_mlflow_service || exit 1
         ;;
@@ -351,7 +410,6 @@ case "$1" in
         start_mlflow_service || exit 1
         ;;
     get-tracking-info)
-        shift
         server_name="${1:-mlflow-tracking-server}"
         region="${2:-us-east-1}"
         get_tracking_server_info "$server_name" "$region"
@@ -366,6 +424,15 @@ case "$1" in
     get-url)
         get_presigned_url
         ;;
+    litellm-start)
+        start_litellm_service || exit 1
+        ;;
+    litellm-stop)
+        stop_litellm_service || exit 1
+        ;;
+    litellm-restart)
+        restart_litellm_service || exit 1
+        ;;
     *)
         echo -e "${GREEN}使用方法:${NC}"
         echo -e "  ${YELLOW}./manage-mlflow.sh start${NC}     - MLflow サービスを開始"
@@ -375,7 +442,12 @@ case "$1" in
         echo -e "    server_name: トラッキングサーバー名 (デフォルト: mlflow-tracking-server)"
         echo -e "    region: AWS リージョン (デフォルト: us-east-1)"
         echo -e "  ${YELLOW}./manage-mlflow.sh test${NC}      - MLflow テストを実行"
-        echo -e "  ${YELLOW}./manage-mlflow.sh update-config${NC} - LiteLLM の設定を更新"
+        echo -e "  ${YELLOW}./manage-mlflow.sh update-config [-c CONFIG_FILE]${NC} - LiteLLM の設定を更新"
         echo -e "  ${YELLOW}./manage-mlflow.sh get-url${NC}      - MLflow トラッキングサーバーの presigned URL を取得"
+        echo -e "  ${YELLOW}./manage-mlflow.sh litellm-start [-c CONFIG_FILE] [-e ENV_FILE]${NC}  - LiteLLM サービスを開始"
+        echo -e "    -c, --config: 設定ファイルを指定 (デフォルト: default_config.yml)"
+        echo -e "    -e, --env-file: 環境変数ファイルを指定 (デフォルト: .env)"
+        echo -e "  ${YELLOW}./manage-mlflow.sh litellm-stop${NC}   - LiteLLM サービスを停止"
+        echo -e "  ${YELLOW}./manage-mlflow.sh litellm-restart [-c CONFIG_FILE] [-e ENV_FILE]${NC} - LiteLLM サービスを再起動"
         ;;
 esac

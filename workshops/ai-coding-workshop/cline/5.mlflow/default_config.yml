@@ -72,10 +72,11 @@ litellm_settings:
   drop_params: true
   success_callback: ["mlflow"]
   failure_callback: ["mlflow"]
-  callbacks: ["mlflow"]
-  # MLflow の設定（AWS環境用）
+  callbacks: ["mlflow_callback.mlflow_callback_instance"]
+  # MLflow の設定
   mlflow:
     tracking_uri: os.environ/MLFLOW_TRACKING_URI
+    tracking_arn: os.environ/MLFLOW_TRACKING_ARN
     experiment_name: os.environ/MLFLOW_EXPERIMENT_NAME
     # MLflow に記録するメトリクス
     metrics:
@@ -83,25 +84,26 @@ litellm_settings:
       - prompt_tokens
       - completion_tokens
       - total_tokens
-      - cost_usd  # AWS環境ではコストも記録
+      - cost_usd
     # MLflow に記録するパラメータ
     params:
       - model
       - messages
       - max_tokens
-      - region  # AWS リージョン情報
+      - region
     # MLflow に記録するタグ
     tags:
       - request_id
       - deployment
       - user
-      - aws_account_id  # AWS アカウント情報
-      - sagemaker_endpoint  # SageMaker エンドポイント情報
+      - aws_account_id
+      - sagemaker_endpoint
 
 general_settings:
   log_level: debug
   openai_api_base: "/v1"
   disable_user_auth: true
+  database_url: os.environ/DATABASE_URL
 
 router_settings:
   default_model: bedrock-converse-us-claude-3-7-sonnet-v1
@@ -114,3 +116,6 @@ openapi:
   title: "LiteLLM API"
   description: "LiteLLM API for multiple LLM models"
   servers:
+    - url: "/"
+  info:
+    version: "1.0.0"
