@@ -1,0 +1,27 @@
+services:
+  litellm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "4001:4000"
+    volumes:
+      - ./${CONFIG_FILE:-default_config.yml}:/app/config.yaml
+      - ./mlflow_callback.py:/app/mlflow_callback.py
+    depends_on:
+      - postgres
+    command: --config /app/config.yaml --detailed_debug
+    logging:
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:15
+    env_file: .env
+    volumes:
+      - postgres_data_mlflow:/var/lib/postgresql/data
+
+volumes:
+  postgres_data_mlflow:
