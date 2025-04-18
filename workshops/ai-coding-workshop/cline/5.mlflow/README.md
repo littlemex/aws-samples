@@ -184,6 +184,25 @@ graph TD
 ./manage-mlflow.sh get-url    # presigned URL の取得（有効期限: 30分）
 ```
 
+### 4. presigned URL の利用
+
+MLflow UI にアクセスするための一時的な認証付き URL を取得できます：
+
+```bash
+./manage-mlflow.sh get-url
+```
+
+実行例：
+```
+[INFO] MLflow presigned URL: https://t-xxxxx.us-east-1.experiments.sagemaker.aws/auth?authToken=eyJhbGciOiJIUzI1NiJ9...
+```
+
+この URL は以下の特徴があります：
+- 有効期限: 30分（`--expires-in-seconds 300`）
+- セッション有効期限: 約5.5時間（`--session-expiration-duration-in-seconds 20000`）
+- ブラウザで開くと MLflow UI に直接アクセス可能
+```
+
 ### 2. テストの実行
 
 ```bash
