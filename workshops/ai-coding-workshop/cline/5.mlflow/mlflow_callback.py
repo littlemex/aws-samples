@@ -6,6 +6,7 @@ import os
 import time
 import logging
 import boto3
+import json
 from datetime import datetime
 
 # ロガーの設定
@@ -172,6 +173,57 @@ class MLflowCallback(CustomLogger):
             logger.debug("詳細なエラー情報:", exc_info=True)
             raise
 
+    def _get_nested_metadata(self, metadata, key, default=None):
+        """ネストされたメタデータから値を取得するヘルパーメソッド"""
+        try:
+            # ドット記法でネストされたキーをサポート
+            keys = key.split('.')
+            value = metadata
+            for k in keys:
+                if isinstance(value, dict):
+                    value = value.get(k)
+                else:
+                    return default
+            return value
+        except Exception as e:
+            logger.debug(f"メタデータ '{key}' の取得に失敗: {str(e)}")
+            return default
+
+    def _prepare_tag_value(self, value):
+        """タグの値を適切な形式に変換"""
+        if value is None:
+            return "none"  # MLflowではNoneを文字列として扱う
+        if isinstance(value, (dict, list)):
+            try:
+                return str(value)
+            except:
+                return "invalid_value"
+        return str(value)
+
+    def _extract_metadata_tags(self, metadata, target_tags):
+        """メタデータからタグを抽出"""
+        tags = {}
+        # メタデータのマッピング
+        metadata_mapping = {
+            "user_id": "user_api_key_user_id",
+            "team_alias": "user_api_key_team_alias",
+            "cache_hit": "cache_hit",
+            "cache_key": "cache_key",
+            "api_key_alias": "user_api_key_alias",
+            "user_email": "user_api_key_user_email",
+            "end_user_id": "user_api_key_end_user_id",
+            "model_group": "model_group",
+            "deployment": "deployment"
+        }
+        
+        for tag_name, metadata_key in metadata_mapping.items():
+            value = self._get_nested_metadata(metadata, metadata_key)
+            if value is not None:  # Noneの場合はスキップ
+                tag_value = self._prepare_tag_value(value)
+                tags[tag_name] = tag_value
+                logger.debug(f"タグを追加: {tag_name}={tag_value} (元のキー: {metadata_key})")
+        return tags
+
     def _log_common_metrics(self, kwargs, response_obj, start_time, end_time):
         """共通メトリクスのロギング"""
         # 基本情報の取得
@@ -184,8 +236,21 @@ class MLflowCallback(CustomLogger):
         metadata = litellm_params.get("metadata", {})
         
         # レスポンス情報（成功時のみ）
-        # timedelta を秒数に変換してからミリ秒に変換
-        latency = (end_time - start_time).total_seconds() * 1000  # ミリ秒単位
+        # 時間差を計算してミリ秒に変換（datetime オブジェクトと float の両方に対応）
+        try:
+            if isinstance(start_time, datetime) and isinstance(end_time, datetime):
+                # datetime オブジェクトの場合
+                latency = (end_time - start_time).total_seconds() * 1000  # ミリ秒単位
+            else:
+                # Unix タイムスタンプ（float）の場合
+                latency = (end_time - start_time) * 1000  # ミリ秒単位
+            
+            # 数値型に変換できることを確認
+            latency = float(latency)
+            logger.debug(f"計算された latency: {latency} ms")
+        except Exception as e:
+            logger.warning(f"latency の計算に失敗: {str(e)}、デフォルト値を使用します")
+            latency = 0.0  # デフォルト値
         
         # MLflow に記録するパラメータとメトリクス
         params = {
@@ -224,12 +289,33 @@ class MLflowCallback(CustomLogger):
             logger.debug("成功イベントのログ記録を開始")
             params, metrics, model = self._log_common_metrics(kwargs, response_obj, start_time, end_time)
             
-            # MLflow での記録
-            run_name = f"{model}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-            logger.info(f"MLflow run開始: {run_name}")
+            # litellm_call_id を優先的に使用
+            litellm_params = kwargs.get("litellm_params", {})
+            litellm_call_id = litellm_params.get("litellm_call_id")
+            logger.debug(f"litellm_call_id: {litellm_call_id}")
+
+            # request ID の取得（フォールバック用）
+            request_id = None
+            if 'proxy_server_request' in litellm_params:
+                headers = litellm_params['proxy_server_request'].get('headers', {})
+                request_id = headers.get('x-request-id')
+            
+            # run_name の設定（優先順位: litellm_call_id > request_id > timestamp）
+            run_name = litellm_call_id or request_id or datetime.now().strftime('%Y%m%d-%H%M%S')
+            logger.info(f"MLflow run開始 (litellm_call_id: {run_name})")
             
             try:
-                with mlflow.start_run(run_name=run_name):
+                # 現在のアクティブな実験を取得
+                experiment = mlflow.get_experiment_by_name(self.experiment_name)
+                if experiment:
+                    experiment_id = experiment.experiment_id
+                    logger.debug(f"実験ID: {experiment_id}")
+                
+                #with mlflow.start_run(run_name=run_name, experiment_id=experiment_id) as run:
+                with mlflow.start_run(run_name=run_name) as run:
+                    run_id = run.info.run_id
+                    logger.debug(f"Run ID: {run_id}")
+                    
                     try:
                         # パラメータとメトリクスの記録
                         logger.debug(f"パラメータを記録: {params}")
@@ -254,9 +340,58 @@ class MLflowCallback(CustomLogger):
                         tags = {
                             "status": "success",
                             "model_provider": model.split("-")[0] if "-" in model else model,
+                            "request_id": request_id,
+                            "run_id": run_id,
+                            "litellm_call_id": litellm_params.get("litellm_call_id")  # litellm_call_id を追加
                         }
-                        logger.debug(f"タグを設定: {tags}")
-                        mlflow.set_tags(tags)
+
+                        # LiteLLM のメタデータからタグを抽出
+                        litellm_params = kwargs.get("litellm_params", {})
+                        logger.debug(f"LiteLLM パラメータ: {litellm_params}")
+                        
+                        # メタデータの取得と詳細なログ
+                        metadata = litellm_params.get("metadata", {})
+                        logger.debug(f"メタデータの完全な構造: {json.dumps(metadata, indent=2, ensure_ascii=False)}")
+
+                        # メタデータからタグを抽出
+                        metadata_tags = self._extract_metadata_tags(metadata, {})
+                        tags.update(metadata_tags)
+
+                        # タグの最終確認とフィルタリング
+                        filtered_tags = {k: v for k, v in tags.items() if v is not None and v != ""}
+                        logger.debug(f"フィルタリング後のタグ: {filtered_tags}")
+                        
+                        # タグの設定（同期的に実行）
+                        try:
+                            # 現在のタグを取得
+                            run = mlflow.active_run()
+                            if run:
+                                current_tags = run.data.tags
+                                logger.debug(f"現在のタグ: {current_tags}")
+                                
+                                # システムタグを保持
+                                system_tags = {k: v for k, v in current_tags.items() if k.startswith("mlflow.")}
+                                logger.debug(f"システムタグ: {system_tags}")
+                                
+                                # カスタムタグを準備
+                                custom_tags = {k: v for k, v in filtered_tags.items() if not k.startswith("mlflow.")}
+                                logger.debug(f"カスタムタグ: {custom_tags}")
+                                
+                                # マージしてセット（システムタグを基本にカスタムタグで上書き）
+                                final_tags = {**system_tags, **custom_tags}
+                                logger.debug(f"マージ後のタグ: {final_tags}")
+                                
+                                # タグを設定
+                                mlflow.set_tags(final_tags)
+                                logger.debug("タグを設定しました")
+                                
+                                # 最終的なタグを確認
+                                run = mlflow.active_run()
+                                if run:
+                                    logger.debug(f"最終的なタグ: {run.data.tags}")
+                        except Exception as tag_e:
+                            logger.error(f"タグの設定に失敗: {str(tag_e)}")
+                            logger.debug("詳細なエラー情報:", exc_info=True)
                         
                     except Exception as inner_e:
                         logger.error(f"MLflow記録処理中にエラー発生: {str(inner_e)}")
@@ -283,12 +418,34 @@ class MLflowCallback(CustomLogger):
             exception_event = kwargs.get("exception", None)
             traceback_event = kwargs.get("traceback_exception", None)
             
-            # MLflow での記録
-            run_name = f"{model}-error-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-            logger.info(f"MLflow run開始 (エラー): {run_name}")
+            # litellm_call_id を優先的に使用（エラー時）
+            litellm_params = kwargs.get("litellm_params", {})
+            litellm_call_id = litellm_params.get("litellm_call_id")
+            logger.debug(f"litellm_call_id (エラー): {litellm_call_id}")
+
+            # request ID の取得（フォールバック用）
+            request_id = None
+            if 'proxy_server_request' in litellm_params:
+                headers = litellm_params['proxy_server_request'].get('headers', {})
+                request_id = headers.get('x-request-id')
+            
+            # run_name の設定（優先順位: litellm_call_id > request_id > timestamp）
+            run_name = litellm_call_id or request_id or datetime.now().strftime('%Y%m%d-%H%M%S')
+            logger.info(f"MLflow run開始 (エラー, litellm_call_id: {run_name})")
             
             try:
-                with mlflow.start_run(run_name=run_name):
+                # 現在のアクティブな実験を取得
+                experiment = mlflow.get_experiment_by_name(self.experiment_name)
+                experiment_id = None
+                if experiment:
+                    experiment_id = experiment.experiment_id
+                    logger.debug(f"実験ID (エラー): {experiment_id}")
+                    
+                
+                with mlflow.start_run(run_name=run_name, experiment_id=experiment_id) as run:
+                    run_id = run.info.run_id
+                    logger.debug(f"Run ID (エラー): {run_id}")
+                    
                     try:
                         # パラメータとメトリクスの記録
                         logger.debug(f"パラメータを記録: {params}")
@@ -310,9 +467,58 @@ class MLflowCallback(CustomLogger):
                             "status": "failure",
                             "model_provider": model.split("-")[0] if "-" in model else model,
                             "error_type": type(exception_event).__name__ if exception_event else "unknown",
+                            "request_id": request_id,
+                            "run_id": run_id,
+                            "litellm_call_id": litellm_params.get("litellm_call_id")  # litellm_call_id を追加
                         }
-                        logger.debug(f"タグを設定: {tags}")
-                        mlflow.set_tags(tags)
+
+                        # LiteLLM のメタデータからタグを抽出
+                        litellm_params = kwargs.get("litellm_params", {})
+                        logger.debug(f"LiteLLM パラメータ (エラー): {litellm_params}")
+                        
+                        # メタデータの取得と詳細なログ
+                        metadata = litellm_params.get("metadata", {})
+                        logger.debug(f"メタデータの完全な構造 (エラー): {json.dumps(metadata, indent=2, ensure_ascii=False)}")
+
+                        # メタデータからタグを抽出
+                        metadata_tags = self._extract_metadata_tags(metadata, {})
+                        tags.update(metadata_tags)
+
+                        # タグの最終確認とフィルタリング
+                        filtered_tags = {k: v for k, v in tags.items() if v is not None and v != ""}
+                        logger.debug(f"フィルタリング後のタグ (エラー): {filtered_tags}")
+                        
+                        # タグの設定（同期的に実行）
+                        try:
+                            # 現在のタグを取得
+                            run = mlflow.active_run()
+                            if run:
+                                current_tags = run.data.tags
+                                logger.debug(f"現在のタグ (エラー): {current_tags}")
+                                
+                                # システムタグを保持
+                                system_tags = {k: v for k, v in current_tags.items() if k.startswith("mlflow.")}
+                                logger.debug(f"システムタグ (エラー): {system_tags}")
+                                
+                                # カスタムタグを準備
+                                custom_tags = {k: v for k, v in filtered_tags.items() if not k.startswith("mlflow.")}
+                                logger.debug(f"カスタムタグ (エラー): {custom_tags}")
+                                
+                                # マージしてセット（システムタグを基本にカスタムタグで上書き）
+                                final_tags = {**system_tags, **custom_tags}
+                                logger.debug(f"マージ後のタグ (エラー): {final_tags}")
+                                
+                                # タグを設定
+                                mlflow.set_tags(final_tags)
+                                logger.debug("タグを設定しました (エラー)")
+                                
+                                # 最終的なタグを確認
+                                run = mlflow.active_run()
+                                if run:
+                                    logger.debug(f"最終的なタグ (エラー): {run.data.tags}")
+                        except Exception as tag_e:
+                            logger.error(f"タグの設定に失敗 (エラー): {str(tag_e)}")
+                            logger.debug("詳細なエラー情報:", exc_info=True)
                         
                     except Exception as inner_e:
                         logger.error(f"MLflow記録処理中にエラー発生: {str(inner_e)}")

@@ -6,6 +6,7 @@ import sys
 import time
 import logging
 import mlflow
+from datetime import datetime
 
 # ロガーの設定
 logging.basicConfig(
@@ -96,7 +97,12 @@ def test_litellm_api():
             content = response_json.get("choices", [{}])[0].get("message", {}).get("content", "")
             logger.info(f"レスポンス内容: {content}")
             
-            logger.info("MLflow にログが送信されたかを確認してください。")
+            # MLflow UI で確認すべき項目
+            logger.info("MLflow UI で以下の情報を確認してください:")
+            logger.info("1. run_name に request_id が含まれているか")
+            logger.info("2. タグに request_id と run_id が含まれているか")
+            logger.info("3. OpenTelemetry スパンに mlflow.runName と mlflow.runId が設定されているか")
+            
             return True
         else:
             logger.error(f"リクエスト失敗: ステータスコード {response.status_code}")

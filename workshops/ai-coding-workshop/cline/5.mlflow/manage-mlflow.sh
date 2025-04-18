@@ -210,7 +210,6 @@ get_presigned_url() {
     export MLFLOW_TRACKING_URI="$presigned_url"
     export MLFLOW_TRACKING_ARN="$presigned_url"
     log_info "MLflow presigned URL: $MLFLOW_TRACKING_URI"
-    log_info "MLflow Tracking ARN: $MLFLOW_TRACKING_ARN"
     return 0
 }
 
