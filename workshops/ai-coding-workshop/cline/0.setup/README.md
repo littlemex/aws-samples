@@ -20,6 +20,8 @@
 brew install session-manager-plugin
 ```
 
+MacOS 以外の場合は [AWS CLI 用の Session Manager プラグインをインストールする](https://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html) を参照してください。
+
 ## 2. EC2 環境のデプロイ
 
 開発環境のデプロイには、AWS CDK または AWS CloudFormation を使用できます。どちらの方法も AWS CloudShell からブラウザ上で直接実行することが可能です。
@@ -64,12 +66,16 @@ Cline のインストールと設定方法については、[Cline セットア�
 1. AWS コンソールの Bedrock サービスに移動
 2. 左側メニューから「Model access」を選択
 3. 「Manage model access」をクリック
-4. Anthropic Claude 3 モデルを選択
+4. Anthropic Claude 3 系モデルをすべて選択
 5. 「Save changes」をクリック
 
 > **注意**: モデルアクセスの承認には数分かかる場合があります
 
 ![Bedrock モデルアクセスの設定](./bedrock-setup.png)
+
+### Amazon Bedrock のクオータの確認
+
+- [us-east-1 リージョン](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/bedrock/quotas)・[us-west-2 リージョン](https://us-west-2.console.aws.amazon.com/servicequotas/home/services/bedrock/quotas) で `tokens per minute for Anthropic Claude` をクオータ検索窓に入力し、各モデルが利用可能になっていることを確認します。
 
 ## 参考リソース
 
