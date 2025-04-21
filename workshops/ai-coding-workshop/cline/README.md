@@ -15,27 +15,38 @@ cline/
 │   └── 1.cline/          # Cline のインストールと設定
 ├── 1.mcp/                # MCP サーバー実装ワークショップ
 ├── 2.litellm/            # LiteLLM Proxy の利用
+├── 3.sagemaker/          # Amazon SageMaker AI, Inference 機能の利用
 ├── 4.langfuse/           # Langfuse による LLM 利用状況の分析
-└── 5.mlflow/             # MLflow による LLM モニタリング
+├── 5.mlflow/             # MLflow による LiteLLM Proxy のモニタリング
+├── blog/                 # ブログ関連のリソース
+└── slides/               # プレゼンテーション資料
 ```
 
-## 1. 環境要件
+## 1. 実施要件
 
-### ローカル PC に必要なツール
-- Python 3.12 以上
+### 必要なツール　(ローカル実行の場合)
+- Python 3.10 以上 (scripts/port_forward.py スクリプトを実行する場合)
 - AWS CLI v2
+- Docker
+- AWS CLI
+- AWS CDK v2.x 以上
 - Session Manager プラグイン
+- Node.js
+
+### 必要となる前提知識
+- Typescript に関する基礎的な理解 (1.mcp で MCP サーバーを自作するワークショップを実施する場合)
 
 ### 必要な AWS 権限
 
-このワークショップでは、以下の AWS サービスを利用するためのアクセス権限が必要です。
-AWS CDK を利用する場合は Administrator 権限が必要となる可能性があります。
+このワークショップでは、以下の AWS サービスを利用します。すべての手順に実行には Administrator アクセス権限を推奨します：
 aws congigure もしくは aws configure sso 等で AWS CLI もしくは boto3 をローカル PC で実行できる状態にしておくことが前提です。
 
 - Amazon EC2（開発環境用）
 - AWS Systems Manager（Remote SSH 接続用）
 - Amazon Bedrock（基盤 LLM モデル用）
-- Amazon SageMaker（カスタムモデルのデプロイ、Managed MLflow 用）
+- Amazon SageMaker（カスタムモデルのデプロイと Managed MLflow 用）
+- Amazon S3（MLflow のアーティファクト保存用）
+- AWS IAM（サービス実行ロールの管理用）
 
 ## 2. ワークショップの進め方
 
@@ -105,16 +116,15 @@ Langfuse は LLM アプリケーションの観察とモニタリングを行う
 
 *実装が間に合っておらず Role ベースのアクセスに対応していません。
 
-### 2.6 MLflow による LLM 利用状況のモニタリング
-1. [MLflow ガイド](5.mlflow/README.md)
-   - Amazon SageMaker の Managed MLflow を利用したログ収集
-   - LiteLLM Proxy の実行ログの統合管理
-   - メトリクス（コスト、レイテンシ、トークン使用量）の可視化
-   - タグベースでの検索・フィルタリング
-   - MLflow UI による分析とトレンド把握
+### 2.6 MLflow による LiteLLM Proxy のモニタリング
+1. [MLflow 統合ガイド](5.mlflow/README.md)
+   - Amazon SageMaker Managed MLflow の利用
+   - LiteLLM Proxy の実行ログ収集・分析
+   - メトリクス記録とタグ管理
+   - エラー追跡とトラブルシューティング
 
 **目的と学習内容**：
-Amazon SageMaker の Managed MLflow を使用して、LiteLLM Proxy のコストやパフォーマンス等をモニタリングする方法を学びます。このセクションでは、MLflow の実験管理機能を活用して、LLM の呼び出し履歴を一元管理し、詳細なメトリクスの追跡とパフォーマンス分析を行う方法を理解できます。
+Amazon SageMaker の Managed MLflow を使用して、LiteLLM Proxy の実行ログを収集・分析する方法を学びます。統合的なログ管理、高度な分析機能、運用効率の向上など、MLflow を活用したモニタリング手法について理解を深め、LLM アプリケーションの運用管理スキルを向上させることができます。
 
 ## 3. セキュリティ考慮事項
 
