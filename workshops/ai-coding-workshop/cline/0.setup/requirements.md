@@ -61,7 +61,7 @@ graph TB
 |---------|--------------|-------------|---------|-----------|------|
 | ローカル PC | 1.mcp | Access Key | ○ | Node.js 18.x+, TypeScript 5.3.3+ | - |
 | ローカル PC | 1.mcp | IAM Role | ○ | Node.js 18.x+, TypeScript 5.3.3+ | - |
-| ローカル PC | 2.litellm | Access Key | ○ | Python 3.9+, Docker | Prompt Caching は設定を修正する必要あり |
+| ローカル PC | 2.litellm | Access Key | ○ | Python 3.9+, Docker | Prompt Caching 利用は設定を修正する必要あり |
 | ローカル PC | 2.litellm | IAM Role | × | - | ローカル環境では非対応 |
 | ローカル PC | 4.langfuse | Access Key | ○ | Python 3.9+, Docker | - |
 | ローカル PC | 4.langfuse | IAM Role | × | - | ローカル環境では非対応 |
@@ -70,7 +70,7 @@ graph TB
 | EC2 | 1.mcp | IAM Role | ○ | Node.js 18.x+, TypeScript 5.3.3+ | 推奨構成 |
 | EC2 | 1.mcp | Access Key | ○ | Node.js 18.x+, TypeScript 5.3.3+ | - |
 | EC2 | 2.litellm | IAM Role | ○ | Python 3.9+, Docker | 推奨構成 |
-| EC2 | 2.litellm | Access Key | ○ | Python 3.9+, Docker | - |
+| EC2 | 2.litellm | Access Key | ○ | Python 3.9+, Docker | Prompt Caching 利用は設定を修正する必要あり |
 | EC2 | 4.langfuse | IAM Role | ○ | Python 3.9+, Docker | 推奨構成 |
 | EC2 | 4.langfuse | Access Key | ○ | Python 3.9+, Docker | - |
 | EC2 | 5.mlflow | IAM Role | × | - | IAM Role 非対応 |
