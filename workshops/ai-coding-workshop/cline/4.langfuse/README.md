@@ -114,6 +114,11 @@ graph TB
 - Langfuse コールバックの設定
 - アクセスキーによる Amazon Bedrock アクセス (IAM Role によるアクセスについては [../2.litellm/README.md](../2.litellm/README.md) を参照)
 
+### prompt_caching.yml
+- Langfuse との連携設定
+- IAM ロールによる Amazon Bedrock アクセス設定
+- Prompt Caching 対応
+
 ## デバッグツール
 
 `../scripts/debug_langfuse.sh` スクリプトを使用してトラブルシューティングを行えます：
@@ -133,6 +138,9 @@ bash -x ../scripts/debug_langfuse.sh
 ```bash
 pip install langfuse
 python test_litellm_langfuse.py
+
+# ERROR - Unexpected error occurred. Please check your request and contact support: https://langfuse.com/support. このようなワーニングが出ます
+# 既知の Langfuse のバグのため動作に問題はありません。https://github.com/orgs/langfuse/discussions/6194
 ```
 
 テストスクリプトは以下を実行します：
@@ -218,9 +226,3 @@ LiteLLM config ファイルの認証情報に関する設定の詳細は [2.lite
    ```
 
 3. Cline の設定で LiteLLM Proxy を API Provider として設定し、Prompt Caching 設定を有効化
-
-### Langfuse でのキャッシュヒット確認
-
-Langfuse の Traces 詳細では、キャッシュヒットした場合の json 情報を確認することができます。
-
-![](./images/langfuse-cache-hit.png)
