@@ -14,7 +14,7 @@ graph TB
             WL5[5.mlflow - モニタリング]
         end
         
-        subgraph "アクセス手法（ローカル）"
+        subgraph "アクセス手法"
             AL1[IAM Access Key]
             AL2[IAM Role]
         end
@@ -24,7 +24,7 @@ graph TB
         WL4 --> AL1
         WL5 --> AL1
         
-        WL1 -.->|非対応| AL2
+        WL1 --> AL2
         WL2 -.->|非対応| AL2
         WL4 -.->|非対応| AL2
         WL5 -.->|非対応| AL2
@@ -38,7 +38,7 @@ graph TB
             WE5[5.mlflow - モニタリング]
         end
         
-        subgraph "アクセス手法（EC2）"
+        subgraph "アクセス手法"
             AE1[IAM Access Key]
             AE2[IAM Role]
         end
