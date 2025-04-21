@@ -16,26 +16,32 @@ cline/
 ├── 1.mcp/                # MCP サーバー実装ワークショップ
 ├── 2.litellm/            # LiteLLM Proxy の利用
 ├── 3.sagemaker/          # Amazon SageMaker AI, Inference 機能の利用
-└── 4.langfuse/           # Langfuse による LLM 利用状況の分析
+├── 4.langfuse/           # Langfuse による LLM 利用状況の分析
+├── 5.mlflow/             # MLflow による LiteLLM Proxy のモニタリング
+├── blog/                 # ブログ関連のリソース
+└── slides/               # プレゼンテーション資料
 ```
 
 ## 1. 環境要件
 
-### 必要なツール
+### 必要なツール　(ローカル実行の場合)
 - Python 3.10 以上
 - Docker
 - AWS CLI
 - AWS CDK v2.x 以上
 - Session Manager プラグイン
+- Node.js
 
 ### 必要な AWS 権限
 
-このワークショップでは、以下の AWS サービスを利用するため、Administrator アクセス権限が必要です：
+このワークショップでは、以下の AWS サービスを利用します。すべての手順に実行には Administrator アクセス権限を推奨します：
 
 - Amazon EC2（開発環境用）
 - AWS Systems Manager（Remote SSH 接続用）
 - Amazon Bedrock（基盤 LLM モデル用）
-- Amazon SageMaker（カスタムモデルのデプロイ用）
+- Amazon SageMaker（カスタムモデルのデプロイと Managed MLflow 用）
+- Amazon S3（MLflow のアーティファクト保存用）
+- AWS IAM（サービス実行ロールの管理用）
 
 ## 2. ワークショップの進め方
 
@@ -105,6 +111,16 @@ Amazon SageMaker を使用して独自の AI モデルをデプロイし、そ�
 Langfuse は LLM アプリケーションの観察とモニタリングを行うためのオープンソースプラットフォームです。このセクションでは、LLM の利用状況を詳細に分析し、コストやパフォーマンスを最適化する方法を学びます。また、エラーの早期発見と効果的なトラブルシューティング手法についても理解を深めることができます。
 
 *実装が間に合っておらず Role ベースのアクセスに対応していません。
+
+### 2.6 MLflow による LiteLLM Proxy のモニタリング
+1. [MLflow 統合ガイド](5.mlflow/README.md)
+   - Amazon SageMaker Managed MLflow の利用
+   - LiteLLM Proxy の実行ログ収集・分析
+   - メトリクス記録とタグ管理
+   - エラー追跡とトラブルシューティング
+
+**目的と学習内容**：
+Amazon SageMaker の Managed MLflow を使用して、LiteLLM Proxy の実行ログを収集・分析する方法を学びます。統合的なログ管理、高度な分析機能、運用効率の向上など、MLflow を活用したモニタリング手法について理解を深め、LLM アプリケーションの運用管理スキルを向上させることができます。
 
 ## 3. セキュリティ考慮事項
 

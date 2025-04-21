@@ -17,6 +17,13 @@ AWS CloudShell は AWS マネジメントコンソールから直接利用でき
 > - AWS CLI が事前にインストール済み
 > - AWS 認証情報が自動的に設定済み
 
+CloudShell 内に CloudFormation テンプレートをダウンロードします。
+
+```
+git clone https://github.com/littlemex/aws-samples.git
+cp aws-samples/workshops/ai-coding-workshop/cline/0.setup/cfn/*.yml ~/
+```
+
 ### ローカル環境を使用する場合
 
 > **必要なツール**:
@@ -77,6 +84,14 @@ graph TB
 
 ## デプロイ方法
 
+### 共通操作
+
+リソース名の重複を防ぐため、任意の USERNAME を設定します
+
+```
+USERNAME=(各自で任意の値を入力)
+```
+
 ### 1. ec2-ssm.yml を使用する場合
 
 ```bash
@@ -120,9 +135,17 @@ aws cloudformation deploy \
 
 ## code-server へのアクセス
 
+> **注意**:
+> - `<インスタンス ID>` は CloudFormation スタックの出力から確認できます
+> - ポートフォワードコマンドはローカル環境で実行する必要があります（CloudShell では実行できません）
+> - port_forward.py を使用する場合は Python と uv のインストールが必要です
+
 1. ポートフォワードを設定します。以下のいずれかの方法を選択してください：
 
    a. AWS CLI を使用する場合：
+
+   スタックの出力で `PortForwardCommand` として確認できます。
+
    ```bash
    aws ssm start-session \
      --target <インスタンス ID> \
@@ -130,6 +153,18 @@ aws cloudformation deploy \
      --document-name AWS-StartPortForwardingSession \
      --parameters '{"portNumber":["8080"],"localPortNumber":["18080"]}'
    ```
+
+   成功した場合は
+   ```bash
+   Starting session with SessionId: {セッションID}
+   Port 18080 opened for sessionId {セッションID}
+   ```
+   と出力されます。
+
+   ```bash
+   An error occurred (TargetNotConnected) when calling the StartSession operation: {インスタンスID} is not connected.
+   ```
+   とエラーが出る場合は認証情報を確認し、数分待ちます。以前接続できない場合にはマネジメントコンソールからインスタンスを再起動してください。
 
    b. port_forward.py スクリプトを使用する場合：
    ```bash
@@ -139,10 +174,7 @@ aws cloudformation deploy \
    uv run port_forward.py --instance-id <インスタンス ID>
    ```
 
-   > **注意**:
-   > - `<インスタンス ID>` は CloudFormation スタックの出力から確認できます
-   > - ポートフォワードコマンドはローカル環境で実行する必要があります（CloudShell では実行できません）
-   > - port_forward.py を使用する場合は Python と uv のインストールが必要です
+
 
 2. ブラウザで http://localhost:18080 にアクセスし、code-server に接続します：
    - パスワード：環境構築時に設定した `CodeServerPassword` の値（デフォルト: code-server）

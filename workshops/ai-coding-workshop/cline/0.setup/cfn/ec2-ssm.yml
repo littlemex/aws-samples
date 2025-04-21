@@ -236,6 +236,7 @@ Resources:
                   - ssmmessages:CreateDataChannel
                   - ssmmessages:OpenControlChannel
                   - ssmmessages:OpenDataChannel
+                  - bedrock:InvokeModelWithResponseStream
                 Resource: '*'
 
   EC2InstanceProfile:
