@@ -8,7 +8,7 @@
 graph TB
     subgraph "実行環境"
         E1[ローカル PC]
-        E2[EC2 (code-server/Remote SSH)]
+        E2[EC2 環境]
     end
     
     subgraph "ワークショップ"
