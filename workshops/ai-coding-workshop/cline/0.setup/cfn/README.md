@@ -89,7 +89,7 @@ graph TB
 リソース名の重複を防ぐため、任意の USERNAME を設定します
 
 ```
-USERNAME=(各自で任意の値を入力))
+USERNAME=(各自で任意の値を入力)
 ```
 
 ### 1. ec2-ssm.yml を使用する場合

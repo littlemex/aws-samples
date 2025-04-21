@@ -31,7 +31,6 @@ cline/
 - AWS CDK v2.x 以上
 - Session Manager プラグイン
 - Node.js
-- TypeScript の基本的な理解（MCP サーバー開発用）
 
 ### 必要な AWS 権限
 
@@ -40,8 +39,8 @@ cline/
 - Amazon EC2（開発環境用）
 - AWS Systems Manager（Remote SSH 接続用）
 - Amazon Bedrock（基盤 LLM モデル用）
-- Amazon SageMaker（カスタムモデルのデプロイとManaged MLflow用）
-- Amazon S3（MLflowのアーティファクト保存用）
+- Amazon SageMaker（カスタムモデルのデプロイと Managed MLflow 用）
+- Amazon S3（MLflow のアーティファクト保存用）
 - AWS IAM（サービス実行ロールの管理用）
 
 ## 2. ワークショップの進め方
