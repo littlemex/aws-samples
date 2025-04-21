@@ -8,13 +8,13 @@
 graph TB
     subgraph "ローカル PC 環境"
         subgraph "ワークショップ（ローカル）"
-            WL1[1.mcp - TypeScript MCP]
+            WL1[1.mcp - MCP]
             WL2[2.litellm - Bedrock 連携]
             WL4[4.langfuse - 分析]
             WL5[5.mlflow - モニタリング]
         end
         
-        subgraph "アクセス手法"
+        subgraph "アクセス手法（ローカル）"
             AL1[IAM Access Key]
             AL2[IAM Role]
         end
@@ -38,7 +38,7 @@ graph TB
             WE5[5.mlflow - モニタリング]
         end
         
-        subgraph "アクセス手法"
+        subgraph "アクセス手法（EC2）"
             AE1[IAM Access Key]
             AE2[IAM Role]
         end
