@@ -109,7 +109,7 @@ graph TB
    export MLFLOW_TRACKING_SERVER_NAME="mlflow-tracking-server"
    export MLFLOW_EXPERIMENT_NAME="/litellm-monitoring"
    
-   # AWS認証情報
+   # AWS 認証情報
    export AWS_ACCESS_KEY_ID="your-access-key"
    export AWS_SECRET_ACCESS_KEY="your-secret-key"
    ```
@@ -181,7 +181,7 @@ graph TD
 ./manage-mlflow.sh update-config    # 設定更新
 
 # 認証関連
-./manage-mlflow.sh get-url    # presigned URL の取得（有効期限: 30分）
+./manage-mlflow.sh get-url    # presigned URL の取得（有効期限: 30 分）
 ```
 
 ### 4. presigned URL の利用
@@ -198,8 +198,8 @@ MLflow UI にアクセスするための一時的な認証付き URL を取得�
 ```
 
 この URL は以下の特徴があります：
-- 有効期限: 30分（`--expires-in-seconds 300`）
-- セッション有効期限: 約5.5時間（`--session-expiration-duration-in-seconds 20000`）
+- 有効期限: 30 分（`--expires-in-seconds 300`）
+- セッション有効期限: 約 5.5 時間（`--session-expiration-duration-in-seconds 20000`）
 - ブラウザで開くと MLflow UI に直接アクセス可能
 ```
 
@@ -263,7 +263,7 @@ litellm-1   | TypeError: the JSON object must be str, bytes or bytearray, not No
 
 ### 2. 認証方式の改善
 
-現在, mlflow_callback.py は以下の認証方式をサポートしていますが、さらなる改善が必要です：
+現在、`mlflow_callback.py` は以下の認証方式をサポートしていますが、さらなる改善が必要です：
 
 1. **アクセスキー認証**
    - 現在の実装: boto3 でアクセスキーを使用

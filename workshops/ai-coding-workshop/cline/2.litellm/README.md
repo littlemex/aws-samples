@@ -1,10 +1,10 @@
 # LiteLLM Proxy
 
-LiteLLM を使用して Amazon Bedrock 上の Claude (Sonnet 3.7, 3.5) を利用するためのサーバーです。エラーが発生した場合は自動的にフォールバックする機能を備えています。
+LiteLLM を使用して Amazon Bedrock 上の Claude (Sonnet 3.7、3.5) を利用するためのサーバーです。エラーが発生した場合は自動的にフォールバックする機能を備えています。
 
 ## Amazon Bedrock へのアクセス方法
 
-Amazon Bedrock へのアクセスには、以下の2つの方法があります：
+Amazon Bedrock へのアクセスには、以下の 2 つの方法があります：
 
 ### 1. IAM ロールを使用する方法（推奨）
 
@@ -77,7 +77,6 @@ curl http://localhost:4000/v1/models \
 - AWS 認証情報（Bedrock へのアクセス権限必須）
 
 ## セットアップ手順
-
 
 1. 設定ファイルの説明
 

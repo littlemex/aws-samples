@@ -69,7 +69,7 @@ graph TB
 
 ### コンテナネットワーク
 - すべてのサービスは `langfuse_default` ネットワーク内で実行
-- コンテナ間通信には Docker DNS 名を使用（例：`langfuse-web`, `postgres`）
+- コンテナ間通信には Docker DNS 名を使用（例：`langfuse-web`、`postgres`）
 - 内部ポートはネットワーク内で公開
 
 ### 重要な注意点
@@ -112,7 +112,7 @@ graph TB
 - モデルの設定（Bedrock Claude など）
 - フォールバックとリトライの設定
 - Langfuse コールバックの設定
-- アクセスキーによる Amazon Bedrock アクセス (IAM role によるアクセスについては [../2.litellm/README.md](../2.litellm/README.md) を参照)
+- アクセスキーによる Amazon Bedrock アクセス (IAM Role によるアクセスについては [../2.litellm/README.md](../2.litellm/README.md) を参照)
 
 ## デバッグツール
 
@@ -168,7 +168,7 @@ python test_litellm_langfuse.py
 
 #### ログイン方法
 
-1. ブラウザで http://localhost:3000 にアクセスします
+1. ブラウザで `http://localhost:3000` にアクセスします
    - `cline/scripts/port_forward.py` でポートフォワーディングが必要です
 
 2. 初期アカウントでログイン
