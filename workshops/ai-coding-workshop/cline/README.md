@@ -24,14 +24,15 @@ cline/
 
 ## 1. 実施要件
 
-### 必要なツール　(ローカル実行の場合)
-- Python 3.10 以上 (scripts/port_forward.py スクリプトを実行する場合)
+ワークショップの実行環境、必要なツール、バージョン要件などの詳細については、[詳細要件表](0.setup/requirements.md)を参照してください。
+
+### 必要なツール（基本要件）
+- Python 3.10 以上
 - AWS CLI v2
 - Docker
-- AWS CLI
 - AWS CDK v2.x 以上
 - Session Manager プラグイン
-- Node.js
+- Node.js 18.x 以上
 
 ### 必要となる前提知識
 - Typescript に関する基礎的な理解 (1.mcp で MCP サーバーを自作するワークショップを実施する場合)
