@@ -22,11 +22,11 @@
 
 第 4 に、生産性と知識共有の課題があります。コード品質を維持しながら開発速度を向上させる必要性、プロジェクトにおけるコードベースの理解と保守、AI 活用に関するベストプラクティスの共有、新規メンバーの参画における効率的な技術継承など、全社での効果的な AI コーディング支援エージェントの活用には組織的な取り組みが必要です。この課題については本記事のスコープ外としますが、組織全体での Cline 活用に関するナレッジ蓄積を意識する必要があります。
 
-本記事ではこれらの課題をより詳細化し、課題に対して Amazon Bedrock, LiteLLM Proxy と Langfuse/MLflow を組み合わせたソリューションを例示します。これら複数の重要な課題に対して組織全体での効果的な AI 活用を検討します。
+本記事では、これらの課題に対して Amazon Bedrock、LiteLLM Proxy、そして Langfuse/MLflow を組み合わせたソリューションを提案します。組織全体で効果的に AI を活用するための具体的な方法を検討していきます。
 
 ## Cline 導入課題と Amazon Bedrock による課題の緩和
 
-Cline は、開発者からのタスクの意図を理解し自律的にタスクを遂行する AI コーディング支援エージェントです。Visual Studio Code IDE(VS Code) に Extension として統合されています。Cline を組織導入する際には、上記で取り上げた課題への対処が必要となります。
+[Cline](https://github.com/cline/cline) は、開発者からのタスクの意図を理解し自律的にタスクを遂行する AI コーディング支援エージェントです。[Visual Studio Code](https://code.visualstudio.com/) IDE（VS Code）に Extension として統合されています。Cline を組織導入する際には、上記で取り上げた課題への対処が必要となります。
 
 ### 課題 1: セキュリティリスクへの対応
 
@@ -34,37 +34,37 @@ Cline は、開発者からのタスクの意図を理解し自律的にタス�
 
 ![](./images/cline-with-amazon-bedrock.png)
 
-AWS はセキュリティを常に最優先事項としており、AWS の包括的なセキュリティ・コンプライアンス対応により、安心して AI を活用するための仕組みが整っています。Amazon Bedrock では、入出力データが学習に利用されることはなく、モデルプロバイダーとデータが共有されない設計になっています。プロンプトログすらもデフォルトでは収集が無効化されているため、機密性の高い企業データを安全に処理できます。Amazon Bedrock は入出力に対する [Guardrails](https://aws.amazon.com/jp/bedrock/guardrails/) 機能の提供を行っており、ユーザーによる入出力データへのリスク対応が可能です。
+AWS はセキュリティを常に最優先事項としており、AWS の包括的なセキュリティ・コンプライアンス対応により、安心して AI を活用するための仕組みが整っています。[Amazon Bedrock](https://aws.amazon.com/jp/bedrock/) では、入出力データが学習に利用されることはなく、モデルプロバイダーとデータが共有されない設計になっています。プロンプトログすらもデフォルトでは収集が無効化されているため、機密性の高い企業データを安全に処理できます。Amazon Bedrock は入出力に対する [Guardrails](https://aws.amazon.com/jp/bedrock/guardrails/) 機能の提供を行っており、ユーザーによる入出力データへのリスク対応が可能です。
 
-ニーズ 1-1: Cline では AWS IAM Identity Center による Amazon Bedrock へのアクセスはセキュアにプロファイル設定を通じて可能です。しかし、開発者のローカル PC から Cline を利用する構成は、悪意あるツール利用によるローカル PC の機密情報のアウトバウンド送信、社内重要ファイルの誤った削除などの意図しない操作を完全に防ぐことは困難であり、ローカル PC とは切り離された開発環境が推奨されるでしょう。
+**ニーズ 1-1: Cline は [AWS IAM Identity Center](https://aws.amazon.com/jp/iam/identity-center/) を通じて Amazon Bedrock へのセキュアなアクセスを実現できます。しかし、開発者のローカル PC 上で Cline を利用する場合、悪意のあるツールによる機密情報の外部送信や重要ファイルの誤削除といったリスクを完全に防ぐことは困難です。そのため、ローカル PC から分離された開発環境の利用を推奨します。**
 
 ### 課題 2: トークン消費と API 制限
 
-API Provider による RPM/TPM の抵触リスクを緩和し、開発者の開発体験と生産性を向上させる必要があります。
+API プロバイダーによる RPM/TPM の制限への抵触リスクを緩和し、開発者の開発体験と生産性を向上させる必要があります。
 
 ![](./images/bedrock-model-selections.png)
 
 Amazon Bedrock は、運用面に関する柔軟性に強く配慮しており、オンデマンド推論でのリアルタイムの推論、バッチ推論による一括データ処理、[Provisioned Throughput](https://docs.aws.amazon.com/ja_jp/bedrock/latest/userguide/prov-throughput.html) によるスループットパフォーマンス保証など、ニーズに合わせた推論の選択肢が用意されています。そして Amazon Bedrock は、複数プロバイダが提供する最先端モデルを統一的なインターフェースで利用できる点にも強みがあります。Anthropic の [Claude](https://aws.amazon.com/jp/bedrock/claude/) をはじめ、[Amazon Nova](https://aws.amazon.com/jp/ai/generative-ai/nova/)、Meta の [Llama](https://aws.amazon.com/jp/bedrock/llama/) など、様々なモデルにアクセスできます。モデルを適切に使い分けることでモデル単位での API 制限による影響を緩和できる点も重要です。更には [Cross-Region inference](https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html) 機能を活用することで自動的に複数リージョンに推論リクエストを分散することができ、これにより TPM 制限等の影響を緩和します。
 
-ニーズ 2-1: 組織全体で AI モデルを効率的に利用するため、複数の AWS アカウントやリージョンを跨いだリクエストの分散制御が必要です。特に、レート制限に達した際の自動的なモデル切り替えや、チーム・個人単位での利用制限を柔軟に設定できる仕組みが求められています。これにより、開発者の生産性を維持しながら、組織全体での AI リソースの効率的な活用を実現する必要があります。
+**ニーズ 2-1: 組織全体で AI モデルを効率的に利用するため、複数の AWS アカウントやリージョンを跨いだリクエストの分散制御が必要です。特に、レート制限に達した際の自動的なモデル切り替えや、チーム・個人単位での利用制限を柔軟に設定できる仕組みが求められています。これにより、開発者の生産性を維持しながら、組織全体での AI リソースの効率的な活用を実現する必要があります。**
 
 ### 課題 3: コスト管理
 
 AI コーディング支援エージェントの組織内の利用拡大に伴い、コスト管理が重要な課題となるでしょう。
 
-Amazon Bedrock では [application inference profile](https://aws.amazon.com/jp/blogs/machine-learning/track-allocate-and-manage-your-generative-ai-cost-and-usage-with-amazon-bedrock/) を使用することで、チームや個人単位での使用状況の追跡が可能です。CloudWatch メトリクスでプロファイルごとの呼び出し回数、処理時間、トークン数などを監視でき、AWS Cost Explorer でタグベースのコスト分析も実現できます。
+Amazon Bedrock では [Application Inference Profile](https://aws.amazon.com/jp/blogs/machine-learning/track-allocate-and-manage-your-generative-ai-cost-and-usage-with-amazon-bedrock/) を使用することで、チームや個人単位での使用状況の追跡が可能です。[Amazon CloudWatch](https://aws.amazon.com/jp/cloudwatch/) メトリクスでプロファイルごとの呼び出し回数、処理時間、トークン数などを監視でき、[AWS Cost Explorer](https://aws.amazon.com/jp/aws-cost-management/aws-cost-explorer/) でタグベースのコスト分析も実現できます。
 
-application inference profile 作成時に、組織構造を反映したタグを Profile に付与することで、きめ細かなコスト配分が可能になります。これらのタグは AWS Cost Explorer で自動的に認識され、タグベースのコスト配分レポートを生成できます。各プロファイルの使用状況は CloudWatch メトリクスで詳細に追跡され、`ModelId` ディメンションでフィルタリングすることで、特定のプロファイルの使用パターンを分析できます。これにより、異常な使用量の検出や予算管理が可能となります。
+application inference profile 作成時に、組織構造を反映したタグを Profile に付与することで、きめ細かなコスト配分が可能になります。これらのタグは AWS Cost Explorer で自動的に認識され、タグベースのコスト配分レポートを生成できます。各プロファイルの使用状況は Amazon CloudWatch メトリクスで詳細に追跡され、`ModelId` ディメンションでフィルタリングすることで、特定のプロファイルの使用パターンを分析できます。これにより、異常な使用量の検出や予算管理が可能となります。
 
 ただし、2025/04/23 時点では Cline での application inference profile のサポート [PR](https://github.com/cline/cline/pull/2078) はリリースに至っていません。そして、複数 AWS アカウントを跨いだモデル ID 連携の設定はサポートされていません。
 
-ニーズ 3-1: 組織として、チームや個人単位での AI モデル利用を効率的に管理する必要があります。利用可能なモデルの制限や TPM/RPM の設定を、過度な管理オーバーヘッドなく実現できる仕組みが求められています。現状の AWS アカウント分割や IAM ポリシー設計による方法では、運用負荷が高くなってしまうため、より効率的な管理方法が必要です。
+**ニーズ 3-1: 組織として、チームや個人単位での AI モデル利用を効率的に管理する必要があります。利用可能なモデルの制限や TPM/RPM の設定を、過度な管理オーバーヘッドなく実現できる仕組みが求められています。現状の AWS アカウント分割や IAM ポリシー設計による方法では、運用負荷が高くなってしまうため、より効率的な管理方法が必要です。**
 
-ニーズ 3-2: 組織として、AI モデル利用の詳細な分析と可視化を実現する必要があります。チームや個人単位での利用状況、目的に応じたモデル選択の適切性、コストパフォーマンスなど、複数アカウントやリージョンにまたがる情報を統合的に分析・評価できる基盤が求められています。これにより、組織全体での AI 活用の最適化とコスト効率の向上を図る必要があります。
+**ニーズ 3-2: 組織として、AI モデル利用の詳細な分析と可視化を実現する必要があります。チームや個人単位での利用状況、目的に応じたモデル選択の適切性、コストパフォーマンスなど、複数アカウントやリージョンにまたがる情報を統合的に分析・評価できる基盤が求められています。これにより、組織全体での AI 活用の最適化とコスト効率の向上を図る必要があります。**
 
 ### AWS の継続的なサービス改善と今後の期待
 
-ここで重要な点は、これらのニーズは独自の実装や後述するソリューションにより緩和が可能であり、AWS の継続的なサービス改善の取り組みによって今後解決されていく可能性があるということです。AWS は常にユーザーからのフィードバックを重視し、それをサービスの改善に活かすことを基本理念としています。チーム単位での詳細な利用分析やコスト管理、より柔軟なアクセス制御など、現在のニーズとして挙げた機能についても、ユーザーからのフィードバックを基に継続的に改善されていくことが期待されます。例えば、[intelligent prompt routing](https://aws.amazon.com/jp/blogs/machine-learning/use-amazon-bedrock-intelligent-prompt-routing-for-cost-and-latency-benefits/) はモデルのレスポンスの質とコストを考慮してルーティングを行う機能を提供しており、このような機能がユーザーの声を元に改善すれば、ニーズ 2-1 をマネージドで解決することができるでしょう。そのほか、Application inference profile が TPM/RPM 等の制限の機能に対応すればニーズ 3-1 を解決するでしょう。
+ここで重要な点は、これらのニーズは独自の実装や後述するソリューションにより緩和が可能であり、AWS の継続的なサービス改善の取り組みによって今後解決されていく可能性があるということです。AWS は常にユーザーからのフィードバックを重視し、それをサービスの改善に活かすことを基本理念としています。チーム単位での詳細な利用分析やコスト管理、より柔軟なアクセス制御など、現在のニーズとして挙げた機能についても、ユーザーからのフィードバックを基に継続的に改善されていくことが期待されます。例えば、[Amazon Bedrock Intelligent Prompt Routing](https://aws.amazon.com/jp/blogs/machine-learning/use-amazon-bedrock-intelligent-prompt-routing-for-cost-and-latency-benefits/) はモデルのレスポンスの質とコストを考慮してルーティングを行う機能を提供しており、このような機能がユーザーの声を元に改善すれば、ニーズ 2-1 をマネージドで解決することができるでしょう。そのほか、application inference profile が TPM/RPM 等の制限の機能に対応すればニーズ 3-1 を解決するでしょう。
 
 ## ニーズに対するソリューション例
 
@@ -74,13 +74,68 @@ application inference profile 作成時に、組織構造を反映したタグ�
 
 本ソリューションでは、以下の主要なコンポーネントを活用して、前述のニーズに対応します。
 
-**code-server on Amazon EC2 (code-server)**：開発者のローカル PC から切り離された、セキュアな開発環境を提供します。Amazon EC2 上に構築され、ブラウザベースの  VS Code 環境を提供します。VPC 内での安全な通信、IAM ロールによる適切な権限管理、統一された開発環境の提供を実現します。
+```mermaid
+%%{init: {'flowchart': {'curve': 'basis', 'diagramPadding': 20}, 'themeVariables': {'edgeLabelBackground': 'transparent'}}}%%
+graph TB
+    subgraph Secure_AI_Coding_Environment
+        subgraph "開発部門"
+            UA1["開発者"]
+        end
+            
+        subgraph インフラ部門
+            INFRA[インフラチーム]
+        end
+        
+        subgraph "AWS"
+            CA1["Cline (on Amazon EC2)"]
+            
+            subgraph LiteLLMFunc["LiteLLM Proxy"]
+                BUDGET[予算管理<br/>・Max Budget<br/>・Reset Budget<br/>・TPM/RPM 制限<br/>・User/Team 制限]
+                KEYS[Virtual Key 管理<br/>・User:Team 紐付け<br/>・タグ付与]
+                CALLBACK[Callback 設定<br/>・Langfuse/MLflow 連携]
+                ACCESS[アクセス権限管理<br/>・複数リージョン対応]
+            end
 
-**LiteLLM Proxy**：複数の LLM プロバイダーへのアクセスを統一的に管理するプロキシサーバーです。Amazon Bedrock を含む様々な LLM プロバイダーへのリクエストを一元管理し、複数アカウント・リージョンのモデル選択、レート制限、フォールバック、コスト追跡などの機能を提供します。
+            subgraph OBSERVE["Langfuse/MLflow"]
+                USAGE[使用状況・ログ]
+                COST[コスト分析]
+                LATENCY[レイテンシー分析]
+            end    
+            
+            BEDROCK[Amazon Bedrock]
+        end
+    end
+    
+    INFRA -->|管理| AWS
+    KEYS -->|"Virtual Key 発行"| UA1
+    UA1 -->|接続| CA1
+    CA1 -->|Virtual Key 使用| LiteLLMFunc
+    ACCESS <-->|アクセス管理| BEDROCK
+    CALLBACK -->|タグ含むログ転送| OBSERVE
+    
+    classDef user fill:#d4a,stroke:#333,stroke-width:2px
+    classDef infra fill:#b47,stroke:#333,stroke-width:2px
+    classDef service fill:#667,stroke:#333,stroke-width:2px
+    classDef feature fill:#445,stroke:#333,stroke-width:2px,color:#fff
+    classDef aws fill:#667,stroke:#333,stroke-width:2px,color:#fff
+    classDef env fill:#67a,stroke:#333,stroke-width:4px,color:#fff
+    
+    class UA1 user
+    class INFRA infra
+    class CA1 service
+    class BUDGET,KEYS,CALLBACK,USAGE,COST,LATENCY,ACCESS feature
+    class BEDROCK aws
+    class Secure_AI_Coding_Environment env
+    class LiteLLMFunc,OBSERVE service
+```
 
-**Langfuse**：LLM アプリケーションのモニタリングとオブザーバビリティを実現するプラットフォームです。リクエストの詳細な追跡、パフォーマンス分析、コスト分析などの機能を提供し、LLM の利用状況を可視化します。LiteLLM Proxy の簡単な設定のみでトレース等の情報を Langfuse で記録することができます。
+**code-server on Amazon EC2 (code-server)**：開発者のローカル PC から切り離された、セキュアな開発環境を提供します。[Amazon EC2](https://aws.amazon.com/jp/ec2/) 上に構築され、ブラウザベースの VS Code 環境を提供します。[Amazon VPC](https://aws.amazon.com/jp/vpc/) 内での安全な通信、[IAM](https://aws.amazon.com/jp/iam/) ロールによる適切な権限管理、統一された開発環境の提供を実現します。
 
-**MLflow**：機械学習ライフサイクル全体を管理するためのプラットフォームです。実験の追跡、モデルのバージョン管理、デプロイメント管理などの機能を提供し、LLM の利用状況やパフォーマンスを記録・分析することもできます。AWS では Amazon SageMaker が [managed MLflow](https://aws.amazon.com/jp/blogs/aws/manage-ml-and-generative-ai-experiments-using-amazon-sagemaker-with-mlflow/) を提供しており、構築と管理のコストを削減することができます。そして、Amazon SageMaker の枠組みに統合されているため取得されたトレースや S3 に格納される入出力プロンプトを用いて、評価、モデルチューニング、チューニングモデルのバージョン管理、モデルデプロイメントまで一貫して活用することができます。LiteLLM Proxy から managed MLflow にトレース等の情報を送信するためには Custom Callback のコードを書く必要があります。
+**[LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy)**：複数の LLM プロバイダーへのアクセスを統一的に管理するプロキシサーバーです。Amazon Bedrock を含む様々な LLM プロバイダーへのリクエストを一元管理し、複数アカウント・リージョンのモデル選択、レート制限、フォールバック、コスト追跡などの機能を提供します。
+
+**[Langfuse](https://langfuse.com/)**：LLM アプリケーションのモニタリングとオブザーバビリティを実現するプラットフォームです。リクエストの詳細な追跡、パフォーマンス分析、コスト分析などの機能を提供し、LLM の利用状況を可視化します。LiteLLM Proxy の簡単な設定のみでトレース等の情報を Langfuse で記録することができます。
+
+**[MLflow](https://mlflow.org/)**：機械学習ライフサイクル全体を管理するためのプラットフォームです。実験の追跡、モデルのバージョン管理、デプロイメント管理などの機能を提供し、LLM の利用状況やパフォーマンスを記録・分析することもできます。AWS では [Amazon SageMaker](https://aws.amazon.com/jp/sagemaker/) が [managed MLflow](https://aws.amazon.com/jp/blogs/aws/manage-ml-and-generative-ai-experiments-using-amazon-sagemaker-with-mlflow/) を提供しており、構築と管理のコストを削減することができます。そして、Amazon SageMaker の枠組みに統合されているため取得されたトレースや [Amazon S3](https://aws.amazon.com/jp/s3/) に格納される入出力プロンプトを用いて、評価、モデルチューニング、チューニングモデルのバージョン管理、モデルデプロイメントまで一貫して活用することができます。LiteLLM Proxy から managed MLflow にトレース等の情報を送信するためには [Custom Callback](https://docs.litellm.ai/docs/proxy/logging#custom-callback-class-async) のコードを書く必要があります。
 
 各コンポーネントは以下のように各ニーズに対応します：
 
@@ -90,7 +145,6 @@ application inference profile 作成時に、組織構造を反映したタグ�
 | 2-1: モデルリクエスト分散とフェイルオーバー | - | 仮想モデルによるルーティング制御、アカウント/リージョン間のフェイルオーバー | - | - |
 | 3-1: チーム・個人単位の利用制限 | - | 仮想モデルグループごとの利用制限、チーム/個人単位の TPM/RPM 制御 | - | - |
 | 3-2: 詳細な分析と可視化 | - | 使用状況とコスト可視化 | リアルタイムなトレース分析、コストトラッキング | リアルタイムなトレース分析、コストトラッキング |
-主な変更
 
 これらの OSS を組み合わせることで、Amazon Bedrock の機能を拡張し、組織のニーズに合わせた柔軟な AI コーディング支援環境を構築できます。
 
@@ -98,11 +152,11 @@ application inference profile 作成時に、組織構造を反映したタグ�
 
 ![](./images/cline-with-litellm-proxy.png)
 
-ニーズ 1-1 に対するソリューションでは、開発者のローカル PC から直接 AWS サービスにアクセスする代わりに、クラウド上に構築された Amazon EC2 による安全な実行環境を通じて Cline を利用します。EC2 インスタンスでは code-server や VS Code の Remote Development を利用して開発者に VS Code 環境を提供できます。これらの環境への接続方法としては、AWS Systems Manager Session Manager を介した安全なポートフォワーディングによる方法や、code-server を利用したブラウザベースの接続を提供する方法などが考えられます。
+ニーズ 1-1 に対するソリューションでは、開発者のローカル PC から直接 AWS サービスにアクセスする代わりに、クラウド上に構築された Amazon EC2 による安全な実行環境を通じて Cline を利用します。EC2 インスタンスでは [code-server](https://github.com/coder/code-server) や VS Code の [Remote Development](https://code.visualstudio.com/docs/remote/remote-overview) を利用して開発者に VS Code 環境を提供できます。これらの環境への接続方法としては、[AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html) を介した安全なポートフォワーディングによる方法や、code-server を利用したブラウザベースの接続を提供する方法などが考えられます。
 
-LiteLLM Proxy は [Guidance for Multi-Provider Generative AI Gateway on AWS](https://github.com/aws-solutions-library-samples/guidance-for-multi-provider-generative-ai-gateway-on-aws?tab=readme-ov-file) リポジトリに Amazon ECS, Amazon EKS でサービングするガイダンスが提供されており、Amazon EC2 の実行環境から AWS ネットワークに閉じてセキュアに LiteLLM Proxy にアクセスすることもできます。あくまでガイダンスであり本番利用に際してはセキュリティや負荷試験等を実施してください。
+LiteLLM Proxy は [Guidance for Multi-Provider Generative AI Gateway on AWS](https://github.com/aws-solutions-library-samples/guidance-for-multi-provider-generative-ai-gateway-on-aws?tab=readme-ov-file) リポジトリに [Amazon ECS](https://aws.amazon.com/jp/ecs/)、[Amazon EKS](https://aws.amazon.com/jp/eks/) でサービングするガイダンスが提供されており、Amazon EC2 の実行環境から AWS ネットワークに閉じてセキュアに LiteLLM Proxy にアクセスすることもできます。あくまでガイダンスであり本番利用に際してはセキュリティや負荷試験等を実施してください。
 
-LiteLLM Proxy のユーザー認証については、複数の選択肢から組織に適した方式を選択できます。Virtual Key のみの利用、[Custom Auth](https://docs.litellm.ai/docs/proxy/custom_auth)、RBAC などが標準機能として利用可能です。AWS Marketplace で提供される [LiteLLM Enterprise](https://aws.amazon.com/marketplace/pp/prodview-gdm3gswgjhgjo) を利用すれば、OIDC/JWT ベースの認証を追加できます。
+LiteLLM Proxy のユーザー認証については、複数の選択肢から組織に適した方式を選択できます。[Virtual Key](https://docs.litellm.ai/docs/proxy/virtual_keys) のみの利用、[Custom Auth](https://docs.litellm.ai/docs/proxy/custom_auth)、[RBAC](https://docs.litellm.ai/docs/proxy/users#team-based-access-control) などが標準機能として利用可能です。AWS Marketplace で提供される [LiteLLM Enterprise](https://aws.amazon.com/marketplace/pp/prodview-gdm3gswgjhgjo) を利用すれば、OIDC/JWT ベースの認証を追加できます。
 
 
 この構成により、以下のメリットが得られます：
@@ -152,7 +206,7 @@ router_settings:
 
 ##### ECSでの負荷に応じたスケーリングとマルチアカウント対応
 
-LiteLLM Proxy は Amazon ECS 上で負荷に応じた自動スケーリングが可能です。Guidance for Multi-Provider Generative AI Gateway on AWS では、ECS Service として LiteLLM Proxy をデプロイしており、CloudWatch メトリクスを使用した Application Auto Scaling の設定が可能です。CPU 使用率、メモリ使用率、ALB のリクエスト数などに基づいてスケーリングすることで、トラフィック増加時にも安定したサービスを提供できます。
+LiteLLM Proxy は Amazon ECS 上で負荷に応じた自動スケーリングが可能です。Guidance for Multi-Provider Generative AI Gateway on AWS では、Amazon ECS Service として LiteLLM Proxy をデプロイしており、Amazon CloudWatch メトリクスを使用した [Application Auto Scaling](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-auto-scaling.html) の設定が可能です。CPU 使用率、メモリ使用率、[Application Load Balancer](https://aws.amazon.com/jp/elasticloadbalancing/application-load-balancer/) のリクエスト数などに基づいてスケーリングすることで、トラフィック増加時にも安定したサービスを提供できます。
 
 また、複数の AWS アカウントの Bedrock モデルを単一の LiteLLM Proxy から利用するには、以下の設定が必要です：
 
@@ -243,18 +297,24 @@ curl --location 'http://localhost:4000/team/new' \
 
 #### 詳細な分析と可視化基盤の構築
 
-ニーズ 3-2 に対するソリューションとして、Langfuse と MLflow を組み合わせた統合的な分析・可視化基盤を提案します。Langfuse は LLM アプリケーションの観察とモニタリングに特化したオープンソースプラットフォームで、AWS Fargate 上に展開する[サンプル](https://github.com/aws-samples/deploy-langfuse-on-ecs-with-fargate?tab=readme-ov-file)があります。MLflow は Amazon SageMaker の managed MLflow を利用することができます。
+ニーズ 3-2 に対するソリューションとして、Langfuse や MLflow を組み合わせた統合的な分析・可視化基盤を提案します。Langfuse は LLM アプリケーションの観察とモニタリングに特化したオープンソースプラットフォームで、[AWS Fargate](https://aws.amazon.com/jp/fargate/) 上に展開する[サンプル](https://github.com/aws-samples/deploy-langfuse-on-ecs-with-fargate?tab=readme-ov-file)があります。MLflow は Amazon SageMaker managed MLflow を利用することができます。Langfuse、MLflow のどちらを利用するのかについては構築・運用や利用方法などで柔軟に選択することが可能です。
 
 ![](./images/cline-with-observability.png)
 
-この統合基盤では、LiteLLM Proxy からのログデータを Langfuse と MLflow に送信することで、短期的な詳細分析と長期的なトレンド分析の両方を実現します。Langfuse ではリアルタイムな利用状況の可視化、コスト分析、パフォーマンス測定が可能であり、特にチーム単位でのコストトラッキングや利用パターンの分析に優れています。MLflow では、より長期的な視点での分析が可能となり、投資対効果の可視化やベストプラクティスの抽出といった高度な分析ニーズに対応します。
+この統合基盤では、LiteLLM Proxy からチームやユーザー ID などのメタデータタグを含むログデータを Langfuse や MLflow に送信することで、リアルタイムな利用状況の可視化、コスト分析、パフォーマンス分析が可能です。個人・チーム単位やモデル単位でのコストトラッキングや利用パターンの分析を行うこともできます。
 
-組織のニーズに合わせたカスタムダッシュボードを構築することで、チーム・個人別の利用量とトレンド、モデル別のコスト効率、パフォーマンス指標などを統合的に可視化できます。これにより、データドリブンな意思決定が可能となり、モデル選択やリソース配分の最適化、コスト効率の向上、そして組織全体での AI 活用の成熟度向上を実現できます。
-
-LiteLLM Proxy の設定で Langfuse と MLflow へのログ送信を有効にするだけで、この包括的な分析基盤を構築できるため、導入の障壁も低く、組織の規模に応じて段階的に拡張することも可能です。
+LiteLLM Proxy の設定で Langfuse へのログ送信の簡単な設定を記載するだけで、この包括的な分析環境を利用できますが、Langfuse の場合はインフラストラクチャの構築と管理が必要となります。AWS Marketplace に [Langfuse](https://aws.amazon.com/marketplace/seller-profile?id=seller-nmyz7ju7oafxu) が提供されているためこれらを利用することも選択肢となるでしょう。managed MLflow の場合は LiteLLM Proxy からのログ送信のためにカスタムコードを記述する必要がありますが、インフラストラクチャはマネージドサービスを利用することができ迅速な構築と負荷の少ない管理が可能です。
 
 Langfuse trace 画面:
 ![](./images/langfuse-traces.png)
 
 managed MLflow 画面:
 ![](./images/mlflow-traces.png)
+
+## まとめ
+
+本記事では、AI コーディング支援エージェントの組織導入における課題と、それに対するソリューションを紹介しました。セキュリティリスク、API 制限、コスト管理といった課題に対して、Amazon Bedrock を基盤としながら、LiteLLM Proxy、Langfuse、MLflow などのツールを組み合わせることで、開発生産性とガバナンスを両立する方法を例示しました。
+
+特に、開発者のローカル PC から切り離された安全な実行環境の構築、複数アカウント・リージョンにまたがるモデルアクセスの一元管理、チーム・個人単位での柔軟な利用制限、そして詳細な分析・可視化基盤の構築が重要です。これらのソリューションを組織状況に応じて取捨選択しながら適切に組み合わせることで、組織は AI コーディング支援エージェントの導入による生産性向上と、適切なガバナンス体制の構築を同時に実現できます。
+
+AWS の継続的なサービス改善により、今後はさらに多くの課題がマネージドサービスとして解決されていくことも期待されます。組織は自社の状況に合わせて、本記事で紹介したソリューションを参考にしながら、最適な AI コーディング環境を構築していくことが重要です。
