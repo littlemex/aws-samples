@@ -96,6 +96,41 @@ graph TB
 
 ## セットアップ手順
 
+### CDK のデプロイ
+
+1. **CDK 環境のセットアップ**
+   ```bash
+   # CDK ディレクトリに移動
+   cd cdk
+
+   # 依存パッケージのインストール
+   npm install
+
+   # TypeScript のビルド
+   npm run build
+
+   # CDK ブートストラップの実行（初回のみ）
+   npx cdk bootstrap
+   ```
+
+2. **CDK スタックのデプロイ**
+   ```bash
+   # スタックの変更内容確認
+   npx cdk diff
+
+   # スタックのデプロイ
+   npx cdk deploy
+   ```
+
+3. **デプロイ後の確認**
+   ```bash
+   # MLflow トラッキングサーバーの状態確認
+   aws sagemaker describe-domain \
+     --domain-id $(aws sagemaker list-domains --query 'Domains[0].DomainId' --output text)
+   ```
+
+### アプリケーションのセットアップ
+
 1. **パッケージのインストール**
    ```bash
    # uv を使用してパッケージをインストール
@@ -109,7 +144,7 @@ graph TB
    export MLFLOW_TRACKING_SERVER_NAME="mlflow-tracking-server"
    export MLFLOW_EXPERIMENT_NAME="/litellm-monitoring"
    
-   # AWS認証情報
+   # AWS 認証情報
    export AWS_ACCESS_KEY_ID="your-access-key"
    export AWS_SECRET_ACCESS_KEY="your-secret-key"
    ```
@@ -181,7 +216,7 @@ graph TD
 ./manage-mlflow.sh update-config    # 設定更新
 
 # 認証関連
-./manage-mlflow.sh get-url    # presigned URL の取得（有効期限: 30分）
+./manage-mlflow.sh get-url    # presigned URL の取得（有効期限: 30 分）
 ```
 
 ### 4. presigned URL の利用
@@ -198,9 +233,24 @@ MLflow UI にアクセスするための一時的な認証付き URL を取得�
 ```
 
 この URL は以下の特徴があります：
-- 有効期限: 30分（`--expires-in-seconds 300`）
-- セッション有効期限: 約5.5時間（`--session-expiration-duration-in-seconds 20000`）
-- ブラウザで開くと MLflow UI に直接アクセス可能
+
+- URL の有効期限（`--expires-in-seconds`）
+  - 最小値: 5 秒
+  - 最大値: 5 分（300 秒）
+  - デフォルト: 300 秒
+  - URL は 1 回のみ使用可能
+
+- セッション有効期限（`--session-expiration-duration-in-seconds`）
+  - 設定値: 20000 秒（約 5.5 時間）
+  - 制限値：
+    - 最小値: 30 分（1800 秒）
+    - 最大値: 12 時間（43200 秒）
+    - デフォルト: 12 時間
+  - ブラウザで MLflow UI にアクセスできる時間
+
+> **Note**: セッション有効期限は、MLflow UI をブラウザで開いておける時間を示します。
+> この時間が経過すると新しい presigned URL を生成する必要があります。
+> 現在の設定（20000 秒）は、制限値の範囲内で安定して動作しています。
 ```
 
 ### 2. テストの実行
@@ -263,7 +313,7 @@ litellm-1   | TypeError: the JSON object must be str, bytes or bytearray, not No
 
 ### 2. 認証方式の改善
 
-現在, mlflow_callback.py は以下の認証方式をサポートしていますが、さらなる改善が必要です：
+現在、`mlflow_callback.py` は以下の認証方式をサポートしていますが、さらなる改善が必要です：
 
 1. **アクセスキー認証**
    - 現在の実装: boto3 でアクセスキーを使用

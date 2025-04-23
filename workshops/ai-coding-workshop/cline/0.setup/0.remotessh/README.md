@@ -41,12 +41,12 @@ mkdir -p ~/.ssh && chmod 700 ~/.ssh
 # authorized_keys ファイルの作成
 touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys
 
-# ローカルの公開鍵をauthorized_keysに追加
+# ローカルの公開鍵を authorized_keys に追加
 # ローカルマシンで実行：
 cat ~/.ssh/id_rsa.pub
 # 表示された公開鍵をコピー
 
-# EC2インスタンスで実行：
+# EC2 インスタンスで実行：
 echo "コピーした公開鍵" >> ~/.ssh/authorized_keys
 ```
 
@@ -89,7 +89,7 @@ Host ec2-via-ssm-forward-4000-4000
 1. VS Code に Remote - SSH 拡張機能をインストール：
 
 ::image::
-![VS Code Remote SSH拡張機能のインストール](./images/vscode-extension.png)
+![VS Code Remote SSH 拡張機能のインストール](./images/vscode-extension.png)
 
 VS Code の拡張機能タブから「Remote - SSH」を検索してインストールします。
 
@@ -113,7 +113,7 @@ VS Code の拡張機能タブから「Remote - SSH」を検索してインスト
 ls -la ~/.ssh/id_rsa
 ls -la ~/.ssh/config
 
-# EC2インスタンスでの確認
+# EC2 インスタンスでの確認
 ls -la ~/.ssh/authorized_keys
 ls -la ~/.ssh
 ```
@@ -129,18 +129,17 @@ ssh -v -p 2222 coder@localhost
 netstat -an | grep LISTEN
 ```
 
-
 ## セキュリティに関する重要な注意点
 
 ### ファイルとディレクトリの権限設定
-- SSH キーの権限は必ず600に設定（`chmod 600 ~/.ssh/id_rsa*`）
-- `.ssh` ディレクトリの権限は700に設定（`chmod 700 ~/.ssh`）
-- `authorized_keys` ファイルの権限は600に設定（`chmod 600 ~/.ssh/authorized_keys`）
+- SSH キーの権限は必ず 600 に設定（`chmod 600 ~/.ssh/id_rsa*`）
+- `.ssh` ディレクトリの権限は 700 に設定（`chmod 700 ~/.ssh`）
+- `authorized_keys` ファイルの権限は 600 に設定（`chmod 600 ~/.ssh/authorized_keys`）
 
 ### ネットワークセキュリティ
 - 不要なポート転送は必ず終了する（`ps aux | grep "ssh -L"` で確認）
 - ポート転送は必要最小限のポートのみを使用
-- 使用していないSSHセッションは切断する
+- 使用していない SSH セッションは切断する
 
 ### AWS セキュリティ
 - AWS IAM ロールは必要最小限の権限に制限する
@@ -149,7 +148,7 @@ netstat -an | grep LISTEN
 
 ### その他のセキュリティ対策
 - SSH 接続は信頼できるネットワークからのみ行う
-- 定期的にSSHキーを更新する
+- 定期的に SSH キーを更新する
 - セッションタイムアウトを適切に設定する
 
 ## 補足：LiteLLM との接続について

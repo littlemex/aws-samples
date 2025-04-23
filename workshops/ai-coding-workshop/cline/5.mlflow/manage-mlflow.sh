@@ -190,8 +190,8 @@ get_presigned_url() {
     
     log_info "トラッキングサーバー名: $MLFLOW_TRACKING_SERVER_NAME"
     
-    # presigned URL を取得（有効期限: 30分）
-    log_info "presigned URL を生成しています（有効期限: 30分）..."
+    # presigned URL を取得
+    log_info "presigned URL を生成しています..."
     local presigned_url
     presigned_url=$(aws sagemaker create-presigned-mlflow-tracking-server-url \
         --tracking-server-name "$MLFLOW_TRACKING_SERVER_NAME" \
