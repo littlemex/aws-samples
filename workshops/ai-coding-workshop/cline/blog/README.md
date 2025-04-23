@@ -75,7 +75,6 @@ application inference profile 作成時に、組織構造を反映したタグ�
 本ソリューションでは、以下の主要なコンポーネントを活用して、前述のニーズに対応します。
 
 ```mermaid
-%%{init: {'flowchart': {'curve': 'basis', 'diagramPadding': 20}, 'themeVariables': {'edgeLabelBackground': 'transparent'}}}%%
 graph TB
     subgraph Secure_AI_Coding_Environment
         subgraph "開発部門"
