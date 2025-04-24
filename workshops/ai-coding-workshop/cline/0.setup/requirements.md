@@ -9,7 +9,7 @@ graph TB
     subgraph "ローカル PC 環境"
         subgraph "ワークショップ（ローカル）"
             WL1[1.mcp - MCP]
-            WL2[2.litellm - Bedrock 連携]
+            WL2[2.litellm - Amazon Bedrock 連携]
             WL4[4.langfuse - 分析]
             WL5[5.mlflow - モニタリング]
         end
@@ -30,10 +30,10 @@ graph TB
         WL5 -.->|非対応| AL2
     end
     
-    subgraph "EC2 環境"
+    subgraph "Amazon EC2 環境"
         subgraph "ワークショップ（EC2）"
             WE1[1.mcp - TypeScript MCP]
-            WE2[2.litellm - Bedrock 連携]
+            WE2[2.litellm - Amazon Bedrock 連携]
             WE4[4.langfuse - 分析]
             WE5[5.mlflow - モニタリング]
         end
@@ -83,7 +83,7 @@ graph TB
 - Docker
 - Python 3.10+ (最も要求の厳しい MLflow に合わせる)
 - Node.js 18.x+
-- Session Manager プラグイン（EC2 環境の場合）
+- AWS Systems Manager Session Manager プラグイン（Amazon EC2 アクセス用）
 
 ## 3. 環境別の詳細要件
 
@@ -91,7 +91,7 @@ graph TB
 
 | ツール | バージョン | 用途 |
 |--------|-----------|------|
-| VSCode | 最新 | 開発環境 |
+| VS Code | 最新 | 開発環境 |
 | Python | 3.10+ | スクリプト実行、MLflow |
 | Node.js | 18.x+ | TypeScript 開発、MCP |
 | AWS CLI | v2 | AWS 操作、MLflow 利用時には v2 が必要 |
@@ -99,14 +99,33 @@ graph TB
 | TypeScript | 5.3.3+ | MCP 開発 |
 | AWS CDK | v2.x | MLflow インフラ構築 |
 
-### 3.2 EC2 環境
+### 3.2 Amazon EC2 環境
+
+Amazon EC2 環境の場合は user data を用いて事前に必要ツールをインストールしています。
+mise コマンドでインストール済みのツールバージョンを確認してください。
+
+```bash
+$ mise ls
+Tool    Version  Source                      Requested 
+node    22.15.0  ~/.config/mise/config.toml  22
+python  3.10.17  ~/.config/mise/config.toml  3.10
+uv      0.6.16   ~/.config/mise/config.toml  0.6.16
+
+# もしインストールが正常にできていない場合、以下を実行
+$ mise install uv@0.6.16 python@3.10 node@
+
+$ aws --version
+aws-cli/2.27.0 Python/3.13.2 Linux/6.8.0-1024-aws exe/x86_64.ubuntu.24
+
+$ docker -v
+Docker version 28.1.1, build 4eba377
+```
 
 | ツール | バージョン | 用途 |
 |--------|-----------|------|
-| code-server / Remote SSH | 最新 | 開発環境、0.setup で導入 |
-| Python | 3.10+ | スクリプト実行、MLflow、導入済み |
-| Node.js | 18.x+ | TypeScript 開発、MCP |
-| AWS CLI | v2 | AWS 操作、MLflow 利用時には v2 が必要 |
-| Docker | 最新 | コンテナ実行 |
+| VS Code Server / Remote SSH | 最新 | 作業環境 |
+| Python | 3.10 | スクリプト実行、MLflow |
+| Node.js | 22 | TypeScript 開発、MCP |
+| AWS CLI | v2 | AWS 操作、managed MLflow 構築 |
+| Docker | 28.1.1 | コンテナ実行 |
 | TypeScript | 5.3.3+ | MCP 開発 |
-| AWS CDK | v2.x | MLflow インフラ構築 |

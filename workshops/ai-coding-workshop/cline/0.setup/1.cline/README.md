@@ -2,7 +2,7 @@
 
 ### 1. Cline 拡張機能のインストール
 
-VSCode の Extentions メニューから「Cline」を検索し、インストールを実行します。インストール完了後、VSCode を再起動することをお勧めします。
+VS Code の Extentions メニューから「Cline」を検索し、インストールを実行します。インストール完了後、VS Code を再起動することをお勧めします。
 
 ![Cline拡張機能のインストール](images/cline-setup1.png)
 
@@ -95,7 +95,7 @@ sso_registration_scopes = sso:account:access
 
 ### セットアップ完了
 
-以上で Cline の設定は完了です。VSCode のサイドバーに Cline のアイコンが表示され、利用可能な状態となります。
+以上で Cline の設定は完了です。VS Code のサイドバーに Cline のアイコンが表示され、利用可能な状態となります。
 
 ### トラブルシューティング
 
@@ -108,7 +108,7 @@ sso_registration_scopes = sso:account:access
    - 「Use cross-region inference」が有効になっているか確認してください
 
 3. 拡張機能が正しく動作しない場合
-   - VSCode を再起動してください
+   - VS Code を再起動してください
    - 拡張機能を一度アンインストールしてから再インストールしてください
 
 ### カスタマイズ設定

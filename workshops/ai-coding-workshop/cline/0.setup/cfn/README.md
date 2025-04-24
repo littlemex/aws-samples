@@ -1,6 +1,6 @@
-# EC2 with SSM Access CloudFormation Templates
+# EC2 with SSM Access and VS Code Server CloudFormation Templates
 
-このディレクトリには、 AWS Systems Manager アクセス可能な Amazon EC2 インスタンスをセットアップするための 2 つの AWS CloudFormation テンプレートが含まれています。
+このディレクトリには、 AWS Systems Manager アクセス可能で VS Code Server を実行する Amazon EC2 インスタンスをセットアップするための 2 つの AWS CloudFormation テンプレートが含まれています。
 
 ## 実行環境の選択
 
@@ -10,18 +10,12 @@
 
 AWS CloudShell は AWS マネジメントコンソールから直接利用できる、ブラウザベースのシェル環境です。コンソール右上の CloudShell アイコンをクリックして起動できます。
 
-![CloudShell アイコン](./images/cloudshell-icon.png) 
+![AWS CloudShell アイコン](./images/cloudshell-icon.png) 
 
-> **利点**:
-> - 追加料金なしで使用可能
-> - AWS CLI が事前にインストール済み
-> - AWS 認証情報が自動的に設定済み
-
-CloudShell 内に CloudFormation テンプレートをダウンロードします。
+AWS CloudShell 内に CloudFormation テンプレートをダウンロードします。
 
 ```
-git clone https://github.com/littlemex/aws-samples.git
-cp aws-samples/workshops/ai-coding-workshop/cline/0.setup/cfn/*.yml ~/
+curl -O https://raw.githubusercontent.com/littlemex/aws-samples/main/workshops/ai-coding-workshop/cline/0.setup/cfn/ec2-ssm.yml
 ```
 
 ### ローカル環境を使用する場合
@@ -33,7 +27,7 @@ cp aws-samples/workshops/ai-coding-workshop/cline/0.setup/cfn/*.yml ~/
 
 ## テンプレートの選択
 
-1. `ec2-ssm.yml` - 新しい Amazon VPC を作成する場合
+1. `ec2-ssm.yml` - 新しい Amazon VPC を作成する場合 - **推奨**
    - 完全に独立した VPC 環境を構築
    - Amazon NAT Gateway 経由でインターネットアクセス
    - プライベートサブネットに EC2 を配置
@@ -86,10 +80,11 @@ graph TB
 
 ### 共通操作
 
-リソース名の重複を防ぐため、任意の USERNAME を設定します
+リソース名の重複を防ぐため、任意の USERNAME を設定します。
+なお、CloudFormation のスタック名にはアンダースコア（_）を使用できないため、USERNAME にはハイフン（-）を使用してください。
 
 ```
-USERNAME=(各自で任意の値を入力)
+export USERNAME=(各自で任意の値を入力 - アンダースコアは使用不可)
 ```
 
 ### 1. ec2-ssm.yml を使用する場合
@@ -101,7 +96,6 @@ aws cloudformation deploy \
   --parameter-overrides \
     UserName=${USERNAME} \
     Environment=dev \
-    CodeServerPassword=code-server \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
@@ -114,7 +108,6 @@ aws cloudformation deploy \
   --parameter-overrides \
     UserName=${USERNAME} \
     Environment=dev \
-    CodeServerPassword=code-server \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
@@ -133,12 +126,12 @@ aws cloudformation deploy \
      --output table
    ```
 
-## code-server へのアクセス
+## VS Code Server へのアクセス
 
 > **注意**:
 > - `<インスタンス ID>` は CloudFormation スタックの出力から確認できます
-> - ポートフォワードコマンドはローカル環境で実行する必要があります（CloudShell では実行できません）
-> - port_forward.py を使用する場合は Python と uv のインストールが必要です
+> - ポートフォワードコマンドはローカル環境で実行する必要があります
+> - port_forward.py を使用する場合は Python と uv の事前インストールが必要です
 
 1. ポートフォワードを設定します。以下のいずれかの方法を選択してください：
 
@@ -176,8 +169,7 @@ aws cloudformation deploy \
 
 
 
-2. ブラウザで http://localhost:18080 にアクセスし、code-server に接続します：
-   - パスワード：環境構築時に設定した `CodeServerPassword` の値（デフォルト: code-server）
+2. ブラウザで http://localhost:18080 にアクセスし、VS Code Server に接続します。
 
 ## パラメータ一覧
 
@@ -187,29 +179,22 @@ aws cloudformation deploy \
 |------------|------|------------|
 | UserName | リソース名の競合を防ぐためのユーザー名（英数字とハイフンが使用可能） | (必須) |
 | Environment | 環境名（ dev/stg/prod ） | dev |
-| InstanceType | Amazon EC2 インスタンスタイプ | m5.xlarge |
+| InstanceType | Amazon EC2 インスタンスタイプ | m5.large |
 | Region | AWS リージョン | us-east-1 |
 | AmiId | EC2 インスタンスの AMI ID | ami-084568db4383264d4 |
-| EbsVolumeSize | Amazon EBS ボリュームサイズ（ GB ） | 50 |
-| KeyPairName | SSH アクセス用のキーペア名 | (任意) |
-| CodeServerPassword | code-server のパスワード | code-server |
-
+| EbsVolumeSize | Amazon EBS ボリュームサイズ（ GB ） | 30 |
 ### ec2-ssm.yml 固有のパラメータ
 
 | パラメータ名 | 説明 | デフォルト値 |
 |------------|------|------------|
 | VpcCidr | Amazon VPC の CIDR ブロック | 10.0.0.0/16 |
 | PublicSubnet1Cidr | パブリックサブネット 1 の CIDR | 10.0.1.0/24 |
-| PublicSubnet2Cidr | パブリックサブネット 2 の CIDR | 10.0.2.0/24 |
+| PrivateSubnet1Cidr | プライベートサブネット 1 の CIDR | 10.0.2.0/24 |
 | AvailabilityZone1 | アベイラビリティゾーン 1 | us-east-1a |
-| AvailabilityZone2 | アベイラビリティゾーン 2 | us-east-1b |
-| AllowedIpRange | Systems Manager アクセスを許可する IP レンジ | 0.0.0.0/0 |
 
 ## セキュリティに関する注意事項
 
-1. `CodeServerPassword` は必ず変更してください
-2. 本番環境では `AllowedIpRange` を適切な IP 範囲に制限することを推奨します
-3. 環境構築後は、不要なリソースを削除してコストを最適化してください
+1. 環境構築後は、不要なリソースを削除してコストを最適化してください
 
 ## スタックの削除
 
