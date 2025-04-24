@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EC2 instance with SSM access and code-server setup
+Description: EC2 instance with SSM access and VS Code Server setup
 
 Parameters:
   # 識別子関連
@@ -18,7 +18,7 @@ Parameters:
   # インスタンス設定関連
   InstanceType:
     Type: String
-    Default: m5.xlarge
+    Default: m5.large
     Description: EC2 instance type
 
   Region:
@@ -36,54 +36,27 @@ Parameters:
     Description: CIDR block for VPC
   EbsVolumeSize:
     Type: Number
-    Default: 50
+    Default: 30
     Description: Size of EBS volume in GB
     MinValue: 8
     MaxValue: 16384
-
-  KeyPairName:
-    Type: String
-    Default: ""
-    Description: (Optional) Name of an existing EC2 KeyPair to enable SSH access to the instance
-
-  CodeServerPassword:
-    Type: String
-    Default: code-server
-    Description: Password for code-server web interface
-    NoEcho: true
-    MinLength: 8
-    MaxLength: 41
 
   # ネットワーク設定関連
   AvailabilityZone1:
     Type: AWS::EC2::AvailabilityZone::Name
     Default: us-east-1a
     Description: Availability Zone for the first public subnet
-  AvailabilityZone2:
-    Type: AWS::EC2::AvailabilityZone::Name
-    Default: us-east-1b
-    Description: Availability Zone for the second public subnet
-
   PublicSubnet1Cidr:
     Type: String
     Default: 10.0.0.0/24
     Description: CIDR block for the first public subnet
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
 
-  PublicSubnet2Cidr:
+  PrivateSubnet1Cidr:
     Type: String
     Default: 10.0.1.0/24
-    Description: CIDR block for the second public subnet
+    Description: CIDR block for the first private subnet
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
-
-  AllowedIpRange:
-    Type: String
-    Default: 0.0.0.0/0
-    Description: The IP address range that can access the instance via Session Manager
-    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
-
-Conditions:
-  HasKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
 
 Resources:
   VPC:
@@ -95,36 +68,44 @@ Resources:
       InstanceTenancy: default
       Tags:
         - Key: Name
-          Value: !Sub ${UserName}-${Environment}
+          Value: !Join
+            - '-'
+            - [!Ref UserName, !Ref Environment]
 
   PublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Ref AvailabilityZone1
-      CidrBlock: 10.0.2.0/24
+      CidrBlock: !Ref PublicSubnet1Cidr
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub ${UserName}-PublicSubnet
+          Value: !Join
+            - '-'
+            - [!Ref UserName, 'PublicSubnet']
 
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
       AvailabilityZone: !Ref AvailabilityZone1
-      CidrBlock: !Ref PublicSubnet1Cidr
+      CidrBlock: !Ref PrivateSubnet1Cidr
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: !Sub ${UserName}-PrivateSubnet
+          Value: !Join
+            - '-'
+            - [!Ref UserName, 'PrivateSubnet']
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: !Sub ${UserName}-IGW
+          Value: !Join
+            - '-'
+            - [!Ref UserName, 'IGW']
 
   AttachGateway:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -149,7 +130,9 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub ${UserName}-PublicRouteTable
+          Value: !Join
+            - '-'
+            - [!Ref UserName, 'PublicRouteTable']
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -171,7 +154,9 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub ${UserName}-PrivateRouteTable
+          Value: !Join
+            - '-'
+            - [!Ref UserName, 'PrivateRouteTable']
 
   PrivateRoute:
     Type: AWS::EC2::Route
@@ -191,31 +176,25 @@ Resources:
     Properties:
       GroupDescription: Security group for EC2 instance
       VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
-          CidrIp: !Ref AllowedIpRange
-          Description: Allow inbound access to code-server
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: !Ref AllowedIpRange
-          Description: Allow SSH access
+      SecurityGroupIngress: []  # インバウンドルールを全て削除（Session Manager経由でアクセス）
       SecurityGroupEgress:
         - IpProtocol: -1
           FromPort: -1
           ToPort: -1
-          CidrIp: !Ref AllowedIpRange
+          CidrIp: 0.0.0.0/0
           Description: Allow all outbound traffic by default
       Tags:
         - Key: Name
-          Value: !Sub ${UserName}-${Environment}-sg
+          Value: !Join
+            - '-'
+            - [!Ref UserName, !Ref Environment, 'sg']
 
   EC2Role:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub ${UserName}-${Environment}-role
+      RoleName: !Join
+        - '-'
+        - [!Ref UserName, !Ref Environment, 'role']
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -226,7 +205,9 @@ Resources:
       ManagedPolicyArns:
         - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
       Policies:
-        - PolicyName: !Sub ${UserName}-${Environment}-policy
+        - PolicyName: !Join
+            - '-'
+            - [!Ref UserName, !Ref Environment, 'policy']
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -236,13 +217,25 @@ Resources:
                   - ssmmessages:CreateDataChannel
                   - ssmmessages:OpenControlChannel
                   - ssmmessages:OpenDataChannel
-                  - bedrock:InvokeModelWithResponseStream
                 Resource: '*'
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - !Sub arn:aws:bedrock:*::foundation-model/anthropic.claude-3-*
+                  - !Sub arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-*
+                  - !Sub arn:aws:bedrock:*::foundation-model/anthropic.claude-3-7-sonnet-*
+                  - !Sub arn:aws:bedrock:*::foundation-model/amazon.nova-*
+                  - !Sub arn:aws:bedrock:*::foundation-model/deepseek.r1-*
+                  - !Sub arn:aws:bedrock:*:*:inference-profile/*
 
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub ${UserName}-${Environment}-instance-profile
+      InstanceProfileName: !Join
+        - '-'
+        - [!Ref UserName, !Ref Environment, 'instance-profile']
       Roles:
         - !Ref EC2Role
 
@@ -259,70 +252,106 @@ Resources:
         - DeviceName: /dev/sda1
           Ebs:
             VolumeSize: !Ref EbsVolumeSize
-      KeyName: !If 
-        - HasKeyPair
-        - !Ref KeyPairName
-        - !Ref AWS::NoValue
       UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          set -e
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash
+            set -e
 
-          # Update package list
-          apt-get update
+            # Update package list
+            apt-get update
 
-          # Install basic utilities
-          apt-get install -y \
-              curl \
-              wget \
-              unzip \
-              htop \
-              jq
+            # Install basic utilities
+            apt-get install -y \
+                curl \
+                wget \
+                unzip \
+                htop \
+                jq \
+                ca-certificates
 
-          echo "apt-get install done."
+            echo "apt-get install done."
 
-          # Install code-server
-          export HOME=/root
-          curl -fsSL https://code-server.dev/install.sh | sh
+            # Install VS Code via snap
+            snap install --classic code
 
-          # Add helper server for redirect
-          git clone https://github.com/bpmct/coder-cloud-redirect-server
-          cd coder-cloud-redirect-server
-          cp coder-cloud-redirect.service /etc/systemd/system/
-          cp coder-cloud-redirect.py /usr/bin/
+            # Create code-server user
+            adduser --disabled-password --gecos "" coder
+            echo "coder ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/coder
+            usermod -aG sudo coder
 
-          # Create code-server user
-          adduser --disabled-password --gecos "" coder
-          echo "coder ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/coder
-          usermod -aG sudo coder
+            # Create VS Code Server service file
+            cat > /etc/systemd/system/vscode-server.service << 'EOF'
+            [Unit]
+            Description=VSCode Server Service
+            After=network.target snapd.service
 
-          # Configure code-server
-          mkdir -p /home/coder/.config/code-server
-          touch /home/coder/.config/code-server/config.yaml
-          chown -R coder:coder /home/coder/.config
-          chmod -R 775 /home/coder/.config
+            [Service]
+            Type=simple
+            User=coder
+            Group=coder
+            Environment="HOME=/home/coder"
+            Environment="SHELL=/bin/bash"
+            Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
+            WorkingDirectory=/home/coder
 
-          cat > /home/coder/.config/code-server/config.yaml << EOF
-          bind-addr: 0.0.0.0:8080
-          auth: password
-          password: ${CodeServerPassword}
-          cert: false
-          EOF
+            # シンプルな再起動設定
+            Restart=always
+            RestartSec=10
 
-          # Start and enable services
-          systemctl enable --now code-server@coder
-          systemctl enable --now coder-cloud-redirect
+            # VS Code Server の起動コマンド（フォアグラウンドで実行）
+            ExecStart=/snap/bin/code serve-web --without-connection-token --accept-server-license-terms --host 0.0.0.0 --port 8080
 
-          systemctl restart code-server@coder
-          systemctl restart coder-cloud-redirect
+            [Install]
+            WantedBy=multi-user.target
+            EOF
 
-          systemctl status code-server@coder
-          systemctl status coder-cloud-redirect
+            # Create necessary directories
+            mkdir -p /home/coder/.config
+            chown -R coder:coder /home/coder/.config
 
-          echo "Configuration complete"
+            # Start and enable VS Code Server service
+            systemctl daemon-reload
+            systemctl enable vscode-server
+            systemctl start vscode-server
+
+            # install aws cli, see: https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/getting-started-install.html
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip
+            ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+
+            # install docker
+            apt-get remove -y docker docker-engine docker.io containerd runc || true
+            install -m 0755 -d /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+            chmod a+r /etc/apt/keyrings/docker.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+            apt-get update
+            apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            usermod -aG docker coder
+            echo '
+            if ! grep -q docker <(groups); then
+              newgrp docker
+            fi
+            ' >> /home/coder/.bashrc
+
+            # install mise, see: https://mise.jdx.dev/getting-started.html
+            apt update -y && apt install -y gpg sudo wget curl
+            wget -qO - https://mise.jdx.dev/gpg-key.pub | gpg --dearmor | tee /etc/apt/keyrings/mise-archive-keyring.gpg 1> /dev/null
+            echo "deb [signed-by=/etc/apt/keyrings/mise-archive-keyring.gpg arch=amd64] https://mise.jdx.dev/deb stable main" | tee /etc/apt/sources.list.d/mise.list
+            apt update
+            apt install -y mise
+
+            # install uv
+            su - coder -c 'echo "eval \"\$(/usr/bin/mise activate bash)\"" >> ~/.bashrc'
+            su - coder -c "/usr/bin/mise install uv@0.6.16 python@3.10 node@22"
+            su - coder -c "/usr/bin/mise use -g uv@0.6.16 python@3.10 node@22"
+
+            echo "Configuration complete"
       Tags:
         - Key: Name
-          Value: !Sub ${UserName}-${Environment}-instance
+          Value: !Join
+            - '-'
+            - [!Ref UserName, !Ref Environment, 'instance']
 
 Outputs:
   InstanceId:
@@ -337,12 +366,17 @@ Outputs:
 
   PortForwardCommand:
     Description: Command to forward port 8080 to local port 18080
-    Value: !Sub |
-      aws ssm start-session \
-        --target ${EC2Instance} \
-        --region ${Region} \
-        --document-name AWS-StartPortForwardingSession \
-        --parameters '{"portNumber":["8080"],"localPortNumber":["18080"]}'
+    Value: !Join
+      - ''
+      - - 'aws ssm start-session'
+        - '  --target '
+        - !Ref EC2Instance
+        - ''
+        - '  --region '
+        - !Ref Region
+        - ''
+        - '  --document-name AWS-StartPortForwardingSession'
+        - '  --parameters ''{"portNumber":["8080"],"localPortNumber":["18080"]}'''
 
   AccessURL:
     Description: URL to access after port forwarding
@@ -350,10 +384,22 @@ Outputs:
 
   Configuration:
     Description: Stack configuration details
-    Value: !Sub |
-      Stack Name: ${UserName}-${Environment}
-      Region: ${Region}
-      Instance Type: ${InstanceType}
-      AMI ID: ${AmiId}
-      VPC CIDR: ${VpcCidr}
-      EBS Volume Size: ${EbsVolumeSize} GB
+    Value: !Join
+      - ''
+      - - !Join
+          - ''
+          - - 'Stack Name: '
+            - !Join
+              - '-'
+              - [!Ref UserName, !Ref Environment]
+            - '\nRegion: '
+            - !Ref Region
+            - '\nInstance Type: '
+            - !Ref InstanceType
+            - '\nAMI ID: '
+            - !Ref AmiId
+            - '\nVPC CIDR: '
+            - !Ref VpcCidr
+            - '\nEBS Volume Size: '
+            - !Ref EbsVolumeSize
+            - ' GB'
