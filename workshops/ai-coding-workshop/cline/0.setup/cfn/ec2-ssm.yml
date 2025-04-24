@@ -283,7 +283,7 @@ Resources:
             # Create VS Code Server service file
             cat > /etc/systemd/system/vscode-server.service << 'EOF'
             [Unit]
-            Description=VSCode Server Service
+            Description=VS Code Server Service
             After=network.target snapd.service
 
             [Service]
