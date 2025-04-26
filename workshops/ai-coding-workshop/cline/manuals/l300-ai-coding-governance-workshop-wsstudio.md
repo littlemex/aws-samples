@@ -29,7 +29,7 @@ AI コーディング支援エージェントは、開発者の生産性を大�
 flowchart TD
     subgraph "AWS クラウド"
         CloudShell["AWS CloudShell"]
-        EC2["EC2 インスタンス (VS Code Server)"]
+        EC2["Amazon EC2 インスタンス (VS Code Server)"]
         Bedrock["Amazon Bedrock"]
         
         CloudShell -->|Amazon EC2 デプロイ| EC2
@@ -98,6 +98,19 @@ flowchart TD
      --parameter-overrides UserName=${USERNAME} Environment=dev \
      --capabilities CAPABILITY_NAMED_IAM
    ```
+   ※ EC2 インスタンスの起動には 5-10 分程度かかります。この待ち時間を利用して次のステップを実施します。
+
+### 1.1 Amazon Bedrock のモデルアクセス設定
+
+EC2 インスタンスが起動している間に、[Amazon Bedrock のモデルアクセスを設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/README.md#amazon-bedrock-モデルアクセスの設定)します。
+
+- 「us-east-1」、「us-east-2」、「us-west-2」で Anthropic 全モデルを有効にします
+-  モデルの利用可能状態になるまで数分待ちます
+
+### 1.2 Amazon EC2 へのアクセス
+
+スタックの出力を確認してデプロイが完了しているか確認します。
+
 5. [スタックの出力を確認](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/cfn/README.md#アクセス方法)します
    ```bash
    aws cloudformation describe-stacks \
@@ -117,10 +130,9 @@ flowchart TD
 ### 2. Cline のセットアップ
 
 1. [Cline 拡張機能をインストール](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/1.cline/README.md#1-cline-拡張機能のインストール)します
-2. [Amazon Bedrock のモデルアクセスを設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/README.md#amazon-bedrock-モデルアクセスの設定)します
-3. [Cline の認証設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/1.cline/README.md#2-amazon-bedrock-の認証情報設定)を行います。
+2. [Cline の認証設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/1.cline/README.md#2-amazon-bedrock-の認証情報設定)を行います。
     - API Provider に Amazon Bedrock を指定する場合は、プロファイル or アクセスキー設定が必要です。
-4. [Cline の詳細設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/1.cline/README.md#3-cline-の詳細設定)を行います
+3. [Cline の詳細設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/1.cline/README.md#3-cline-の詳細設定)を行います
 
 ### 3. LiteLLM Proxy の設定
 
