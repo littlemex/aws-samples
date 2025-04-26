@@ -21,6 +21,56 @@ AI コーディング支援エージェントは、開発者の生産性を大�
 
 このハンズオンを通じて、参加者は開発生産性の向上とガバナンスの両立を実現する環境構築のスキルを習得できます。
 
+## 作業環境の概要
+
+ハンズオンでは以下の 3 つの環境を使い分けて作業を進めます。各環境の役割と実施する作業を明確にすることで、スムーズにハンズオンを進めることができます。
+
+```mermaid
+flowchart TD
+    subgraph "AWS クラウド"
+        CloudShell["AWS CloudShell"]
+        EC2["EC2 インスタンス (VS Code Server)"]
+        Bedrock["Amazon Bedrock"]
+        
+        CloudShell -->|Amazon EC2 デプロイ| EC2
+        EC2 -->|API 呼び出し| Bedrock
+    end
+    
+    subgraph "ローカル PC"
+        Browser["ブラウザ"]
+        Terminal["ポートフォワーディング"]
+        
+        Terminal -->|"VS Code (8080→18080), LiteLLM (4000→4000), Langfuse (3000→3000)"| EC2
+        Browser -->|"アクセス"| Terminal
+    end
+    
+    style CloudShell fill:#19f,stroke:#333,stroke-width:2px
+    style EC2 fill:#095,stroke:#333,stroke-width:4px
+    style Terminal fill:#693,stroke:#333,stroke-width:2px
+```
+
+### 各環境での作業内容
+
+1. **AWS CloudShell**
+   - **目的**: EC2 インスタンスの起動のみ
+   - **作業**: CloudFormation テンプレートのデプロイ
+   - **特徴**: 権限が既に設定されており、誤って別環境にデプロイするリスクを回避できます
+
+2. **ローカル PC**
+   - **目的**: ポートフォワーディングの設定のみ
+   - **作業**: 以下のポートフォワーディングを設定
+     - VS Code Server: 8080 → 18080
+     - LiteLLM: 4000 → 4000
+     - Langfuse: 3000 → 3000
+   - **注意点**: 一定時間接続がないとポートフォワーディングが終了するため、必要に応じてコマンドを再実行してください
+
+3. **EC2 上の VS Code Server**
+   - **目的**: 実際のハンズオン作業の実施
+   - **作業**: Cline のセットアップ、LiteLLM Proxy の設定、Langfuse によるログ分析など
+   - **アクセス方法**: ローカル PC のブラウザから http://localhost:18080 にアクセス
+
+この環境構成により、AWS の権限管理を適切に行いながら、効率的にハンズオンを進めることができます。
+
 ## 手順リスト
 
 ### 0. 事前準備
