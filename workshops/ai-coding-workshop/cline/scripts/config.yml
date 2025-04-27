@@ -16,9 +16,11 @@ region: us-east-1  # AWSリージョン
 # local: ローカルポート番号
 # remote: リモート（Amazon EC2）ポート番号
 ports:
-  - local: 8080
+  - local: 18080
     remote: 8080
   - local: 4000
     remote: 4000
+  - local: 3000
+    remote: 3000
   - local: 2222
     remote: 22
