@@ -99,8 +99,10 @@ graph TB
 
 3. 動作確認
    ```bash
-   # ポートフォワーディングの設定 (Local PC で実行してください)
-   ../scripts/port_forward.py
+   # ポートフォワーディングの設定
+   # ローカル PC で実行してください。
+   # インスタンス ID を環境変数、引数 -i、config.yml いずれかで設定してください。
+   uv run ../scripts/port_forward.py --instance-id i-xxx --profile cline
    
    # ブラウザで Langfuse Web UI にアクセス
    # http://localhost:3000
