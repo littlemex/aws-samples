@@ -2,14 +2,16 @@
 
 本資料ではワークショップの一連の流れをまとめます。
 
-## 座学
+> **注意**: 手順実行中に問題が発生した場合は、まず本ドキュメント末尾の「トラブルシューティング」セクションをご確認ください。特に Windows PowerShell をご利用の方は、ポートフォワーディングコマンドが異なりますので、トラブルシューティングセクションの Windows 向け手順をご参照ください。
+
+## 座学 (おおよそ 1 時間)
 
 AI コーディング支援エージェントは、開発者の生産性を大幅に向上させる可能性を秘めていますが、企業環境での導入には適切なガバナンスとセキュリティ対策が不可欠です。本ワークショップの座学セクションでは、まず AI コーディング支援エージェントの概要と、特に Cline と Amazon Bedrock の特徴や利点について解説します。続いて、企業環境での AI 活用におけるガバナンスの重要性、セキュリティリスクとその対策、コスト管理の方法などについて詳しく説明します。
 
 1. ご挨拶と本日のワークショップに関する全体の説明
 2. [座学用ブログ](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/blog/README.md) の説明と質疑応答
 
-## ハンズオン
+## ハンズオン (おおよそ 2 時間)
 
 本ハンズオンでは、AWS 環境上で AI コーディング支援エージェントを構築し、適切なガバナンスを確保しながら運用するための一連の作業を体験します。まず AWS マネジメントコンソールから AWS CloudShell を起動し、AWS CloudFormation テンプレートを使用して Amazon EC2 インスタンスをデプロイします。次に、ポートフォワーディングを設定してローカルブラウザから VS Code Server にアクセスし、開発環境を整えます。この環境内で Cline 拡張機能をインストールし、Amazon Bedrock との連携設定を行います。
 
@@ -118,7 +120,7 @@ EC2 インスタンスが起動している間に、[Amazon Bedrock のモデル
      --query 'Stacks[0].Outputs' \
      --output table
    ```
-6. ローカル PC で[ポートフォワーディングを設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/cfn/README.md#vs-code-server-へのアクセス)します
+6. ローカル PC で[ポートフォワーディングを設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/cfn/README.md#vs-code-server-へのアクセス)します（Windows PowerShell をご利用の方は、トラブルシューティングセクションをご参照ください）
    ```bash
    aws ssm start-session \
      --target <インスタンス ID> \
@@ -156,7 +158,7 @@ EC2 インスタンスが起動している間に、[Amazon Bedrock のモデル
      -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
    ```
 5. [Cline と LiteLLM Proxy を連携](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/2.litellm/README.md#cline-での-litellm-設定)します
-6. 追加で Port Forward を設定します
+6. 追加で Port Forward を設定します（Windows PowerShell をご利用の方は、トラブルシューティングセクションをご参照ください）
    ```bash
    aws ssm start-session \
      --target <インスタンス ID> \
@@ -183,7 +185,7 @@ EC2 インスタンスが起動している間に、[Amazon Bedrock のモデル
    ```bash
    ./manage-langfuse.sh update-config
    ```
-5. [ポートフォワーディングを設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/4.langfuse/README.md#セットアップ手順)します
+5. [ポートフォワーディングを設定](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/4.langfuse/README.md#セットアップ手順)します（Windows PowerShell をご利用の方は、トラブルシューティングセクションをご参照ください）
    ```bash
    aws ssm start-session \
      --target <インスタンス ID> \
@@ -208,6 +210,36 @@ EC2 インスタンスが起動している間に、[Amazon Bedrock のモデル
 3. [AWS MCP サーバーの利用](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/1.mcp/2.aws-mcp/README.md)を試します
 
 ## トラブルシューティング
+
+### Windows PowerShell でのポートフォワーディング
+
+Windows PowerShell をご利用の方は、以下のコマンド形式を使用してください：
+
+1. VS Code Server へのアクセス用（8080→18080）:
+```powershell
+aws ssm start-session `
+  --target <インスタンス ID> `
+  --document-name AWS-StartPortForwardingSession `
+  --parameters '{\"portNumber\":[\"8080\"],\"localPortNumber\":[\"18080\"]}'
+```
+
+2. LiteLLM Proxy 用（4000→4000）:
+```powershell
+aws ssm start-session `
+  --target <インスタンス ID> `
+  --document-name AWS-StartPortForwardingSession `
+  --parameters '{\"portNumber\":[\"4000\"],\"localPortNumber\":[\"4000\"]}'
+```
+
+3. Langfuse 用（3000→3000）:
+```powershell
+aws ssm start-session `
+  --target <インスタンス ID> `
+  --document-name AWS-StartPortForwardingSession `
+  --parameters '{\"portNumber\":[\"3000\"],\"localPortNumber\":[\"3000\"]}'
+```
+
+### その他の問題
 
 - 組織の制約で session-manager-plugin をローカル PC に入れることができない場合
   - ローカルの VS Code を用いて Remote Development using SSH を利用してみてください。設定方法は[こちら](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/0.setup/0.remotessh/README.md)
