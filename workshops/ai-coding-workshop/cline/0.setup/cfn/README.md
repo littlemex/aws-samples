@@ -171,6 +171,31 @@ aws cloudformation deploy \
 
 2. ブラウザで http://localhost:18080 にアクセスし、VS Code Server に接続します。
 
+3. VS Code のターミナルで以下のコマンドを実行してリポジトリをクローンします：
+   ```bash
+   cd /home/coder
+   git clone https://github.com/littlemex/aws-samples.git
+   cd aws-samples/workshops/ai-coding-workshop/cline
+   ```
+
+4. VS Code にアクセスできたら以下のコマンドを実行して今後の作業に必要なツールがインストールされているか確認してください。
+   ```bash
+   mise install
+   source ~/.bashrc
+   node -v
+   # v22.15.0
+   python --version
+   # Python 3.10.17
+   docker -v
+   # Docker version 28.1.1, build 4eba377
+   aws --version
+   # aws-cli/2.27.2 Python/3.13.2 Linux/6.8.0-1024-aws exe/x86_64.ubuntu.24
+   uv --version
+   # uv 0.6.16
+   ```
+
+   > **注意**: もしこれらのコマンドのいずれかでエラーが発生する場合や、期待されるバージョンと異なる場合は、[Docker と mise のインストールエラー](#docker-と-mise-のインストールエラー)セクションの手順に従って、必要なツールを手動でインストールしてください。
+
 ## パラメータ一覧
 
 ### 共通パラメータ
@@ -192,6 +217,36 @@ aws cloudformation deploy \
 | PrivateSubnet1Cidr | プライベートサブネット 1 の CIDR | 10.0.2.0/24 |
 | AvailabilityZone1 | アベイラビリティゾーン 1 | us-east-1a |
 
+## トラブルシューティング
+
+### cloud-init ログの確認
+
+インスタンスの初期化プロセスで問題が発生した場合、以下のコマンドで cloud-init のログを確認できます：
+
+```bash
+sudo cat /var/log/cloud-init-output.log
+```
+
+### Docker と mise のインストールエラー
+
+UserData スクリプトの実行中に Docker や mise のインストールでエラーが発生した場合、以下の手順で手動インストールを行うことができます：
+
+1. このリポジトリに含まれる設定スクリプトをインスタンスにコピーします：
+   ```bash
+   sudo cp ./config.sh /tmp/
+   sudo chmod +x /tmp/config.sh
+   ```
+
+2. スクリプトを実行します：
+   ```bash
+   sudo /tmp/config.sh
+   ```
+
+3. 新しいシェルを開くか、以下のコマンドを実行して環境を更新します：
+   ```bash
+   source ~/.bashrc
+   ```
+
 ## セキュリティに関する注意事項
 
 1. 環境構築後は、不要なリソースを削除してコストを最適化してください
@@ -202,3 +257,4 @@ aws cloudformation deploy \
 
 ```bash
 aws cloudformation delete-stack --stack-name ai-workshop-${USERNAME}
+```

@@ -2,13 +2,26 @@
 
 このディレクトリには、ワークショップで使用する様々なユーティリティスクリプトが含まれています。
 
+## 共通のセットアップ手順
+
+このディレクトリのスクリプトは主に Python で実装されています。実行前に以下の手順で Python 環境をセットアップしてください：
+
+```bash
+uv venv && source .venv/bin/activate && uv sync
+```
+
+この手順は、仮想環境の作成、アクティベート、依存パッケージのインストールを行います。
+
 ## 目次
 
 - [SSMポートフォワーディングスクリプト](#ssmポートフォワーディングスクリプト)
+- [環境変数設定スクリプト](#環境変数設定スクリプト)
 
 ## SSMポートフォワーディングスクリプト
 
 このスクリプトは、AWS Systems Manager を使用して Amazon Elastic Compute Cloud (Amazon EC2) インスタンスへの複数のポートフォワーディングを一括で行います。
+
+> **重要**: このスクリプトはローカル PC で実行する必要があります。AWS CloudShell や Amazon EC2 インスタンス上では実行するものではありません。
 
 ### 必要なライブラリ
 
@@ -43,7 +56,6 @@ ports:
 #### 基本的な使用方法
 
 ```bash
-uv venv && source .venv/bin/activate && uv sync
 uv run port_forward.py
 ```
 
@@ -88,3 +100,31 @@ uv run port_forward.py -i <instance-id> -r <region> -c <config-file>
 - このスクリプトを実行するには、AWS CLIとSession Managerプラグインがインストールされている必要があります。
 - 適切な AWS Identity and Access Management (IAM) 権限が必要です（`AmazonSSMManagedInstanceCore`など）。
 - Ctrl+Cでスクリプトを終了すると、すべてのポートフォワーディングセッションが終了します。
+
+## 環境変数設定スクリプト
+
+`setup_env.sh` は、AWS アクセスキーを `~/.aws/credentials` から読み取って `.env` に環境変数として設定するためのスクリプトです。すでに値が設定されている場合に上書きはしません。
+
+### 使用場面
+
+このスクリプトは以下のディレクトリで使用されます：
+
+- `2.litellm/`: LiteLLM Proxy のアクセスキーと設定
+- `4.langfuse/`: Langfuse のアクセスキーと設定
+- `5.mlflow/`: MLflow のアクセスキーと設定
+
+### 使用方法
+
+1. 各ディレクトリの `.env.example` を参考に、必要な環境変数を設定します
+2. Python 環境をセットアップします：
+   ```bash
+   uv venv && source .venv/bin/activate && uv sync
+   ```
+3. スクリプトを実行して環境変数を設定します：
+   ```bash
+   ./setup_env.sh
+   ```
+
+### 注意事項
+
+- このスクリプトは Amazon EC2 インスタンス上で実行します
