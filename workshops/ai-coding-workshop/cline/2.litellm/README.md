@@ -4,11 +4,18 @@ LiteLLM を使用して Amazon Bedrock 上の Claude (Sonnet 3.7、3.5) を利�
 
 ## Amazon Bedrock へのアクセス方法
 
-Amazon Bedrock へのアクセスには、以下の 2 つの方法があります：
+LiteLLM Proxy を介した Amazon Bedrock へのアクセスには、以下の 2 つの方法があります。実行環境や要件に応じて適切な方法を選択してください。
+詳細な要件は[こちら](../0.setup/requirements.md)を参照してください。
 
-### 1. IAM ロールを使用する方法（推奨）
+| 実行環境 | AWS アクセス方法 | 設定ファイル | 認証情報 | .env 作成方法 |
+|---------|------------|------------|---------|------------|
+| Amazon EC2 | AWS IAM ロール（推奨） | iam_role_config.yml | Amazon EC2 インスタンスプロファイル<br>（AWS CloudFormation で自動設定済み） | `cp .env.example .env` |
+| Amazon EC2 |  AWS アクセスキー | default_config.yml | `~/.aws/credentials` の<br>[default] プロファイル | `../scripts/setup_env.sh` |
+| ローカル PC |  AWS アクセスキー | default_config.yml | `~/.aws/credentials` | 手動で `.env` にアクセスキーを設定 |
 
-EC2 インスタンスに IAM ロールを割り当てることで、アクセスキーを使用せずに Amazon Bedrock にアクセスできます。この方法には以下のメリットがあります：
+### 1. EC2 インスタンスプロファイル利用（EC2 環境での推奨方法）
+
+Amazon EC2 インスタンスに AWS IAM ロールを割り当てることで、アクセスキーを使用せずに Amazon Bedrock にアクセスできます。この方法には以下のメリットがあります：
 
 - セキュリティの向上：アクセスキーをコード内や環境変数で管理する必要がない
 - 運用の簡素化：アクセスキーのローテーションが不要
@@ -17,49 +24,50 @@ EC2 インスタンスに IAM ロールを割り当てることで、アクセ�
 
 #### セットアップ手順
 
-1. .env の作成
-
+1. .env ファイルの作成
 ```bash
-../scripts/setup_env.sh # .env.example から .env を作成する。
-# CONFIG_FILE="iam_role_config.yml" であることを確認する。
+# AWS IAM ロールを使用する場合、アクセスキーの設定は不要です
+cp .env.example .env
 ```
 
-このスクリプトは以下の処理を実行します：
-- .env.example をコピーして .env ファイルを作成
-- AWS 認証情報（アクセスキー）を取得して .env ファイルに設定 (IAM ロール利用の場合はアクセスキー不要)
-
-2. IAM ロールの設定
+2. .env ファイルの設定確認
 ```bash
-# IAM ロールに必要なポリシーを設定
-./manage-litellm.sh set-policy
+# .env ファイル内で以下の設定を確認
+CONFIG_FILE="iam_role_config.yml"
 ```
-
-このコマンドは以下の処理を実行します：
-- EC2 インスタンスに関連付けられた IAM ロールを特定
-- Bedrock アクセスに必要な最小限の権限をポリシーとして設定
 
 3. サービスの起動
 ```bash
 # 既存のサービスを停止してから起動（docker コマンドに sudo が必要な場合は sudo をつける）
-sudo ./manage-litellm.sh start
+./manage-litellm.sh start
 ```
 
-注意：IAM ロールを使用する場合、アクセスキーの設定は不要です。また、LiteLLM 公式ドキュメントで言及されている `aws_role_name` の設定は、別の IAM ロールを assume する場合にのみ必要で、EC2 インスタンスの IAM ロールを使用する場合は設定不要です。
+### 2. アクセスキー利用
 
-### 2. アクセスキーを使用する方法
+AWS CLI のプロファイルにアクセスキーを設定して利用する方法です。
 
-アクセスキーを使用しても Amazon Bedrock にアクセスできます。
+#### 前提条件
+- AWS CLI がインストールされていること
+- `~/.aws/credentials` に有効なアクセスキーが設定されていること（[default] プロファイル）
 
 #### セットアップ手順
 
-1. .env の作成
-
+1. .env ファイルの作成
 ```bash
-../scripts/setup_env.sh # .env.example から .env を作成する。
-# CONFIG_FILE="default_config.yml" であることを確認する。
+../scripts/setup_env.sh  # AWS CLIの認証情報から自動設定
 ```
 
-2. サービスの起動とテスト
+このスクリプトは以下の処理を実行します：
+- .env.example をコピーして .env ファイルを作成
+- AWS 認証情報（アクセスキー）を取得して .env ファイルに設定
+
+2. .env ファイルの設定確認
+```bash
+# .env ファイル内で以下の設定を確認
+CONFIG_FILE="default_config.yml"
+```
+
+3. サービスの起動とテスト
 ```bash
 # サービスの起動
 sudo ./manage-litellm.sh start
@@ -93,16 +101,16 @@ curl http://localhost:4000/v1/models \
 
 ```bash
 # サービスの起動
-./manage-services.sh start
+./manage-litellm.sh start
 
 # サービスの停止
-./manage-services.sh stop
+./manage-litellm.sh stop
 
 # サービスの再起動
-./manage-services.sh restart
+./manage-litellm.sh restart
 
 # ヘルプの表示
-./manage-services.sh --help
+./manage-litellm.sh --help
 ```
 
 3. 動作確認
@@ -155,7 +163,18 @@ curl -X POST 'http://0.0.0.0:4000/chat/completions' \
    - **Name**: 任意の識別名（例：「Local LiteLLM Proxy」）
    - **API Key**: 環境変数 `LITELLM_MASTER_KEY` で設定した値（例：`sk-litellm-test-key`）
    - **Base URL**: `http://localhost:4000`
+   - **Model ID**: LiteLLM Proxy で利用可能なモデル ID（例：`bedrock-converse-us-claude-3-7-sonnet-v1`）
+     - 利用可能なモデル ID は以下のコマンドで確認できます：
+     ```bash
+     curl http://localhost:4000/v1/models \
+       -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
+     ```
 4. 「Save」ボタンをクリックして設定を保存します
+
+### 重要な注意事項
+
+- **Extended thinking オプション**: Claude 3.7 Sonnet V1 を使用する場合、Cline の「Enable extended thinking」オプションをオフにしないと推論がエラーになる場合があります
+- **ポートフォワーディング**: Amazon EC2 環境で作業している場合、VS Code のポートフォワーディング（4000→4000）を設定することで、ローカルブラウザから LiteLLM 管理画面にアクセスできます
 
 この設定により、Cline はエラー発生時に LiteLLM Proxy を介してフェイルオーバーする構成となります。複数のモデルを設定している場合、LiteLLM の設定ファイルで指定した優先順位に従ってフォールバックが行われます。
 
@@ -244,32 +263,26 @@ Amazon Bedrock の [Prompt Caching](https://docs.aws.amazon.com/bedrock/latest/u
 
 ![](./images/litellm-prompt-caching.png)
 
-### EC2 上での利用方法
+### Amazon EC2 上での利用方法
 
-EC2 インスタンス上で Prompt Caching を利用する場合は、以下の手順で設定します：
+Amazon EC2 インスタンス上で Prompt Caching を利用する場合は、以下の手順で設定します：
 
-1. IAM ロールの設定（既に `set-policy` を実行済みであることを前提とします）
-   ```bash
-   ./manage-litellm.sh set-policy
-   ```
+1. Prompt Caching 設定ファイルを指定して LiteLLM を起動
+```bash
+./manage-litellm.sh -c prompt_caching.yml start
+```
 
-2. Prompt Caching 設定ファイルを指定して LiteLLM を起動
-   ```bash
-   ./manage-litellm.sh -c prompt_caching.yml start
-   ```
+### アクセスキーによる利用方法
 
-### ローカル環境での利用方法
-
-ローカル環境等で Prompt Caching を利用する場合は、AWS 認証情報の設定とが必要です。
-そして、`default_config.yml` に記載の例のようにアクセスキー情報を渡す必要があります。
+アクセスキーを用いて Prompt Caching を利用する場合は、`prompt_caching.yml` にAWS 認証情報の設定が必要です。
 詳細は LiteLLM Proxy の[公式ドキュメント](https://docs.litellm.ai/docs/simple_proxy)を参照ください。
 
-3. Prompt Caching 設定ファイルを指定して LiteLLM を起動
-   ```bash
-   ./manage-litellm.sh -c prompt_caching.yml start
-   ```
+1. Prompt Caching 設定ファイルを指定して LiteLLM を起動
+```bash
+./manage-litellm.sh -c prompt_caching.yml start
+```
 
-4. Cline の設定で LiteLLM Proxy を API Provider として設定
+2. Cline の設定で LiteLLM Proxy を API Provider として設定
 
 ### 重要な注意事項 (2025/04/11 時点)
 
