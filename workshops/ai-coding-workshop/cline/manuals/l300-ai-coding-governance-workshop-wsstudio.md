@@ -239,6 +239,7 @@ Windows PowerShell をご利用の方は、[prerequisites.md](./prerequisites.md
 - LiteLLM Proxy の接続エラーが発生する場合
   - [LiteLLM Proxy が正常に起動しているか確認](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/2.litellm/README.md#3-動作確認)してください
   - API キーが正しく設定されているか確認してください
+  - `403 You don't have access to the model with the specified model ID.` が出る場合は、モデルアクセスの有効化の手順を改めて確認してください
 
 - Langfuse の接続エラーが発生する場合
   - [デバッグツール](https://github.com/littlemex/aws-samples/blob/main/workshops/ai-coding-workshop/cline/4.langfuse/README.md#デバッグツール)を使用してトラブルシューティングを行ってください
