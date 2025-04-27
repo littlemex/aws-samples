@@ -31,7 +31,7 @@ aws configure
 設定後、`~/.aws/credentials` ファイルは以下のようになります：
 
 ```
-[Cline]
+[cline]
 aws_access_key_id = AKIAXXXXXXXXXXXXXXXX
 aws_secret_access_key = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 region = us-east-1
@@ -55,7 +55,7 @@ aws configure sso
 設定後、`~/.aws/config` ファイルは以下のようになります：
 
 ```
-[profile Cline]
+[profile cline]
 sso_session = sso-session-name
 sso_account_id = 123456789012
 sso_role_name = RoleName
@@ -73,7 +73,7 @@ sso_registration_scopes = sso:account:access
 
 以下の設定項目を正確に入力してください：
 
-- AWS Profile Name: Cline
+- AWS Profile Name: cline
   - credentials ファイルで設定したプロファイル名と一致させてください
 - AWS Region: us-east-1
   - Bedrock のサービスが利用可能なリージョンを指定
