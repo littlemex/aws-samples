@@ -180,6 +180,7 @@ aws cloudformation deploy \
 
 4. VS Code にアクセスできたら以下のコマンドを実行して今後の作業に必要なツールがインストールされているか確認してください。
    ```bash
+   mise install
    source ~/.bashrc
    node -v
    # v22.15.0
