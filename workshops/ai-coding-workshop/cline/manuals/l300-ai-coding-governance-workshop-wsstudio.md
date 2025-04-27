@@ -4,6 +4,10 @@
 
 > **注意**: 手順実行中に問題が発生した場合は、まず本ドキュメント末尾の「トラブルシューティング」セクションをご確認ください。特に Windows PowerShell をご利用の方は、ポートフォワーディングコマンドが異なりますので、トラブルシューティングセクションの Windows 向け手順をご参照ください。
 
+## はじめに
+
+本ワークショップは Workshop Studio 環境を利用して実施します。ワークショップ参加にあたっての事前準備や環境要件については、[prerequisites.md](./prerequisites.md) をご確認ください。Workshop Studio 環境では AWS アカウントやクレデンシャルが提供されるため、独自の AWS アカウントの準備は不要です。
+
 ## 座学 (おおよそ 1 時間)
 
 AI コーディング支援エージェントは、開発者の生産性を大幅に向上させる可能性を秘めていますが、企業環境での導入には適切なガバナンスとセキュリティ対策が不可欠です。本ワークショップの座学セクションでは、まず AI コーディング支援エージェントの概要と、特に Cline と Amazon Bedrock の特徴や利点について解説します。続いて、企業環境での AI 活用におけるガバナンスの重要性、セキュリティリスクとその対策、コスト管理の方法などについて詳しく説明します。
@@ -76,6 +80,8 @@ flowchart TD
 ## 手順リスト
 
 ### 0. 事前準備
+
+ワークショップ参加前に [prerequisites.md](./prerequisites.md) に記載された事前準備を完了してください。
 
 ローカル PC に必要なツールのインストールを実施します。既に実施されている方は実施済み作業をスキップしてください。
 
@@ -213,31 +219,9 @@ EC2 インスタンスが起動している間に、[Amazon Bedrock のモデル
 
 ### Windows PowerShell でのポートフォワーディング
 
-Windows PowerShell をご利用の方は、以下のコマンド形式を使用してください：
+Windows PowerShell をご利用の方は、[prerequisites.md](./prerequisites.md) の「Windows と Mac/Linux の違い」セクションをご参照ください。コマンドの形式が異なりますので、必ず事前に確認をお願いします。
 
-1. VS Code Server へのアクセス用（8080→18080）:
-```powershell
-aws ssm start-session `
-  --target <インスタンス ID> `
-  --document-name AWS-StartPortForwardingSession `
-  --parameters '{\"portNumber\":[\"8080\"],\"localPortNumber\":[\"18080\"]}'
-```
-
-2. LiteLLM Proxy 用（4000→4000）:
-```powershell
-aws ssm start-session `
-  --target <インスタンス ID> `
-  --document-name AWS-StartPortForwardingSession `
-  --parameters '{\"portNumber\":[\"4000\"],\"localPortNumber\":[\"4000\"]}'
-```
-
-3. Langfuse 用（3000→3000）:
-```powershell
-aws ssm start-session `
-  --target <インスタンス ID> `
-  --document-name AWS-StartPortForwardingSession `
-  --parameters '{\"portNumber\":[\"3000\"],\"localPortNumber\":[\"3000\"]}'
-```
+**重要**: プロファイルを設定している場合は、コマンドに `--profile <プロファイル名>` を追加する必要があります。詳細は [prerequisites.md](./prerequisites.md) の「プロファイル設定に関する注意点」をご確認ください。
 
 ### その他の問題
 
