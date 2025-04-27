@@ -6,7 +6,6 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 CONFIG_FILE="default_config.yml"
-ROLE_NAME=""
 ENV_FILE=".env"
 
 log_info() {
@@ -51,65 +50,6 @@ stop_services() {
     log_info "LiteLLM が停止しました"
 }
 
-# EC2インスタンスロールを取得
-get_ec2_instance_role() {
-    log_info "インスタンスメタデータサービスからロール情報を取得します..."
-    
-    # IMDSv2 トークンを取得
-    local token
-    token=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" 2>/dev/null)
-    
-    if [ -n "$token" ]; then
-        # IMDSv2 を使用してロール名を取得
-        ROLE_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $token" http://169.254.169.254/latest/meta-data/iam/security-credentials/ 2>/dev/null)
-        
-        if [ -n "$ROLE_NAME" ]; then
-            log_info "インスタンスメタデータサービスからロール名を取得しました: $ROLE_NAME"
-            echo "$ROLE_NAME"
-            return 0
-        fi
-    else
-        # IMDSv1 にフォールバック
-        ROLE_NAME=$(curl -s --connect-timeout 1 http://169.254.169.254/latest/meta-data/iam/security-credentials/ 2>/dev/null)
-        
-        if [ -n "$ROLE_NAME" ]; then
-            log_info "インスタンスメタデータサービスからロール名を取得しました: $ROLE_NAME"
-            return 0
-        fi
-    fi
-    
-    log_warn "EC2インスタンスロールを取得できませんでした"
-    return 1
-}
-
-# EC2インスタンスロールにBedrockアクセスポリシーを設定
-set_policy() {
-    get_ec2_instance_role
-    log_info "BedrockAccessPolicy を設定しています..."
-    local policy_name="BedrockAccessPolicy"
-    cat << EOF > /tmp/bedrock_policy.json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "bedrock:InvokeModel",
-                "bedrock:InvokeModelWithResponseStream"
-            ],
-            "Resource": [
-                "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-*",
-                "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-*",
-                "arn:aws:bedrock:*::foundation-model/anthropic.claude-3-7-sonnet-*",
-                "arn:aws:bedrock:*:*:inference-profile/*"
-            ]
-        }
-    ]
-}
-EOF
-    aws iam put-role-policy --role-name $ROLE_NAME --policy-name "$policy_name" --policy-document file:///tmp/bedrock_policy.json
-}
-
 show_help() {
     echo "Usage: $0 [OPTIONS] COMMAND"
     echo
@@ -117,7 +57,6 @@ show_help() {
     echo "  start         - サービスを起動"
     echo "  stop          - サービスを停止"
     echo "  restart       - サービスを再起動"
-    echo "  set-policy    - EC2インスタンスロールにBedrockアクセスポリシーを設定"
     echo
     echo "Options:"
     echo "  -e, --env-file FILE - 環境変数ファイルを指定 (デフォルト: .env)"
@@ -125,7 +64,6 @@ show_help() {
     echo
     echo "Examples:"
     echo "  $0 start -e custom.env"
-    echo "  $0 set-policy"
 }
 
 # メイン処理
@@ -134,9 +72,6 @@ COMMAND=""
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         start|stop|restart)
-            COMMAND="$1"
-            ;;
-        set-policy)
             COMMAND="$1"
             ;;
         -e|--env-file)
@@ -183,9 +118,6 @@ case "$COMMAND" in
     restart)
         stop_services
         start_services
-        ;;
-    set-policy)
-        set_policy
         ;;
     *)
         log_error "不明なコマンド: $COMMAND"
