@@ -22,20 +22,18 @@ def load_config(config_path: str) -> Dict[str, Any]:
         print(f"設定ファイルの読み込みに失敗しました: {e}")
         sys.exit(1)
 
-def start_port_forwarding_with_boto3(instance_id: str, region: str, local_port: int, remote_port: int) -> subprocess.Popen:
+def start_port_forwarding_with_boto3(instance_id: str, region: str, local_port: int, remote_port: int, profile: str = None) -> subprocess.Popen:
     """
     boto3を使用してポートフォワーディングを開始する
     
-    注意: boto3のSSM start_sessionはWebSocketを返しますが、
-    実際のポートフォワーディングはAWS CLIのプラグインに依存しているため、
-    結局はAWS CLIを使用する必要があります
     """
     cmd = [
         "aws", "ssm", "start-session",
         "--target", instance_id,
         "--region", region,
         "--document-name", "AWS-StartPortForwardingSession",
-        "--parameters", f"portNumber=[\"{remote_port}\"],localPortNumber=[\"{local_port}\"]"
+        "--parameters", f"portNumber=[\"{remote_port}\"],localPortNumber=[\"{local_port}\"]",
+        *(["--profile", profile] if profile else [])
     ]
     
     print(f"ポートフォワーディングを開始: ローカル {local_port} -> リモート {remote_port}")
@@ -58,7 +56,7 @@ def prioritize_ports(port_configs: List[Dict[str, int]]) -> List[Dict[str, int]]
     
     return ssh_ports + other_ports
 
-def start_port_forwarding_with_delay(instance_id: str, region: str, port_configs: List[Dict[str, int]], delay: float = 2.0) -> List[subprocess.Popen]:
+def start_port_forwarding_with_delay(instance_id: str, region: str, port_configs: List[Dict[str, int]], profile: str = None, delay: float = 2.0) -> List[subprocess.Popen]:
     """
     各ポートフォワーディングを順番に開始し、間に遅延を入れる
     """
@@ -70,7 +68,7 @@ def start_port_forwarding_with_delay(instance_id: str, region: str, port_configs
     for port_config in prioritized_ports:
         local_port = port_config['local']
         remote_port = port_config['remote']
-        process = start_port_forwarding_with_boto3(instance_id, region, local_port, remote_port)
+        process = start_port_forwarding_with_boto3(instance_id, region, local_port, remote_port, profile)
         processes.append(process)
         
         # 次のポートフォワーディングを開始する前に少し待機
@@ -85,6 +83,7 @@ def main():
     parser.add_argument('-i', '--instance-id', help='EC2インスタンスID（環境変数 EC2_INSTANCE_ID より優先）')
     parser.add_argument('-r', '--region', help='AWSリージョン（環境変数 AWS_REGION より優先）')
     parser.add_argument('-d', '--delay', type=float, default=3.0, help='ポートフォワーディング間の遅延（秒）')
+    parser.add_argument('-p', '--profile', help='AWSプロファイル名（環境変数 AWS_PROFILE より優先）')
     args = parser.parse_args()
     
     # 設定ファイルのパスを解決
@@ -110,6 +109,12 @@ def main():
     # 4. デフォルト値
     region = args.region or os.environ.get('AWS_REGION') or config.get('region', 'us-east-1')
     
+    # プロファイルの取得順序:
+    # 1. コマンドライン引数
+    # 2. 環境変数
+    # 3. 設定ファイル
+    profile = args.profile or os.environ.get('AWS_PROFILE') or config.get('profile')
+    
     if 'ports' not in config or not config['ports']:
         print("エラー: ポート設定が見つかりません")
         sys.exit(1)
@@ -117,7 +122,7 @@ def main():
     # 各ポートのフォワーディングを順番に開始（遅延あり）
     processes = []
     try:
-        processes = start_port_forwarding_with_delay(instance_id, region, config['ports'], args.delay)
+        processes = start_port_forwarding_with_delay(instance_id, region, config['ports'], profile, args.delay)
         
         print(f"\nすべてのポートフォワーディングが開始されました。インスタンスID: {instance_id}, リージョン: {region}")
         print("Ctrl+Cで終了します。")
