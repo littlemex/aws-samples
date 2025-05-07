@@ -90,6 +90,8 @@ Model Context Protocol (MCP) は、AI モデルとデータソースやツール
 **目的と学習内容**：
 LiteLLM Proxy は複数の LLM プロバイダーを統一的に扱うためのプロキシサーバーです。このセクションでは、Amazon Bedrock 上の Claude モデルを LiteLLM Proxy を通じて利用する方法を学びます。また、エラー発生時のフォールバック機能の実装を通じて、信頼性の高い AI システムの構築方法を理解できます。
 
+> **注意**: このワークショップでは、LiteLLM Proxy を Amazon ECS ではなく Amazon EC2 インスタンス上で実行します。これは、開発環境での手軽な設定と操作を重視するためです。本番環境では、[AWS ガイダンスのサンプルソリューション](blog/README.md#ソリューション-1-1-セキュアな実行環境の実現)を参考に、ECS や EKS などのコンテナオーケストレーションサービスへのデプロイを検討してください。
+
 - [ ] Option 3-1: IAM Role を用いた Amazon Bedrock への LiteLLM Proxy 経由アクセス
 - [ ] Option 3-2: IAM Access Key を用いた Amazon Bedrock への LiteLLM Proxy 経由アクセス
 

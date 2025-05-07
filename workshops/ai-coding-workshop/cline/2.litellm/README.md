@@ -86,7 +86,72 @@ curl http://localhost:4000/v1/models \
 
 ## セットアップ手順
 
-1. 設定ファイルの説明
+### 1. LiteLLM キー設定について
+
+LiteLLM Proxy では、以下のようなキー関連の設定が重要です：
+
+- **LITELLM_MASTER_KEY**: これは LiteLLM Proxy へのアクセスを管理するマスターキーです。例えば `sk-litellm-test-key` のような値を設定します。このキーは開発環境での使用を想定したテスト用の値です。本番環境では強力なランダムキーを使用してください。
+
+- **仮想キー**: マスターキーとは別に、異なるユーザーやアプリケーション用に仮想キーを作成できます。これにより、アクセス制御や使用状況の追跡が可能になります。
+
+- **仮想モデルグループ**: 特定の仮想キーに対して、アクセス可能なモデルのグループを定義できます。例えば、あるユーザーには Claude 3.7 のみへのアクセスを許可し、別のユーザーにはすべてのモデルへのアクセスを許可するといった設定が可能です。
+
+- **トークン予算**: 各キーに対してトークン使用量の上限を設定できます。これにより、コスト管理や過剰使用の防止が可能になります。
+
+### PostgreSQL 設定
+
+LiteLLM Proxy はデータ永続化のために PostgreSQL データベースを使用できます。設定例：
+
+```yaml
+database_url: "postgresql://postgres:postgres@postgres:5432/postgres"
+```
+
+この設定により、以下の情報が保存されます:
+- API リクエスト履歴
+- キー管理情報
+- 使用状況統計
+
+### `store_prompts_in_spend_logs` 設定
+
+`general_settings` セクションにある `store_prompts_in_spend_logs` 設定は、プロンプト内容をログに保存するかどうかを制御します：
+
+```yaml
+general_settings:
+  store_prompts_in_spend_logs: false  # プライバシー保護のため、デフォルトでは false を推奨
+```
+
+開発環境でデバッグ目的で使用する場合は `true` に設定できますが、プライバシーやセキュリティ上の懸念がある場合は `false` に設定してください。
+
+### LiteLLM UI アクセス管理
+
+LiteLLM 管理画面へのアクセスは以下の方法で制御できます：
+
+1. **ユーザー認証**: `.env` ファイルで UI アクセス用のユーザー名とパスワードを設定します
+   ```
+   LITELLM_UI_USERNAME=admin
+   LITELLM_UI_PASSWORD=password
+   ```
+
+2. **IP 制限**: 特定の IP アドレスからのアクセスのみを許可することも可能です
+   ```yaml
+   general_settings:
+     allowed_ui_ips: ["127.0.0.1", "192.168.1.1"]
+   ```
+
+### 設定ファイルの切り替え
+
+LiteLLM Proxy は `-c` オプションを使用して異なる設定ファイルを指定できます：
+
+```bash
+litellm --config /path/to/config.yml
+```
+
+これにより、異なる環境や用途に合わせて設定を切り替えることが可能です。例えば：
+- `default_config.yml`: 基本設定
+- `prompt_caching.yml`: キャッシング機能を有効にした設定
+- `iam_role_config.yml`: IAM ロール認証を使用する設定
+
+### 2. 設定ファイルの説明
 
 `default_config.yml` では以下の設定が可能です：
 

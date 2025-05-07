@@ -123,17 +123,62 @@ graph TB
 
 ## デバッグツール
 
-`../scripts/debug_langfuse.sh` スクリプトを使用してトラブルシューティングを行えます：
+### デバッグスクリプトのインストール方法
 
-```bash
-bash -x ../scripts/debug_langfuse.sh
-```
+1. 必要なパッケージをインストールします：
+   ```bash
+   pip install litellm langfuse pandas matplotlib
+   ```
 
-このスクリプトは以下を確認します：
-- Langfuse と LiteLLM コンテナの状態
-- 環境変数の設定
-- コンテナのログ
-- ネットワーク接続状態
+2. テストスクリプト（`test_litellm_langfuse.py`）を使用して LiteLLM と Langfuse の接続をテストします：
+   ```bash
+   # スクリプトを実行して LiteLLM と Langfuse の統合をテスト
+   python test_litellm_langfuse.py
+   ```
+
+3. トラブルシューティング用スクリプトも利用可能です：
+   ```bash
+   bash -x ../scripts/debug_langfuse.sh
+   ```
+
+   このスクリプトは以下を確認します：
+   - Langfuse と LiteLLM コンテナの状態
+   - 環境変数の設定
+   - コンテナのログ
+   - ネットワーク接続状態
+
+### LiteLLM と Langfuse の可視化の違い
+
+LiteLLM と Langfuse はどちらも LLM リクエストの監視と分析ツールですが、その可視化と機能には以下のような違いがあります：
+
+1. **データの詳細度**：
+   - **LiteLLM**: 基本的な使用状況（リクエスト数、使用トークン数、コスト）を表示
+   - **Langfuse**: より詳細なトレース情報（リクエストの階層構造、各ステップの詳細など）を提供
+
+2. **ユースケース**：
+   - **LiteLLM**: API キー管理、リアルタイムモニタリング、基本的な使用状況に最適
+   - **Langfuse**: 複雑なアプリケーションフローのデバッグ、詳細な分析、評価に適している
+
+3. **ビジュアライゼーション**：
+   - **LiteLLM**: シンプルなグラフとテーブルを使用
+   - **Langfuse**: トレース、タイムライン、依存関係グラフなどの高度な可視化ツールを提供
+
+4. **評価機能**：
+   - **LiteLLM**: 基本的な評価機能
+   - **Langfuse**: 高度な評価ツール（LLM-as-a-judge、カスタム評価、データセット機能など）
+
+以下は具体的なユースケースに基づいた両者の選択指針です：
+
+- **LiteLLM を使用する場合**：
+  - API キーの管理と権限設定が必要な場合
+  - 単純な使用状況モニタリングが主な目的の場合
+  - シンプルなダッシュボードが好ましい場合
+
+- **Langfuse を使用する場合**：
+  - アプリケーションの複雑なフローを理解する必要がある場合
+  - 詳細なパフォーマンス分析が必要な場合
+  - 評価やベンチマーキングツールが必要な場合
+  - 深いデバッグ情報が必要な場合
 
 ## テストの実行
 
@@ -178,10 +223,26 @@ python test_litellm_langfuse.py
 
 #### ログイン方法
 
-1. ブラウザで `http://localhost:3000` にアクセスします
-   - `cline/scripts/port_forward.py` でポートフォワーディングが必要です
+1. EC2 インスタンスに接続し、ポートフォワーディングを設定します
+   ```bash
+   # EC2 インスタンスへの接続（-L オプションでポートフォワーディングを設定）
+   ssh -i path/to/your-key.pem -L 3000:localhost:3000 ec2-user@YOUR_EC2_IP
+   ```
 
-2. 初期アカウントでログイン
+   または、AWS Systems Manager (SSM) を使用する場合は以下のコマンドを実行します:
+   ```bash
+   # SSM を使用してポートフォワーディングを設定（推奨方法）
+   aws ssm start-session \
+     --target YOUR_INSTANCE_ID \
+     --document-name AWS-StartPortForwardingSession \
+     --parameters '{"portNumber":["3000"], "localPortNumber":["3000"]}'
+   ```
+
+   > **注意**: 上記のポートフォワーディングコマンドは、別のターミナルで実行してください。このセッションを閉じるとポートフォワードも終了します。
+
+2. ブラウザで `http://localhost:3000` にアクセスします
+
+3. 初期アカウントでログイン
    - メールアドレス：`.env` ファイルの `LANGFUSE_INIT_USER_EMAIL` の値
    - パスワード：`.env` ファイルの `LANGFUSE_INIT_USER_PASSWORD` の値
 
