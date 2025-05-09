@@ -53,7 +53,7 @@ flowchart TD
 
 ## Langfuse 機能紹介
 
-[Langfuse](https://langfuse.com/) は LLM アプリケーションの観察とモニタリングを行うためのオープンソースプラットフォームです。
+[Langfuse](https://langfuse.com/) は LLM アプリケーションのモニタリングを行うためのオープンソースプラットフォームです。
 
 ### 主要機能
 
@@ -64,30 +64,19 @@ flowchart TD
 
 2. **プロンプト管理**
    - プロンプトの一元管理とバージョン管理
-   - 共同反復作業のサポート
-   - サーバーとクライアント側の強力なキャッシング
 
 3. **評価システム**
    - LLM-as-a-judge による評価
    - ユーザーフィードバック収集
    - 手動ラベリング
-   - カスタム評価パイプライン
 
 4. **データセット機能**
-   - テストセットとベンチマークの提供
-   - 継続的な改善とデプロイ前テスト
    - 構造化された実験
    - LangChain や LlamaIndex との統合
 
 5. **LLM プレイグラウンド**
    - プロンプトやモデル設定のテスト
    - フィードバックループの短縮
-   - 開発の加速
-
-6. **包括的な API**
-   - OpenAPI 仕様
-   - Postman コレクション
-   - Python や JS/TS 用の型付き SDK
 
 ---
 
@@ -177,7 +166,8 @@ graph TB
 ## 環境別のセットアップ手順
 
 作業ディレクトリに移動してください。
-事前に 2.litellm が実施されていることを前提としており、LiteLLM Proxy と Langfuse が疎通を行います。 
+事前に 2.litellm が実施されていることを前提としており、LiteLLM Proxy と Langfuse疎通を行います。 
+疎通させるために LiteLLM Proxy の設定に Langfuse の設定を追加して再起動する必要があります。
 
 ```bash
 cd ~/aws-samples/workshops/ai-coding-workshop/cline/4.langfuse
