@@ -44,11 +44,6 @@ curl http://localhost:4000/v1/models \
   -H "Authorization: Bearer ${LITELLM_MASTER_KEY}"
 ```
 
-## 環境要件
-
-- `docker compose` が利用できる Docker v2 以上
-- Python 3.9 以上
-
 ## 設定ファイルの切り替え
 
 スクリプトでは `-c` オプションを使用して異なる設定ファイルを指定できます。
