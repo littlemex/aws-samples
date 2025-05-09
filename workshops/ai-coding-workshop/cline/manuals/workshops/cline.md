@@ -81,6 +81,12 @@ Cline では、特定のテーマや機能に特化したルールを定義し�
 
 詳細については、[Cline の公式ドキュメント](https://docs.cline.bot/improving-your-prompting-skills/prompting)を参照してください。
 
+---
+
+以降、ワークショップ手順書
+
+---
+
 ## Amazon Bedrock を利用した Cline セットアップ手順
 
 ### 1. Cline 拡張機能のインストール
