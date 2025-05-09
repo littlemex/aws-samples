@@ -53,13 +53,109 @@ flowchart TD
 
 ## LiteLLM Proxy 機能紹介
 
-### xx 機能
+### 設定例
 
-この設定により、Cline はエラー発生時に LiteLLM Proxy を介してフェイルオーバーする構成となります。
-複数のモデルを設定している場合、LiteLLM の設定ファイルで指定した優先順位に従ってフォールバックが行われます。
+#### 1. LiteLLM キー設定について
 
+LiteLLM Proxy では、以下のような Virtual Key 関連の設定が重要です：
 
-詳細については、[LiteLLM Proxy の公式ドキュメント](https://docs.litellm.ai/docs/simple_proxy)を参照してください。
+- **LITELLM_MASTER_KEY**: これは LiteLLM Proxy へのアクセスを管理するマスターキーです。例えば `sk-litellm-test-key` のような値を設定します。このキーは開発環境での使用を想定したテスト用の値です。
+
+- **Virtual Key**: マスターキーとは別に、異なるユーザーやアプリケーション用に Virtual Key を作成できます。これにより、アクセス制御や使用状況の追跡が可能になります。
+
+- **仮想モデルグループ**: 特定の Virtual Key に対して、アクセス可能なモデルのグループを定義できます。例えば、あるユーザーには Claude 3.7 のみへのアクセスを許可し、別のユーザーにはすべてのモデルへのアクセスを許可するといった設定が可能です。
+
+- **トークン予算**: 各キーに対してトークン使用量の上限を設定できます。これにより、コスト管理や過剰使用の防止が可能になります。チームに対して使用量の上限を設定することもできます。
+
+#### `store_prompts_in_spend_logs` 設定
+
+`general_settings` セクションにある `store_prompts_in_spend_logs` 設定は、プロンプト内容をログに保存するかどうかを制御します：
+
+```yaml
+general_settings:
+  store_prompts_in_spend_logs: false  # プライバシー保護のため、デフォルトでは false を推奨
+```
+
+開発環境でデバッグ目的で使用する場合は `true` に設定できますが、プライバシーやセキュリティ上の懸念がある場合は `false` に設定してください。`false` にした場合でも別の章で取り扱う Langfuse 等へのログ送信は可能です。
+
+#### LiteLLM UI アクセス管理
+
+LiteLLM 管理画面へのアクセスは以下の方法で制御できます：
+
+1. **ユーザー認証**: `.env` ファイルで UI アクセス用のユーザー名とパスワードを設定します
+   ```
+   LITELLM_UI_USERNAME=admin
+   LITELLM_UI_PASSWORD=password
+   ```
+
+### 主な機能
+
+#### モデル一覧
+
+利用設定したモデルとその設定情報を確認できます。Setting 画面ではフォールバック設定やモデルの優先順位を設定することが可能です。
+
+![モデル一覧画面](../images/litellm-models.png)
+
+#### 使用状況分析
+
+API の使用状況や料金情報を確認できます。期間別の使用量やコスト分析が可能です。
+
+![使用状況分析画面](../images/litellm-usage.png)
+
+### ログ機能
+
+LiteLLM のログ機能では、以下の情報が確認できます：
+
+#### デフォルトのログ設定
+
+| ログタイプ | デフォルトで記録 |
+|------------|-----------------|
+| 成功ログ | ✅ はい |
+| エラーログ | ✅ はい |
+| リクエスト/レスポンスの内容 | ❌ いいえ（デフォルトでは無効） |
+
+デフォルトでは、LiteLLM はリクエストとレスポンスの内容（プロンプトや回答の本文）を記録しません。
+
+![ログ画面](../images/litellm-logs.png)
+
+### Prompt Caching 機能
+
+Amazon Bedrock の [Prompt Caching](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html) 機能を使用すると、同一のプロンプトに対する応答をキャッシュし、API コールを削減することができます。これにより、以下のメリットが得られます：
+
+- レスポンス時間の短縮
+- API 使用量とコストの削減
+
+#### Amazon Bedrock Claude 3.7 Sonnet v1 での Prompt Caching
+
+コーディング能力の高さから Cline と相性の良い Amazon Bedrock Claude 3.7 Sonnet V1 でも Prompt Caching 機能が利用可能になりました。Cline の API Provider から直接 Amazon Bedrock を指定して Prompt Caching を利用することができますし、API Provider として LiteLLM を選択した場合でも Prompt Caching を利用することができます。
+
+専用の設定ファイル `prompt_caching.yml` を使用し Cline 設定画面上で有効化することで、簡単に利用できます。
+
+![](../images/litellm-prompt-caching.png)
+
+#### Amazon EC2 上での利用方法
+
+Amazon EC2 インスタンス上で Prompt Caching を利用する場合は、以下の手順で設定します：
+
+```bash
+./manage-litellm.sh -c prompt_caching.yml start
+```
+
+#### 重要な注意事項 (2025/04/11 時点)
+
+1. **モデルの可用性**：
+   - Claude 3.7 Sonnet v1 は us-east-1 リージョンで cross region inference を有効にするケースのみで利用可能です。
+   - モデルアクセスを有効化する場合は、us-east-1、us-east-2、us-west-2 すべてのリージョンで Claude 3.7 Sonnet v1 を有効化することを推奨します。
+
+2. **モデルの特性と互換性**：
+   - Claude 3.7 Sonnet v1 は高精度なコーディングが可能で、Prompt Caching 機能も利用できます。
+   - Claude 3.5 Sonnet v2 は高精度なコーディングが可能ですが Prompt Caching 機能に対応していません。
+
+3. **フォールバック設定の注意点**：
+   - LiteLLM Proxy 経由で利用する場合、Prompt Caching が有効にできないモデル（例：Claude 3.5 Sonnet v2）を fallbacks に指定するとエラーが発生します。
+   - フォールバック設定を行う場合は、Prompt Caching 対応モデルのみを指定するようにしてください。
+
+その他の機能詳細については、[LiteLLM Proxy の公式ドキュメント](https://docs.litellm.ai/docs/simple_proxy)を参照してください。
 
 ---
 
@@ -235,5 +331,3 @@ LiteLLM には、サービスの監視や管理を行うための Web インタ�
 **[次のステップ]**
 - [Langfuse ワークショップを開始](./langfuse.md)
 - [ワークショップ一覧に戻る](./README.md)
-
-
