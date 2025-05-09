@@ -74,6 +74,7 @@ AWS Console にアクセスして AWS CloudShell を利用する必要があり�
 1. Amazon Bedrock の有効化
    - [Amazon Bedrock コンソール](https://console.aws.amazon.com/bedrock)にアクセス
    - 使用するモデル（Claude 3.7 Sonnet v2 など）へのアクセスを有効化
+   - **利用リージョン**: us-east-1, us-east-2, us-west-2
 
 2. IAM 権限の設定
    - Amazon Bedrock へのアクセス権限
