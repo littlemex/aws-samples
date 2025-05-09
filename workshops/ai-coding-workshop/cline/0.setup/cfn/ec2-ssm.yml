@@ -160,6 +160,7 @@ Resources:
 
   PrivateRoute:
     Type: AWS::EC2::Route
+    DependsOn: NATGateway
     Properties:
       RouteTableId: !Ref PrivateRouteTable
       DestinationCidrBlock: 0.0.0.0/0
@@ -241,6 +242,9 @@ Resources:
 
   EC2Instance:
     Type: AWS::EC2::Instance
+    DependsOn: 
+      - NATGateway
+      - PrivateRoute
     Properties:
       InstanceType: !Ref InstanceType
       ImageId: !Ref AmiId
