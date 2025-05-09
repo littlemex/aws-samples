@@ -128,7 +128,7 @@ graph TB
     class LiteLLMFunc,OBSERVE service
 ```
 
-**code-server on Amazon EC2 (code-server)**：開発者のローカル PC から切り離された、セキュアな開発環境を提供します。[Amazon EC2](https://aws.amazon.com/jp/ec2/) 上に構築され、ブラウザベースの VS Code 環境を提供します。[Amazon VPC](https://aws.amazon.com/jp/vpc/) 内での安全な通信、[IAM](https://aws.amazon.com/jp/iam/) ロールによる適切な権限管理、統一された開発環境の提供を実現します。
+**VS Code Server on Amazon EC2 (VS Code Server)**：開発者のローカル PC から切り離された、セキュアな開発環境を提供します。[Amazon EC2](https://aws.amazon.com/jp/ec2/) 上に構築され、ブラウザベースの VS Code 環境を提供します。[Amazon VPC](https://aws.amazon.com/jp/vpc/) 内での安全な通信、[IAM](https://aws.amazon.com/jp/iam/) ロールによる適切な権限管理、統一された開発環境の提供を実現します。
 
 **[LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy)**：複数の LLM プロバイダーへのアクセスを統一的に管理するプロキシサーバーです。Amazon Bedrock を含む様々な LLM プロバイダーへのリクエストを一元管理し、複数アカウント・リージョンのモデル選択、レート制限、フォールバック、コスト追跡などの機能を提供します。
 
@@ -138,7 +138,7 @@ graph TB
 
 各コンポーネントは以下のように各ニーズに対応します：
 
-| ニーズ | code-server | LiteLLM Proxy | Langfuse | MLflow |
+| ニーズ | VS Code Server | LiteLLM Proxy | Langfuse | MLflow |
 |-------|------------|--------------|----------|--------|
 | 1-1: セキュアな実行環境 | VPC 内での安全な通信、IAM ロールによる権限管理、統一された開発環境 | OIDC / JWT / Virtual Key による認証、RBAC による権限制御、SSO 統合 | - | - |
 | 2-1: モデルリクエスト分散とフェイルオーバー | - | 仮想モデルによるルーティング制御、アカウント/リージョン間のフェイルオーバー | - | - |
@@ -151,7 +151,7 @@ graph TB
 
 ![](./images/cline-with-litellm-proxy.png)
 
-ニーズ 1-1 に対するソリューションでは、開発者のローカル PC から直接 AWS サービスにアクセスする代わりに、クラウド上に構築された Amazon EC2 による安全な実行環境を通じて Cline を利用します。EC2 インスタンスでは [code-server](https://github.com/coder/code-server) や VS Code の [Remote Development](https://code.visualstudio.com/docs/remote/remote-overview) を利用して開発者に VS Code 環境を提供できます。これらの環境への接続方法としては、[AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html) を介した安全なポートフォワーディングによる方法や、code-server を利用したブラウザベースの接続を提供する方法などが考えられます。
+ニーズ 1-1 に対するソリューションでは、開発者のローカル PC から直接 AWS サービスにアクセスする代わりに、クラウド上に構築された Amazon EC2 による安全な実行環境を通じて Cline を利用します。EC2 インスタンスでは VS Code Server や VS Code の [Remote Development](https://code.visualstudio.com/docs/remote/remote-overview) を利用して開発者に VS Code 環境を提供できます。これらの環境への接続方法としては、[AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html) を介した安全なポートフォワーディングによる方法や、VS Code Server を利用したブラウザベースの接続を提供する方法などが考えられます。
 
 LiteLLM Proxy は [Guidance for Multi-Provider Generative AI Gateway on AWS](https://github.com/aws-solutions-library-samples/guidance-for-multi-provider-generative-ai-gateway-on-aws?tab=readme-ov-file) リポジトリに [Amazon ECS](https://aws.amazon.com/jp/ecs/)、[Amazon EKS](https://aws.amazon.com/jp/eks/) でサービングするガイダンスが提供されており、Amazon EC2 の実行環境から AWS ネットワークに閉じてセキュアに LiteLLM Proxy にアクセスすることもできます。あくまでガイダンスであり本番利用に際してはセキュリティや負荷試験等を実施してください。
 
