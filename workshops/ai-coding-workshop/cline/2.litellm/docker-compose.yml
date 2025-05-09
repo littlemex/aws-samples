@@ -5,7 +5,7 @@ services:
     ports:
       - "4000:4000"
     volumes:
-      - ./${CONFIG_FILE:-default_config.yml}:/app/config.yaml
+      - ./${CONFIG_FILE:-iam_role_config.yml}:/app/config.yaml
     depends_on:
       - postgres
     command: --config /app/config.yaml --detailed_debug

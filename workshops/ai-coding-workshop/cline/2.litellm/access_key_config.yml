@@ -46,6 +46,7 @@ litellm_settings:
   drop_params: true # サポート外のパラメータを無視する
 
 general_settings:
+  store_prompts_in_spend_logs: false
   log_level: debug
   openai_api_base: "/v1"
   disable_user_auth: true  # 開発中は認証を無効化（本番環境では使用しないでください）
