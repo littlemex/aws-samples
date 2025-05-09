@@ -1,4 +1,4 @@
-# Cline ショップ
+# Cline ワークショップ
 
 このワークショップでは、AI コーディング支援エージェント Cline を活用した実践的なハンズオンを行います。
 
@@ -7,19 +7,15 @@
 このワークショップでは Cline に加えて組織利用を想定した以下の内容を学びます：
 
 1. **MCP（Model Context Protocol）**
-   - AI エージェントの機能拡張
-   - 外部 API との連携
+   - MCP Server の構築
    - AWS ドキュメント検索との統合
 
-2. **LiteLLM**
+2. **LiteLLM Proxy**
    - Amazon Bedrock との連携
-   - プロンプトのキャッシュ管理
    - 複数モデルの統合管理
 
 3. **Langfuse**
-   - プロンプトの効果測定
-   - 応答品質の分析
-   - コスト最適化の分析
+   - コスト・レイテンシー可視化
 
 4. **MLflow**
    - AI 応答のモニタリング
@@ -58,21 +54,17 @@ flowchart TD
     N --> R[4.langfuse/README.md]
     O --> S[5.mlflow/README.md]
 
-    click C href "./selfenv.md"
-    click D href "./workshop-studio.md"
-    click G href "./selfenv-ec2.md"
-    click H href "./selfenv-local.md"
-    click I href "./ws-ec2.md"
-    click J href "./ws-local.md"
-    click K href "./workshops/README.md"
-    click L href "./workshops/mcp.md"
-    click M href "./workshops/litellm.md"
-    click N href "./workshops/langfuse.md"
-    click O href "./workshops/mlflow.md"
-    click P href "../1.mcp/README.md"
-    click Q href "../2.litellm/README.md"
-    click R href "../4.langfuse/README.md"
-    click S href "../5.mlflow/README.md"
+    click C href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv.md"
+    click D href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshop-studio.md"
+    click G href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv-ec2.md"
+    click H href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv-local.md"
+    click I href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/ws-ec2.md"
+    click J href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/ws-local.md"
+    click K href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/README.md"
+    click L href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mcp.md"
+    click M href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/litellm.md"
+    click N href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/langfuse.md"
+    click O href "https://github.com/littlemex/aws-samples/tree/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mlflow.md"
 ```
 
 フローチャートの各ノードをクリックすると、対応するドキュメントにジャンプできます。例えば、「セルフアカウント」をクリックするとセルフアカウントのセットアップガイドに移動します。
