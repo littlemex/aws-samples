@@ -5,7 +5,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-CONFIG_FILE="default_config.yml"
+CONFIG_FILE="iam_role_config.yml"
 ENV_FILE=".env"
 
 log_info() {
@@ -59,11 +59,23 @@ show_help() {
     echo "  restart       - サービスを再起動"
     echo
     echo "Options:"
+    echo "  -c, --config FILE   - 設定ファイルを指定 (デフォルト: iam_role_config.yml)"
+    echo "                        利用可能な設定ファイル:"
+    echo "                        - iam_role_config.yml: IAMロール認証用（EC2推奨）"
+    echo "                        - access_key_config.yml: アクセスキー認証用"
+    echo "                        - prompt_caching.yml: プロンプトキャッシング有効化用"
     echo "  -e, --env-file FILE - 環境変数ファイルを指定 (デフォルト: .env)"
+    echo "                        必要な環境変数:"
+    echo "                        - LITELLM_MASTER_KEY: LiteLLM Proxyアクセス用キー"
+    echo "                        - LITELLM_UI_USERNAME: 管理画面アクセス用ユーザー名"
+    echo "                        - LITELLM_UI_PASSWORD: 管理画面アクセス用パスワード"
     echo "  -h, --help          - このヘルプメッセージを表示"
     echo
     echo "Examples:"
-    echo "  $0 start -e custom.env"
+    echo "  $0 start                           # デフォルト設定で起動"
+    echo "  $0 start -c prompt_caching.yml     # プロンプトキャッシング有効で起動"
+    echo "  $0 start -e custom.env            # カスタム環境変数で起動"
+    echo "  $0 restart -c access_key_config.yml # アクセスキー認証で再起動"
 }
 
 # メイン処理

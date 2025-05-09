@@ -84,6 +84,7 @@ litellm_settings:
   ]
 
 general_settings:
+  store_prompts_in_spend_logs: false
   log_level: debug
   openai_api_base: "/v1"
   disable_user_auth: true

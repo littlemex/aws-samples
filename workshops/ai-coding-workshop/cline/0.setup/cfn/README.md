@@ -8,11 +8,12 @@
 
 ### AWS CloudShell を使用する場合
 
-AWS CloudShell は AWS マネジメントコンソールから直接利用できる、ブラウザベースのシェル環境です。コンソール右上の CloudShell アイコンをクリックして起動できます。
+AWS CloudShell は AWS マネジメントコンソールから直接利用できる、ブラウザベースのシェル環境です。
+コンソール右上の AWS CloudShell アイコンをクリックして起動できます。
 
 ![AWS CloudShell アイコン](./images/cloudshell-icon.png) 
 
-AWS CloudShell 内に CloudFormation テンプレートをダウンロードします。
+AWS CloudShell 内に AWS CloudFormation テンプレートをダウンロードします。
 
 ```
 curl -O https://raw.githubusercontent.com/littlemex/aws-samples/main/workshops/ai-coding-workshop/cline/0.setup/cfn/ec2-ssm.yml
@@ -28,9 +29,9 @@ curl -O https://raw.githubusercontent.com/littlemex/aws-samples/main/workshops/a
 ## テンプレートの選択
 
 1. `ec2-ssm.yml` - 新しい Amazon VPC を作成する場合 - **推奨**
-   - 完全に独立した VPC 環境を構築
+   - 完全に独立した Amazon VPC 環境を構築
    - Amazon NAT Gateway 経由でインターネットアクセス
-   - プライベートサブネットに EC2 を配置
+   - プライベートサブネットに Amazon EC2 を配置
    - Internet Gateway、NAT Gateway、パブリック/プライベートサブネットの完全な構成
    - より高いセキュリティが必要な環境に推奨
 
@@ -49,7 +50,7 @@ graph TB
     Internet[インターネット]
     IGW[Internet Gateway]
     PublicSubnet[パブリックサブネット<br>NAT Gateway]
-    PrivateSubnet[プライベートサブネット<br>EC2 インスタンス]
+    PrivateSubnet[プライベートサブネット<br>Amazon EC2 インスタンス]
 
     Internet --> IGW
     IGW --> PublicSubnet
@@ -58,7 +59,7 @@ graph TB
 
 - Internet Gateway を介してパブリックサブネットがインターネットに接続
 - NAT Gateway を介してプライベートサブネットからインターネットにアクセス可能
-- EC2 インスタンスはプライベートサブネットに配置され、直接のインターネットアクセスを制限
+- Amazon EC2 インスタンスはプライベートサブネットに配置され、直接のインターネットアクセスを制限
 
 ### ec2-ssm-default-vpc.yml の構成
 
@@ -66,14 +67,14 @@ graph TB
 graph TB
     Internet[インターネット]
     IGW[Internet Gateway]
-    PublicSubnet[パブリックサブネット<br>EC2 インスタンス]
+    PublicSubnet[パブリックサブネット<br>Amazon EC2 インスタンス]
 
     Internet --> IGW
     IGW --> PublicSubnet
 ```
 
 - デフォルト VPC の既存の Internet Gateway を使用
-- パブリックサブネットを自動検出して EC2 インスタンスを配置
+- パブリックサブネットを自動検出して Amazon EC2 インスタンスを配置
 - シンプルな構成で素早いデプロイが可能
 
 ## デプロイ方法
@@ -129,7 +130,7 @@ aws cloudformation deploy \
 ## VS Code Server へのアクセス
 
 > **注意**:
-> - `<インスタンス ID>` は CloudFormation スタックの出力から確認できます
+> - `<インスタンス ID>` は AWS CloudFormation スタックの出力から確認できます
 > - ポートフォワードコマンドはローカル環境で実行する必要があります
 > - port_forward.py を使用する場合は Python と uv の事前インストールが必要です
 

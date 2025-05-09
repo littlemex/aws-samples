@@ -2,13 +2,6 @@
 
 このガイドでは、AWS Systems Manager (SSM) を使用して EC2 インスタンスに VS Code から Remote Development using SSH で接続する方法を説明します。
 
-## 前提条件
-
-- AWS CLI がインストールされていること
-- AWS の認証情報が適切に設定されていること
-- EC2 インスタンスに SSM エージェントがインストールされていること
-- EC2 インスタンスに適切な IAM ロールが設定されていること
-
 ## 1. SSH キーペアの設定
 
 既にキーペアが生成されている場合はスキップで構いません。
@@ -22,7 +15,7 @@ chmod 600 ~/.ssh/id_rsa
 chmod 644 ~/.ssh/id_rsa.pub
 ```
 
-## 2. EC2 インスタンスの SSH 設定
+## 2. Amazon EC2 インスタンスの SSH 設定
 
 1. SSM セッションを開始：
 ```bash
@@ -86,10 +79,10 @@ Host ec2-via-ssm-forward-4000-4000
 
 ## 4. VS Code の設定と接続
 
-1. VS Code に Remote - SSH 拡張機能をインストール：
+1. VS Code に Remote Development 拡張機能をインストール：
 
 ::image::
-![VS Code Remote SSH 拡張機能のインストール](./images/vscode-extension.png)
+![VS Code Remote Development 拡張機能のインストール](./images/vscode-extension.png)
 
 VS Code の拡張機能タブから「Remote - SSH」を検索してインストールします。
 
@@ -104,6 +97,7 @@ VS Code の拡張機能タブから「Remote - SSH」を検索してインスト
 ![VS Code Remote SSH 接続 2](./images/vscode-connect-2.png)
 
 接続が成功すると、左下のステータスバーに「SSH: ec2-via-ssm」と表示されます。
+以降は VS Code Server 同様に Cline インストール等の作業を進めてください。
 
 ## トラブルシューティング
 
@@ -150,16 +144,3 @@ netstat -an | grep LISTEN
 - SSH 接続は信頼できるネットワークからのみ行う
 - 定期的に SSH キーを更新する
 - セッションタイムアウトを適切に設定する
-
-## 補足：LiteLLM との接続について
-
-LiteLLM を使用する場合は、別途セットアップガイドを参照してください。Remote SSH 経由で LiteLLM に接続する場合は、以下の点に注意が必要です：
-
-1. ポートフォワーディングの設定が正しいことを確認
-2. Base URL は `http://127.0.0.1:4000` と指定（`localhost:4000` は使用不可）
-3. 接続できない場合は、ポートの競合やファイアウォールの設定を確認
-
-## 参考リソース
-
-- [AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html)
-- [VS Code Remote Development](https://code.visualstudio.com/docs/remote/remote-overview)
