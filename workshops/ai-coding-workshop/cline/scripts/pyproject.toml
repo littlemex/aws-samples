@@ -8,4 +8,6 @@ dependencies = [
     "boto3>=1.37.14",
     "pyyaml>=6.0.2",
     "python-dotenv>=1.0.0",
+    "langfuse>=2.60.4",
+    "openai>=1.78.0",
 ]
