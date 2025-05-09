@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TD
     A[manuals/README.md] --> B{アカウント選択}
-    B -->|企業アカウント| C[manuals/selfenv.md]
+    B -->|セルフアカウント| C[manuals/selfenv.md]
     B -->|Workshop Studio| D[manuals/workshop-studio.md]
     
     C --> E{実行環境}
@@ -80,7 +80,7 @@ flowchart TD
 ### 各環境での作業内容
 
 1. **AWS CloudShell**
-   - **目的**: EC2 インスタンスの起動のみ
+   - **目的**: Amazon EC2 インスタンスの起動のみ
    - **作業**: AWS CloudFormation テンプレートのデプロイ
    - **特徴**: 権限が既に設定されており、誤って別環境にデプロイするリスクを回避できます
 
@@ -92,7 +92,7 @@ flowchart TD
      - Langfuse: 3000 → 3000
    - **注意点**: 一定時間接続がないとポートフォワーディングが終了するため、必要に応じてコマンドを再実行してください
 
-3. **EC2 上の VS Code Server**
+3. **Amazon EC2 上の VS Code Server**
    - **目的**: 実際のハンズオン作業の実施
    - **作業**: Cline のセットアップ、LiteLLM Proxy の設定、Langfuse によるログ分析など
    - **アクセス方法**: ローカル PC のブラウザから http://localhost:18080 にアクセス
@@ -178,6 +178,7 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    ```
 
 2. **プロファイル設定の確認**:
+
    プロファイルの設定内容は `~/.aws/config` または `~/.aws/credentials` に保存されます。
 
    ```bash
@@ -219,6 +220,7 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
       --parameters '{\"portNumber\":[\"8080\"],\"localPortNumber\":[\"18080\"]}'
    ```
 3. 実行結果
+
    成功した場合は
    ```bash
    Starting session with SessionId: {セッションID}
@@ -226,6 +228,7 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    ```
    と出力されます。
 4. ブラウザに localhost:18080 を入力して VS Code Server にアクセスします。
+
    無事 VS Code が表示されれば Amazon EC2 インスタンスへの接続は成功です！
 
 主な OS による `aws ssm start-session` コマンドの違い:
@@ -240,6 +243,7 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    ```
 
 2. 必要なパッケージのインストールとその確認
+
    ここまでがうまくいけば Cline を使うための開発環境構築は完了です！
    ```bash
    mise ls && mise install && uv --version
@@ -247,6 +251,8 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    ```
 
 ## トラブルシューティング
+
+1. ポートフォワーディング
    ```bash
    An error occurred (TargetNotConnected) when calling the StartSession operation: {インスタンスID} is not connected.
    ```
