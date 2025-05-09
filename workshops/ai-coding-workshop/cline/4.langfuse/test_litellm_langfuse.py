@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import logging
 import json
@@ -126,8 +125,8 @@ litellm_status, litellm_message = check_host_connection(litellm_host, litellm_po
 logger.debug(f"LiteLLM Proxy 接続状態: {litellm_message}")
 
 # Langfuse ホスト設定
-#LANGFUSE_HOST = "http://localhost:3000"  # EC2ホストからの直接アクセス用に固定
-LANGFUSE_HOST = "http://localhost:3000/proxy/3000"
+LANGFUSE_HOST = "http://localhost:3000"  # EC2ホストからの直接アクセス用に固定
+#LANGFUSE_HOST = "http://localhost:3000/proxy/3000"
 logger.debug("EC2ホストから直接アクセスするため、localhostを使用")
 
 # Langfuse の接続チェック

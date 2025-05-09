@@ -1,6 +1,6 @@
 # LiteLLM と Langfuse を用いた LLM 利用状況の分析
 
-本セクションでは、Cline VSCode Plugin で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するための Langfuse 統合について説明します。この構成により、以下のような情報を詳細に把握することが可能になります：
+本セクションでは、Cline で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するための Langfuse 統合について説明します。この構成により、以下のような情報を詳細に把握することが可能になります：
 
 - LLM の利用状況とコスト分析
 - リクエスト・レスポンスの詳細な記録
@@ -29,7 +29,7 @@ graph TB
     subgraph "Amazon EC2 Instance"
         subgraph "Host OS"
             
-            subgraph "code-server"
+            subgraph "VS Code Server"
                PF2[":8080 Port Forward"]
                CP[Cline]
             end
@@ -137,12 +137,20 @@ bash -x ../scripts/debug_langfuse.sh
 
 ## テストの実行
 
+まず、scripts ディレクトリで Python 環境をセットアップします：
+
 ```bash
-pip install langfuse
+cd ../scripts
+uv venv && source .venv/bin/activate && uv sync
+cd ../4.langfuse
+```
+
+その後、テストを実行します：
+
+```bash
 python test_litellm_langfuse.py
 
-# ERROR - Unexpected error occurred. Please check your request and contact support: https://langfuse.com/support. このようなワーニングが出ます
-# 既知の Langfuse のバグのため動作に問題はありません。https://github.com/orgs/langfuse/discussions/6194
+# ERROR - Unexpected error occurred. Please check your request and contact support: https://langfuse.com/support. このようなワーニングが出ることがありますが、既知の Langfuse のバグのため動作に問題はありません。https://github.com/orgs/langfuse/discussions/6194
 ```
 
 テストスクリプトは以下を実行します：
@@ -178,8 +186,20 @@ python test_litellm_langfuse.py
 
 #### ログイン方法
 
-1. ブラウザで `http://localhost:3000` にアクセスします
-   - `cline/scripts/port_forward.py` でポートフォワーディングが必要です
+1. EC2 インスタンスに接続し、ポートフォワーディングを設定します
+   ローカル PC で以下のコマンドを実行します:
+   ```bash
+   aws ssm start-session \
+     --target YOUR_INSTANCE_ID \
+     --document-name AWS-StartPortForwardingSession \
+     --parameters '{"portNumber":["3000"], "localPortNumber":["3000"]}'
+   
+   # scripts/port_forward.py を利用することもできます。
+   ```
+
+   > **注意**: 上記のポートフォワーディングコマンドは、別のターミナルで実行してください。このセッションを閉じるとポートフォワードも終了します。
+
+3. ブラウザで `http://localhost:3000` にアクセスします
 
 2. 初期アカウントでログイン
    - メールアドレス：`.env` ファイルの `LANGFUSE_INIT_USER_EMAIL` の値

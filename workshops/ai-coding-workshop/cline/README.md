@@ -54,16 +54,16 @@ aws congigure もしくは aws configure sso 等で AWS CLI もしくは boto3 �
 ### 2.1 環境セットアップ
 1. [環境セットアップガイド](0.setup/README.md)に従って開発環境を構築
    - Amazon EC2 インスタンスのデプロイ
-   - Remote SSH または code-server の設定
+   - Remote SSH または VS Code Server の設定
    - Cline のインストールと設定
    - Amazon Bedrock の設定（モデルアクセスの有効化）
 
 **目的と学習内容**：
-このセクションでは、AI コーディングエージェントを効果的に活用するための基盤となる Amazon EC2 開発環境を構築します。AWS のクラウド環境と VSCode の Remote Development 機能を組み合わせることで、安全な開発環境を実現する方法を学びます。また、Amazon Bedrock と Cline の設定を行います。
+このセクションでは、AI コーディングエージェントを効果的に活用するための基盤となる Amazon EC2 開発環境を構築します。AWS のクラウド環境と VS Code の Remote Development 機能を組み合わせることで、安全な開発環境を実現する方法を学びます。また、Amazon Bedrock と Cline の設定を行います。
 
-- [ ] Option 1-1: Amazon EC2 開発環境を構築せずにローカル VSCode を利用する
-- [ ] Option 1-2: Amazon EC2 開発環境を構築して code-server を利用する
-- [ ] Option 1-3: Amazon EC2 開発環境を構築して VSCode Remote SSH を利用する
+- [ ] Option 1-1: Amazon EC2 開発環境を構築せずにローカル VS Code を利用する
+- [ ] Option 1-2: Amazon EC2 開発環境を構築して VS Code Server を利用する
+- [ ] Option 1-3: Amazon EC2 開発環境を構築して VS Code Remote Development を利用する
 
 Option 1-1 を選択する場合は、ローカル環境依存により Workshop で想定していないエラーが発生する可能性があります。
 そして、2.litellm の IAM Role による Amazon Bedrock へのアクセスはローカル想定の実装をしていないため動きません。
@@ -92,6 +92,9 @@ LiteLLM Proxy は複数の LLM プロバイダーを統一的に扱うための�
 
 - [ ] Option 3-1: IAM Role を用いた Amazon Bedrock への LiteLLM Proxy 経由アクセス
 - [ ] Option 3-2: IAM Access Key を用いた Amazon Bedrock への LiteLLM Proxy 経由アクセス
+
+> **注意**: このワークショップでは、LiteLLM Proxy を Amazon ECS ではなく Amazon EC2 インスタンス上で実行します。これは、開発環境でのインタラクティブな設定と操作の体験を重視するためです。本番環境では、[AWS ガイダンスのサンプルソリューション](blog/README.md#ソリューション-1-1-セキュアな実行環境の実現)を参考に、Amazon ECS や Amazon EKS などのコンテナオーケストレーションサービスへのデプロイを検討してください。
+
 
 ### 2.4 Amazon SageMaker カスタムモデルの利用
 
@@ -142,7 +145,6 @@ Amazon SageMaker の Managed MLflow を使用して、LiteLLM Proxy の実行ロ
 ## 参考リソース
 
 - [AWS CDK ドキュメント](https://docs.aws.amazon.com/ja_jp/cdk/latest/guide/home.html)
-- [Code Server ドキュメント](https://coder.com/docs/code-server/latest)
 - [Amazon Bedrock 開発者ガイド](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html)
 - [Model Context Protocol Documentation](https://modelcontextprotocol.github.io/)
 - [AWS Systems Manager Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html)
