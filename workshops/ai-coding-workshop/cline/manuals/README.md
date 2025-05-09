@@ -82,7 +82,6 @@ flowchart TD
 
 セルフ AWS アカウントを使用してワークショップを実施する場合：
 
-- Amazon Bedrock の有効化が必要
 - 適切な IAM 権限の設定が必要
 - クオータの確認と調整が必要
 
@@ -98,6 +97,30 @@ AWS が提供する Workshop Studio 環境を使用する場合：
 
 👉 [Workshop Studio 環境セットアップへ](./workshop-studio.md)
 
+## Amazon Bedrock の設定
+
+**重要: セルフ AWS アカウント、Workshop Studio どちらの場合も Amazon Bedrock のモデルアクセスの有効化を必ず実施してください。**
+
+**利用リージョン**: us-east-1, us-east-2, us-west-2
+
+1. AWS コンソールの [Amazon Bedrock](https://console.aws.amazon.com/bedrock) サービスに移動
+2. 左側メニューから「Model access」を選択
+3. 「Manage model access」をクリック
+4. Anthropic Claude 3 系モデルをすべて選択
+5. 「Save changes」をクリック
+
+> **注意**: モデルアクセスの承認には数分かかる場合があります。
+
+![Amazon Bedrock モデルアクセスの設定](./images/bedrock-setup.png)
+
+### Amazon Bedrock のクオータの確認
+
+- [us-east-1 リージョン](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/bedrock/quotas)・[us-west-2 リージョン](https://us-west-2.console.aws.amazon.com/servicequotas/home/services/bedrock/quotas) で `tokens per minute for Anthropic Claude` をクオータ検索窓に入力し、各モデルが利用可能になっていることを確認します。
+
+- Amazon Bedrock のクオータ TPM (Tokens per minute) が 1,000,000 であることを確認
+- Cross-region model inference tokens per minute for Anthropic Claude 3.7 Sonnet V1 の確認
+- 必要に応じてクオータの引き上げをリクエスト
+
 ## 前提知識
 
 - AWS の基本的な知識
@@ -108,11 +131,6 @@ AWS が提供する Workshop Studio 環境を使用する場合：
 
 - 環境セットアップ：約 30 分
 - 各ワークショップ：約 0.5-1 時間
-
-## サポート
-
-問題が発生した場合は、以下を確認してください：
-- 各セクションのトラブルシューティングガイド
 
 ---
 

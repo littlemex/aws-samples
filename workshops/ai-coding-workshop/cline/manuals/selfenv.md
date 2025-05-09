@@ -67,24 +67,8 @@ AWS Console にアクセスして AWS CloudShell を利用する必要があり�
 - AWS Systems Manager 関連の権限
 - AWS Lambda 関数の作成と実行
 - Amazon Bedrock モデルの呼び出し権限
+   - モデルアクセス有効化の権限をワークショップ受講者に付与できない場合は、インフラ管理者等が事前に利用アカウントのモデルアクセス有効化を実施ください。
 - AWS CloudShell へのアクセス
-
-### AWS アカウントの準備
-
-1. Amazon Bedrock の有効化
-   - ワークショップ実施前にインフラ部門やワークショップ実施の代表者がセルフアカウントで有効化を確認ください
-   - [Amazon Bedrock コンソール](https://console.aws.amazon.com/bedrock)にアクセス
-   - 使用するモデル（Claude 3.7 Sonnet v2 など）へのアクセスを有効化
-   - **利用リージョン**: us-east-1, us-east-2, us-west-2
-
-2. IAM 権限の設定
-   - Amazon Bedrock へのアクセス権限
-   - 必要に応じて Amazon EC2、AWS CloudFormation の権限
-
-3. クオータの確認
-   - Amazon Bedrock のクオータ TPM (Tokens per minute) が 1,000,000 であることを確認
-   - Cross-region model inference tokens per minute for Anthropic Claude 3.7 Sonnet V1 の確認
-   - 必要に応じてクオータの引き上げをリクエスト
 
 ### 必要なツール
 
