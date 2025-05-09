@@ -59,20 +59,19 @@ flowchart TD
 
 ## ワークショップの概要
 
+本ワークショップで用いる Cline、LiteLLM Proxy、Langufuse などの説明や組み合わせ方については [ブログ](../blog/README.md) を参照してください。
+
 このワークショップでは以下の内容を学びます：
 
 1. **MCP（Model Context Protocol）**
-   - AI エージェントの機能拡張
-   - AWS ドキュメント検索との統合
+   - 自作の MCP Server の構築
+   - AWS ドキュメント検索 MCP 等の公開されている MCP の利用
 
 2. **LiteLLM**
    - Amazon Bedrock との連携
    - 複数モデルの統合管理
 
-3. **Langfuse**
-   - コストやレイテンシー、トレースログの分析
-
-4. **MLflow**
+3. **Langfuse/MLflow**
    - コストやレイテンシー、トレースログの分析
 
 ## 環境選択
