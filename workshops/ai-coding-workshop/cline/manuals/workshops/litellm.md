@@ -99,7 +99,7 @@ flowchart TD
 - インスタンスプロファイルの設定が必要
 
 **設定手順：**
-1. Amazon EC2 インスタンスに適切なIAMロールが割り当てられていることを確認
+1. Amazon EC2 インスタンスに適切な IAM ロールが割り当てられていることを確認
 2. 特別な設定は不要（自動的にロールが使用される）
 
 ### 2. アクセスキーを使用する場合
@@ -137,6 +137,16 @@ docker compose を利用して環境を構築しており、データベース�
 cp .env.example .env
 ```
 
+#### LiteLLM Proxy の起動
+
+スクリプトを実行して LiteLLM Proxy を起動します。内部的には docker compose を単に実行しているだけの Wrapper です。
+`.env` の `CONFIG_FILE="iam_role_config.yml"` がデフォルトの LiteLLM Proxy の設定ファイルです。
+この設定ファイルに基づいて LiteLLM Proxy の利用するモデル、ログ保存有無、など様々な設定を行います。
+
+```bash
+./manage-litellm.sh start
+```
+
 ### ローカルPC環境の場合
 
 この場合は、IAM Role を用いるため AWS アクセスキーの設定が必要です。
@@ -154,12 +164,12 @@ AWS_SECRET_ACCESS_KEY=""
 ...
 ```
 
-### LiteLLM Proxy の起動
+#### LiteLLM Proxy の起動
 
-スクリプトを実行して LiteLLM Proxy を起動します。内部的には docker compose を単に実行しているだけの Wrapper です。
+スクリプトの引数でアクセスキー認証を利用する設定ファイルを指定します。
 
 ```bash
-./manage-litellm.sh start
+./manage-litellm.sh -c access_key_config.yml start
 ```
 
 ### 動作確認
@@ -192,7 +202,7 @@ curl http://localhost:4000/v1/models \
    - **[注意!] Extended thinking オプション**: Claude 3.7 Sonnet V1 を使用する場合、Cline の「Enable extended thinking」をオフにしないとエラーになるバグがあります。
 4. 「Save」ボタンをクリックして設定を保存します
 
-設定完了後、簡単なタスクを実行して動作確認することをお勧めします。
+設定完了後、Cline から簡単なタスクを実行して動作確認してみましょう。
 
 ## LiteLLM 管理画面（Admin UI）
 
