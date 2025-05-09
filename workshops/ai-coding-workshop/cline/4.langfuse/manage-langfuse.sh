@@ -7,7 +7,7 @@ NC='\033[0m' # No Color
 
 LANGFUSE_DIR="langfuse"
 LITELLM_DIR="../2.litellm"
-CONFIG_FILE="default_config.yml"
+CONFIG_FILE="iam_role_config.yml"
 ENV_FILE=".env"
 
 log_info() {

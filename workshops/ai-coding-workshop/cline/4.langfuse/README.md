@@ -1,131 +1,40 @@
-# LiteLLM と Langfuse を用いた LLM 利用状況の分析
+# Langfuse 実装詳細
 
-本セクションでは、Cline で LiteLLM を API Provider として使用する際の詳細な利用状況を分析するための Langfuse 統合について説明します。この構成により、以下のような情報を詳細に把握することが可能になります：
+本ドキュメントは実装詳細を解説するための資料であり、Langfuse の概要やワークショップのマニュアルは [manuals](../manuals/README.md) をご確認ください。
+Langfuse ワークショップは[こちら](../manuals/workshops/langfuse.md)。
 
-- LLM の利用状況とコスト分析
-- リクエスト・レスポンスの詳細な記録
-- パフォーマンスとレイテンシの監視
-- エラー発生時のトラブルシューティング
+## スクリプト
 
-## 前提条件
+Langfuse の起動等を行うスクリプトです。
+詳細な使い方はヘルプを確認してください。
+スクリプトの実行には必ず `.env` が必要なため、`.env.example` をコピーしてください。
 
-ローカル PC の事前準備や環境要件については、[prerequisites.md](../manuals/prerequisites.md) を必ずご確認ください。
+`../scripts/setup_env.sh` は ~/.aws/credentials の設定を確認して .env を設定するスクリプトです。
+説明をせずともコードを見て何をしているのか分かる方のみ利用してください。
 
-## ファイル構成
+```bash
+# サービスの起動
+./manage-langfuse.sh start
 
-```
-.
-├── .env.example             # 環境変数のテンプレート
-├── default_config.yml       # LiteLLM の基本設定ファイル
-├── prompt_caching.yml       # Prompt Caching 機能用の設定ファイル
-├── manage-langfuse.sh       # Langfuse 管理スクリプト
-└── test_litellm_langfuse.py # テストスクリプト
-```
+# サービスの停止
+./manage-langfuse.sh stop
 
-## アーキテクチャ
+# サービスの再起動
+./manage-langfuse.sh restart
 
-```mermaid
-graph TB
-    subgraph "Local PC"
-        MB[Local PC]
-    end
+# LiteLLM Proxy の設定更新と再起動
+./manage-langfuse.sh update-config
 
-    subgraph "Amazon EC2 Instance"
-        subgraph "Host OS"
-            
-            subgraph "VS Code Server"
-               PF2[":8080 Port Forward"]
-               CP[Cline]
-            end
-            
-            PF1[":3000 Port Forward"]
-            PF3[":4000 Port Forward"]
-        end
-
-        subgraph "Docker Network: langfuse_default"
-            direction LR
-            LF[Langfuse Web<br/>langfuse-web:3000]
-            PG1[Postgres<br/>postgres:5432]
-            CH[Clickhouse<br/>clickhouse:8123]
-            RD[Redis<br/>redis:6379]
-            MN[MinIO<br/>minio:9000]
-            LL[LiteLLM Proxy<br/>localhost:4000]
-            PG2[Postgres<br/>postgres:5432]
-            
-            LF --- PG1
-            LF --- CH
-            LF --- RD
-            LF --- MN
-            LL --- PG2
-        end
-
-        CP -- "API リクエスト" --> LL
-        PF1 -- "Port Mapping" --> LF
-        PF3 -- "Port Mapping" --> LL
-    end
-
-    MB -- "SSH Port Forward" --> PF1
-    MB -- "SSH Port Forward" --> PF2
-    MB -- "SSH Port Forward" --> PF3
+# ヘルプの表示
+./manage-langfuse.sh --help
 ```
 
-## ネットワーク構成
+## Langfuse 動作確認
 
-### コンテナネットワーク
-- すべてのサービスは `langfuse_default` ネットワーク内で実行
-- コンテナ間通信には Docker DNS 名を使用（例：`langfuse-web`、`postgres`）
-- 内部ポートはネットワーク内で公開
+以下のデバッグツールについてはコードを確認して自身で理解できる方のみが利用してください。
 
-### 重要な注意点
-- コンテナ内では `localhost` は自身のコンテナを指すため、使用を避ける
-- 代わりに Docker サービス名を使用（例：`http://langfuse-web:3000`）
-- MinIO は 9000 ポートを使用
 
-## セットアップ手順
-
-1. 環境変数の設定
-   ```bash
-   cp .env.example .env
-   ```
-   以下の環境変数を設定します：
-   - `LANGFUSE_INIT_USER_EMAIL`: 初期管理者アカウントのメールアドレス
-   - `LANGFUSE_INIT_USER_PASSWORD`: 初期管理者アカウントのパスワード
-   - その他必要な環境変数は `.env.example` を参照してください
-
-2. サービスの起動
-   ```bash
-   # Langfuse コンテナの起動
-   ./manage-langfuse.sh start
-   
-   # LiteLLM Proxy の設定更新（Langfuse との連携設定）
-   ./manage-langfuse.sh update-config
-   ```
-
-3. 動作確認
-   ```bash
-   # ポートフォワーディングの設定
-   # ローカル PC で実行してください。
-   # インスタンス ID を環境変数、引数 -i、config.yml いずれかで設定してください。
-   uv run ../scripts/port_forward.py --instance-id i-xxx --profile cline
-   
-   # ブラウザで Langfuse Web UI にアクセス
-   # http://localhost:3000
-   ```
-
-## 設定ファイル
-
-### default_config.yml
-- モデルの設定（Bedrock Claude など）
-- フォールバックとリトライの設定
-- Langfuse コールバックの設定
-- アクセスキーによる Amazon Bedrock アクセス (IAM Role によるアクセスについては [../2.litellm/README.md](../2.litellm/README.md) を参照)
-
-### prompt_caching.yml
-- Langfuse との連携設定
-- IAM ロールによる Amazon Bedrock アクセス設定
-- Prompt Caching 対応
-
-## デバッグツール
+### デバッグツール
 
 `../scripts/debug_langfuse.sh` スクリプトを使用してトラブルシューティングを行えます：
 
@@ -139,11 +48,12 @@ bash -x ../scripts/debug_langfuse.sh
 - コンテナのログ
 - ネットワーク接続状態
 
-## テストの実行
+### テストの実行
 
 まず、scripts ディレクトリで Python 環境をセットアップします：
 
 ```bash
+# mise で uv がインストール済みの前提
 cd ../scripts
 uv venv && source .venv/bin/activate && uv sync
 cd ../4.langfuse
@@ -158,97 +68,27 @@ python test_litellm_langfuse.py
 ```
 
 テストスクリプトは以下を実行します：
-- LiteLLM を通じた Bedrock Claude の呼び出し
+- LiteLLM を通じた Amazon Bedrock の呼び出し
 - Langfuse へのログ送信
 - 接続テストとデバッグ情報の出力
 
-## Langfuse の利用方法
+## 設定ファイルの切り替え
 
-[Langfuse](https://langfuse.com/) は LLM アプリケーションの観察とモニタリングを行うためのオープンソースプラットフォームです。
+スクリプトでは `-c` オプションを使用して異なる設定ファイルを指定できます。
 
-### Langfuse の主要機能
+```bash
+# 例
+./manage-langfuse.sh -c prompt_caching.yml update-config
+```
 
-1. **LLM アプリケーション観測性（Observability）**：
-   アプリケーションを計測し、Langfuse にトレースを取り込むことで、LLM 呼び出しや検索、埋め込み、エージェントアクションなどの関連ロジックを追跡します。複雑なログやユーザーセッションを検査・デバッグできます。
+## ネットワーク構成
 
-2. **プロンプト管理**：
-   プロンプトを一元管理し、バージョン管理や共同反復作業を行えます。サーバーとクライアント側の強力なキャッシングにより、アプリケーションのレイテンシを増加させることなくプロンプトを改善できます。
+### コンテナネットワーク
+- すべてのサービスは `langfuse_default` ネットワーク内で実行
+- コンテナ間通信には Docker DNS 名を使用（例：`langfuse-web`、`postgres`）
+- 内部ポートはネットワーク内で公開
 
-3. **評価システム**：
-   LLM アプリケーション開発ワークフローの重要な部分として、Langfuse はニーズに合わせた評価を提供します。LLM-as-a-judge、ユーザーフィードバック収集、手動ラベリング、API/SDK を介したカスタム評価パイプラインをサポートしています。
-
-4. **データセット機能**：
-   LLM アプリケーションを評価するためのテストセットとベンチマークを提供します。継続的な改善、デプロイ前テスト、構造化された実験、柔軟な評価、LangChain や LlamaIndex などのフレームワークとのシームレスな統合をサポートします。
-
-5. **LLM プレイグラウンド**：
-   プロンプトやモデル設定をテストし反復するためのツールで、フィードバックループを短縮し開発を加速します。トレースで問題のある結果を見つけた場合、直接プレイグラウンドに移動して改善できます。
-
-6. **包括的な API**：
-   Langfuse は API を通じて提供される基本要素を使用しながら、カスタム LLMOps ワークフローを強化するために頻繁に使用されます。OpenAPI 仕様、Postman コレクション、Python や JS/TS 用の型付き SDK が利用可能です。
-
-### Langfuse Web UI の利用方法
-
-#### ログイン方法
-
-1. EC2 インスタンスに接続し、ポートフォワーディングを設定します
-   ローカル PC で以下のコマンドを実行します:
-   ```bash
-   aws ssm start-session \
-     --target YOUR_INSTANCE_ID \
-     --document-name AWS-StartPortForwardingSession \
-     --parameters '{"portNumber":["3000"], "localPortNumber":["3000"]}'
-   
-   # scripts/port_forward.py を利用することもできます。
-   ```
-
-   > **注意**: 上記のポートフォワーディングコマンドは、別のターミナルで実行してください。このセッションを閉じるとポートフォワードも終了します。
-
-3. ブラウザで `http://localhost:3000` にアクセスします
-
-2. 初期アカウントでログイン
-   - メールアドレス：`.env` ファイルの `LANGFUSE_INIT_USER_EMAIL` の値
-   - パスワード：`.env` ファイルの `LANGFUSE_INIT_USER_PASSWORD` の値
-
-![](./images/langfuse-login.png)
-
-#### Dashboard
-
-ダッシュボードでは、以下のような重要な情報をグラフィカルに確認することができます：
-
-- **トレース概要**: 時系列でのリクエスト数とエラー率の推移
-- **モデル使用状況**: モデルごとの使用量とコスト分析
-- **パフォーマンス指標**: 平均レイテンシや応答時間の分布
-- **エラー分析**: エラーの種類と発生頻度の統計
-
-これらの情報を活用することで、LLM の利用状況を包括的に把握し、最適化のための意思決定を行うことができます。
-
-![](./images/langfuse-dashboard.png)
-
-#### Traces
-
-トレースとは LLM アプリケーションの実行フローを記録したものです。各 LLM 呼び出しの詳細情報（入力プロンプト、出力レスポンス、実行時間、コストなど）を時系列で追跡できます。トレースからリクエストとレスポンスの詳細を見ることができ、アプリケーションの動作を詳細に分析することが可能です。
-
-![](./images/langfuse-traces.png)
-![](./images/langfuse-traces-detail.png)
-
-## Prompt Caching 機能と Langfuse の連携
-
-LiteLLM config ファイルの認証情報に関する設定の詳細は [2.litellm の README.md](../2.litellm/README.md) を参照ください。
-
-### Langfuse と Prompt Caching の組み合わせ
-
-`prompt_caching.yml` を使用することで、Prompt Caching 機能を利用しつつ Langfuse でログを確認することができます。
-
-### 利用方法
-
-1. IAM ロールの設定（既に `set-policy` を実行済みであることを前提とします）
-   ```bash
-   cd ../2.litellm/ && ./manage-litellm.sh set-policy
-   ```
-
-2. Prompt Caching 設定ファイルを指定して LiteLLM を起動
-   ```bash
-   ./manage-langfuse.sh -c prompt_caching.yml start
-   ```
-
-3. Cline の設定で LiteLLM Proxy を API Provider として設定し、Prompt Caching 設定を有効化
+### 重要な注意点
+- コンテナ内では `localhost` は自身のコンテナを指すため、使用を避ける
+- 代わりに Docker サービス名を使用（例：`http://langfuse-web:3000`）
+- MinIO は 9000 ポートを使用
