@@ -38,15 +38,15 @@ flowchart TD
     click C href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv.md"
     click D href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshop-studio.md"
     click G href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv-ec2.md"
+    click H href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv-local.md"
     click I href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/ws-ec2.md"
-    click J href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/ws-local.md"
     click K href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/README.md"
     click L href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mcp.md"
     click M href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/litellm.md"
     click N href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/langfuse.md"
     click O href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mlflow.md"
 
-    style H fill:#f96,stroke:#333,stroke-width:2px
+    style J fill:#f96,stroke:#333,stroke-width:2px
 ```
 
 ## ツールのインストール
@@ -86,22 +86,12 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    # default のプロファイルが既にある場合に上書きをしないために既存の ~/.aws/{credenatials,config} の profile 名と競合しない profile 名にしてください。
    # 必ず以下の環境変数を設定してください。
    export AWS_PROFILE=cline
-
-   # IAM ユーザーの場合
    aws configure
-
-   # IAM Identity Center (SSO) の場合
-   aws configure sso
-   # コマンド実行後、以下の情報の入力を求められます：
-   # SSO start URL: [SSO のスタート URL を入力]
-   # SSO Region: [SSO のリージョンを入力]
-   # SSO registration scopes: sso:account:access
-   # ブラウザが開き、AWS SSO へのログインを求められます。ログイン後、アクセスするアカウントとロールを選択します。
    ```
 
 2. **プロファイル設定の確認**:
 
-   プロファイルの設定内容は `~/.aws/config` または `~/.aws/credentials` に保存されます。
+   プロファイルの設定内容は `~/.aws/credentials` に保存されます。
    
    以下は `~/.aws/credentials` のサンプルです。
 
@@ -110,21 +100,6 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    aws_access_key_id = AKIAXXXXXXXXXXXXXXXX
    aws_secret_access_key = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    region = us-east-1
-   ```
-
-   以下は `~/.aws/config` のサンプルです。
-
-   ```
-   [profile cline]
-   sso_session = sso-session-name
-   sso_account_id = 123456789012
-   sso_role_name = RoleName
-   region = us-east-1
-
-   [sso-session sso-session-name]
-   sso_start_url = https://example.awsapps.com/start
-   sso_region = us-east-1
-   sso_registration_scopes = sso:account:access
    ```
 
 3. **AWS SSM コマンドの動作確認**:
@@ -147,4 +122,4 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
 
 **[次のステップ]**
 - [ワークショップ一覧へ進む](./workshops/README.md)
-- [戻る](./selfenv.md)
+- [戻る](./workshop-studio.md)
