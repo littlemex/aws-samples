@@ -57,6 +57,17 @@ flowchart TD
 フローチャートの各ノードをクリックすると、対応するドキュメントにジャンプできます。
 例えば、「manuals/selfenv.md」をクリックするとセルフアカウントのセットアップガイドに移動します。
 
+## 前提知識
+
+- AWS の基本的な知識
+- コマンドラインの基本操作
+- Git の基本的な使用方法
+
+## 所要時間
+
+- 環境セットアップ：約 30 分
+- 各ワークショップ：約 0.5-1 時間
+
 ## ワークショップの概要
 
 本ワークショップで用いる Cline、LiteLLM Proxy、Langufuse などの説明や組み合わせ方については [ブログ](../blog/README.md) を参照してください。
@@ -120,17 +131,6 @@ AWS が提供する Workshop Studio 環境を使用する場合：
 - Amazon Bedrock のクオータ TPM (Tokens per minute) が 1,000,000 であることを確認
 - Cross-region model inference tokens per minute for Anthropic Claude 3.7 Sonnet V1 の確認
 - 必要に応じてクオータの引き上げをリクエスト
-
-## 前提知識
-
-- AWS の基本的な知識
-- コマンドラインの基本操作
-- Git の基本的な使用方法
-
-## 所要時間
-
-- 環境セットアップ：約 30 分
-- 各ワークショップ：約 0.5-1 時間
 
 ---
 
