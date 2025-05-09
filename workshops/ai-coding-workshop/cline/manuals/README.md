@@ -18,10 +18,10 @@ flowchart TD
     C --> E{実行環境}
     D --> F{実行環境}
     
-    E -->|EC2環境(推奨)| G[manuals/selfenv-ec2.md]
+    E -->|"EC2環境(推奨)"| G[manuals/selfenv-ec2.md]
     E -->|ローカル環境| H[manuals/selfenv-local.md]
     
-    F -->|EC2環境(推奨)| I[manuals/ws-ec2.md]
+    F -->|"EC2環境(推奨)"| I[manuals/ws-ec2.md]
     F -->|ローカル環境| J[manuals/ws-local.md]
     
     G --> K[manuals/workshops/README.md]
