@@ -51,6 +51,36 @@ flowchart TD
     style CL fill:#f96,stroke:#333,stroke-width:2px
 ```
 
+## Cline 機能紹介
+
+### .clinerules 機能
+
+#### [.clinerules ファイル](https://docs.cline.bot/improving-your-prompting-skills/prompting)
+
+本ワークショップでは、Cline の動作をカスタマイズするための [`.clinerules`](../../0.setup/1.cline/.clinerules) ファイルのサンプルを提供しています。
+
+`.clinerules` ファイルは、プロジェクトのルートディレクトリに配置するだけで自動的に適用される設定ファイルです。
+このファイルを使用することで、プロジェクト固有の指示や規約を Cline に与えることができます。
+
+#### テーマ別ルールファイルの追加
+
+Cline では、特定のテーマや機能に特化したルールを定義し、Global Rules として参照することができます。
+これにより機能やテーマごとに Cline のルールを管理することが可能です。ルールの ON/OFF を UI から行うことも可能です。
+
+例えば、本ワークショップには Model Context Protocol (MCP) に関する規約を定義した [`.clinerules-mcp.md`](../../0.setup/1.cline/.clinerules-mcp.md) がサンプルとして含まれています。
+このファイルには、MCP の基本概念、設定ガイドライン、セキュリティ考慮事項など、MCP に特化したルールが詳細に記述されています。
+
+![Clineテーマ別ルール](../images/cline-mcprule.png)
+
+このように、テーマ別のルールファイルを作成することで、以下のような利点があります：
+
+1. **モジュール化**: ルールを機能やテーマごとに分割し、管理が容易になります
+2. **再利用性**: 共通のルールを複数のプロジェクトで再利用できます
+3. **メンテナンス性**: 特定の機能に関するルールの更新が容易になります
+4. **可読性**: 関心事の分離により、ルールの理解が容易になります
+
+詳細については、[Cline の公式ドキュメント](https://docs.cline.bot/improving-your-prompting-skills/prompting)を参照してください。
+
 ## Amazon Bedrock を利用した Cline セットアップ手順
 
 ### 1. Cline 拡張機能のインストール
@@ -127,30 +157,8 @@ VS Code の Extentions メニューから「Cline」を検索し、インスト�
    - VS Code を再起動してください
    - 拡張機能を一度アンインストールしてから再インストールしてください
 
-### .clinerules 機能
+---
 
-#### [.clinerules ファイル](https://docs.cline.bot/improving-your-prompting-skills/prompting)
-
-本ワークショップでは、Cline の動作をカスタマイズするための `.clinerules` ファイルのサンプルを提供しています。
-
-`.clinerules` ファイルは、プロジェクトのルートディレクトリに配置するだけで自動的に適用される設定ファイルです。
-このファイルを使用することで、プロジェクト固有の指示や規約を Cline に与えることができます。
-
-#### テーマ別ルールファイルの追加
-
-Cline では、特定のテーマや機能に特化したルールを定義し、Global Rules として参照することができます。
-これにより機能やテーマごとに Cline のルールを管理することが可能です。ルールの ON/OFF を UI から行うことも可能です。
-
-例えば、本ワークショップには Model Context Protocol (MCP) に関する規約を定義した `.clinerules-mcp.md` がサンプルとして含まれています。
-このファイルには、MCP の基本概念、設定ガイドライン、セキュリティ考慮事項など、MCP に特化したルールが詳細に記述されています。
-
-![Clineテーマ別ルール](../images/cline-mcprule.png)
-
-このように、テーマ別のルールファイルを作成することで、以下のような利点があります：
-
-1. **モジュール化**: ルールを機能やテーマごとに分割し、管理が容易になります
-2. **再利用性**: 共通のルールを複数のプロジェクトで再利用できます
-3. **メンテナンス性**: 特定の機能に関するルールの更新が容易になります
-4. **可読性**: 関心事の分離により、ルールの理解が容易になります
-
-詳細については、[Cline の公式ドキュメント](https://docs.cline.bot/improving-your-prompting-skills/prompting)を参照してください。
+**[次のステップ]**
+- [MCP ワークショップへ進む](./workshops/mcp.md)
+- [戻る](./README.md)
