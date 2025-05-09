@@ -56,6 +56,7 @@ flowchart TD
 
 このワークショップでは、以下の AWS サービスを利用します。Administrator アクセス権限を保有していることを推奨します。
 `aws congigure` もしくは `aws configure sso` で AWS CLI もしくは boto3 をローカル PC 上で適切な権限で実行できることが前提です。
+AWS Console にアクセスして AWS CloudShell を利用する必要があります。
 
 - Amazon SageMaker
 - Amazon S3
@@ -66,6 +67,7 @@ flowchart TD
 - AWS Systems Manager 関連の権限
 - AWS Lambda 関数の作成と実行
 - Amazon Bedrock モデルの呼び出し権限
+- AWS CloudShell へのアクセス
 
 ### AWS アカウントの準備
 
@@ -99,7 +101,7 @@ Amazon EC2 インスタンスを使用してワークショップを実施する
 - IAM Role による認証が可能
 - セキュアな実行環境
 
-👉 [EC2環境のセットアップへ](./selfenv-ec2.md)
+👉 [Amazon EC2 環境のセットアップへ](./selfenv-ec2.md)
 
 ### 2. ローカル PC 環境
 
