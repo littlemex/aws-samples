@@ -1,6 +1,6 @@
-# Cline on Amazon Bedrock ワークショップ
+# Cline with Amazon Bedrock ワークショップ
 
-このワークショップでは Cline on Amazon Bedrock の設定とコーディング体験を行います。
+このワークショップでは Cline with Amazon Bedrock の設定とコーディング体験を行います。
 
 ## ドキュメント構成
 
