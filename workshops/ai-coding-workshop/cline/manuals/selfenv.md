@@ -8,7 +8,7 @@
 ```mermaid
 flowchart TD
     A[manuals/README.md] --> B{アカウント選択}
-    B -->|企業アカウント| C[manuals/selfenv.md]
+    B -->|セルフアカウント| C[manuals/selfenv.md]
     B -->|Workshop Studio| D[manuals/workshop-studio.md]
     
     C --> E{実行環境}
