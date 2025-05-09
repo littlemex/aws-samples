@@ -243,7 +243,7 @@ cp .env.example .env
 ./manage-litellm.sh start
 ```
 
-### ローカルPC環境の場合
+### ローカル PC 環境の場合
 
 この場合は、IAM Role を用いるため AWS アクセスキーの設定が必要です。
 
