@@ -8,6 +8,8 @@ VS Code の Extentions メニューから「Cline」を検索し、インスト�
 
 ### 2. Amazon Bedrock の認証情報設定
 
+> **注意**: この設定は Amazon EC2 インスタンス上の VS Code で Cline を実行する場合には既に Instance Profile に Bedrock のアクセスのためのポリシーが設定されているため必要ありません。
+
 認証方式として「Use your own API key」を選択し、以下の設定を行います：
 - API Provider: Amazon Bedrock
 - 認証方式: AWS Profile
@@ -19,6 +21,7 @@ AWS 認証情報の設定には、以下の 2 つの方法があります：
 AWS CLI の `aws configure` コマンドを使用して、アクセスキーとシークレットキーを `~/.aws/credentials` ファイルに設定します：
 
 ```bash
+export AWS_PROFILE=cline
 aws configure
 ```
 
@@ -42,6 +45,7 @@ region = us-east-1
 AWS SSO を使用すると、アクセスキーを手動で管理する必要がなく、より安全に認証を行えるメリットがあります。
 
 ```bash
+export AWS_PROFILE=cline
 aws configure sso
 ```
 

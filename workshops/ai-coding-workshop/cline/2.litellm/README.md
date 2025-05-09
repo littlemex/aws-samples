@@ -1,6 +1,12 @@
 # LiteLLM Proxy
 
-LiteLLM を使用して Amazon Bedrock 上の Claude (Sonnet 3.7、3.5) を利用するためのサーバーです。エラーが発生した場合は自動的にフォールバックする機能を備えています。
+LiteLLM Proxy を使用して Amazon Bedrock 上の Claude (Sonnet 3.7、3.5) にアクセスするための手順書です。
+LiteLLM Proxy はエラーが発生した場合は自動的にフォールバックする機能等を備えています。
+LiteLLM Proxy に関する概念や利用方法については [ブログ](../blog/README.md) をご確認ください。
+
+## 前提条件
+
+ローカル PC の事前準備や環境要件については、[prerequisites.md](../manuals/prerequisites.md) を必ずご確認ください。
 
 ## Amazon Bedrock へのアクセス方法
 
@@ -10,7 +16,7 @@ LiteLLM Proxy を介した Amazon Bedrock へのアクセスには、以下の 2
 | 実行環境 | AWS アクセス方法 | 設定ファイル | 認証情報 | .env 作成方法 |
 |---------|------------|------------|---------|------------|
 | Amazon EC2 | AWS IAM ロール（推奨） | iam_role_config.yml | Amazon EC2 インスタンスプロファイル<br>（AWS CloudFormation で自動設定済み） | `cp .env.example .env` |
-| Amazon EC2 |  AWS アクセスキー | default_config.yml | `~/.aws/credentials` の<br>[default] プロファイル | `../scripts/setup_env.sh` |
+| Amazon EC2 |  AWS アクセスキー | default_config.yml | `~/.aws/credentials` の<br>[cline] プロファイル | `../scripts/setup_env.sh` |
 | ローカル PC |  AWS アクセスキー | default_config.yml | `~/.aws/credentials` | 手動で `.env` にアクセスキーを設定 |
 
 ### 1. EC2 インスタンスプロファイル利用（EC2 環境での推奨方法）
@@ -26,7 +32,7 @@ Amazon EC2 インスタンスに AWS IAM ロールを割り当てることで、
 
 1. .env ファイルの作成
 ```bash
-# AWS IAM ロールを使用する場合、アクセスキーの設定は不要です
+# Amazon EC2 上で AWS IAM ロールを使用する場合、コピー後にアクセスキーの設定は不要です
 cp .env.example .env
 ```
 
