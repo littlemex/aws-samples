@@ -85,13 +85,28 @@ flowchart TD
 
 ## 実行環境別のワークショップ対応状況
 
-| ワークショップ | Amazon EC2環境 | ローカルPC 環境 | AWS 認証方式 | 備考 |
-|--------------|---------|--------------|----------|------|
-| [0.cline](./cline.md) | ◎ | ◎ | IAM Role/Key | Amazon Bedrock が必要 |
-| [1.mcp](./mcp.md) | ◎ | ○ | IAM Role/Key | 他とは疎結合に実施可能 |
-| [2.litellm](./litellm.md) | ◎ | ○ | IAM Role/Key | Docker が必須 |
-| [4.langfuse](./langfuse.md) | ◎ | ○ | IAM Role/Key | 2.litellm とセット |
-| [5.mlflow](./mlflow.md) | ○ | ○ | Key のみ | AWS CDK が必要 |
+| 実行環境 | ワークショップ | AWS 認証方式 | 対応可否 | 必要ツール | 備考 |
+|---------|--------------|-------------|---------|-----------|------|
+| ローカル PC | 0.cline | Access Key | ○ | Amazon Bedrock | - |
+| ローカル PC | 0.cline | IAM Role | × | - | - |
+| ローカル PC | 1.mcp | Access Key | ○ | Node.js, TypeScript, uv | - |
+| ローカル PC | 1.mcp | IAM Role | × | - | - |
+| ローカル PC | 2.litellm | Access Key | △ | Docker | Prompt Caching 利用はアクセスキー設定を追加する必要あり |
+| ローカル PC | 2.litellm | IAM Role | × | - | - |
+| ローカル PC | 4.langfuse | Access Key | ○ | Docker, uv | 2.litellm とセット |
+| ローカル PC | 4.langfuse | IAM Role | × | - | - |
+| ローカル PC | 5.mlflow | Access Key | ○ | AWS CDK v2, Docker, uv | CDK 環境が必要 |
+| ローカル PC | 5.mlflow | IAM Role | × | - | - |
+| Amazon EC2 | 0.cline | Access Key | ○ | Amazon Bedrock | - |
+| Amazon EC2 | 0.cline | IAM Role | ◎ | Amazon Bedrock | - |
+| Amazon EC2 | 1.mcp | Access Key | ○ | Node.js, TypeScript, uv | - |
+| Amazon EC2 | 1.mcp | IAM Role | ◎ | Node.js, TypeScript, uv | - |
+| Amazon EC2 | 2.litellm | Access Key | △ | Docker | Prompt Caching 利用はアクセスキー設定を追加する必要あり |
+| Amazon EC2 | 2.litellm | IAM Role | ◎ | Docker | - |
+| Amazon EC2 | 4.langfuse | Access Key | ○ | Docker, uv | 2.litellm とセット |
+| Amazon EC2 | 4.langfuse | IAM Role | ◎ | Docker, uv | 2.litellm とセット |
+| Amazon EC2 | 5.mlflow | Access Key | ○ | AWS CDK v2, Docker, uv | - |
+| Amazon EC2 | 5.mlflow | IAM Role | × | - | - |
 
 凡例：
 - ◎：推奨環境
