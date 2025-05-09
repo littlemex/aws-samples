@@ -1,153 +1,119 @@
 # 企業アカウントでの環境セットアップ
 
 このガイドでは、企業の AWS アカウントを使用してワークショップ環境をセットアップする手順を説明します。
+可能であればワークショップ当日までにこのページの準備が完了していることが望ましいです。
 
-## 前提条件
+## ドキュメント構成
 
 ```mermaid
 flowchart TD
-    A[企業アカウント準備] --> B[AWS CLI インストール]
-    B --> C[Session Manager プラグインのインストール]
-    C --> D[Bedrock モデルアクセス設定]
-    D --> E[クオータ確認]
-    E --> F[実行環境選択]
+    A[manuals/README.md] --> B{アカウント選択}
+    B -->|企業アカウント| C[manuals/selfenv.md]
+    B -->|Workshop Studio| D[manuals/workshop-studio.md]
     
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style F fill:#bbf,stroke:#333,stroke-width:2px
+    C --> E{実行環境}
+    D --> F{実行環境}
+    
+    E -->|"Amazon EC2 環境(推奨)"| G[manuals/selfenv-ec2.md]
+    E -->|ローカル環境| H[manuals/selfenv-local.md]
+    
+    F -->|"Amazon EC2 環境(推奨)"| I[manuals/ws-ec2.md]
+    F -->|ローカル環境| J[manuals/ws-local.md]
+    
+    G --> K[manuals/workshops/README.md]
+    H --> K
+    I --> K
+    J --> K
+    
+    K -->|MCP| L[manuals/workshops/mcp.md]
+    K -->|LiteLLM| M[manuals/workshops/litellm.md]
+    K -->|Langfuse| N[manuals/workshops/langfuse.md]
+    K -->|MLflow| O[manuals/workshops/mlflow.md]
+    
+    L --> P[1.mcp/README.md]
+    M --> Q[2.litellm/README.md]
+    N --> R[4.langfuse/README.md]
+    O --> S[5.mlflow/README.md]
+
+    click A href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/README.md"
+    click D href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshop-studio.md"
+    click G href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv-ec2.md"
+    click H href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv-local.md"
+    click I href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/ws-ec2.md"
+    click J href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/ws-local.md"
+    click K href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/README.md"
+    click L href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mcp.md"
+    click M href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/litellm.md"
+    click N href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/langfuse.md"
+    click O href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mlflow.md"
+
+    style C fill:#f96,stroke:#333,stroke-width:2px
 ```
 
-### AWS CLI のインストール
+## 前提条件
 
-ローカル PC に AWS CLI v2 をインストールしてください。
+### 最低限必要な権限
 
-```bash
-# macOS の場合
-brew install awscli
+このワークショップでは、以下の AWS サービスを利用します。Administrator アクセス権限を保有していることを推奨します。
+`aws congigure` もしくは `aws configure sso` で AWS CLI もしくは boto3 をローカル PC 上で適切な権限で実行できることが前提です。
 
-# Windows の場合
-# https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/install-cliv2-windows.html からインストーラーをダウンロード
+- Amazon SageMaker
+- Amazon S3
+- AWS CloudFormation スタックの作成と管理
+- Amazon VPC、サブネット、Internet Gateway、NAT Gateway、ルートテーブルなどのネットワークリソースの作成と管理
+- Amazon EC2 インスタンスの作成と管理
+- IAM ロールとポリシーの作成と管理
+- AWS Systems Manager 関連の権限
+- AWS Lambda 関数の作成と実行
+- Amazon Bedrock モデルの呼び出し権限
 
-# Linux の場合
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
-```
+### AWS アカウントの準備
 
-### Session Manager プラグインのインストール
+1. Amazon Bedrock の有効化
+   - [Amazon Bedrock コンソール](https://console.aws.amazon.com/bedrock)にアクセス
+   - 使用するモデル（Claude 3.7 Sonnet v2 など）へのアクセスを有効化
 
-AWS Systems Manager Session Manager プラグインをインストールしてください。
+2. IAM 権限の設定
+   - Amazon Bedrock へのアクセス権限
+   - 必要に応じて Amazon EC2、CloudFormation の権限
 
-```bash
-# macOS の場合
-brew install session-manager-plugin
+3. クオータの確認
+   - Amazon Bedrock のクオータを確認
+   - 必要に応じてクオータの引き上げをリクエスト
 
-# Windows の場合
-# https://docs.aws.amazon.com/ja_jp/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html からインストーラーをダウンロード
+### 必要なツール
 
-# Linux の場合
-curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm" -o "session-manager-plugin.rpm"
-sudo yum install -y session-manager-plugin.rpm
-```
-
-## Amazon Bedrock の設定
-
-### モデルアクセスの有効化
-
-1. AWS コンソールにログイン
-2. Amazon Bedrock サービスに移動
-3. 左側メニューから「Model access」を選択
-4. 「Manage model access」をクリック
-5. 以下のモデルを選択：
-   - Anthropic Claude 3 Sonnet
-   - Anthropic Claude 3 Haiku
-   - Anthropic Claude 3 Opus
-6. 「Save changes」をクリック
-
-> **注意**: モデルアクセスの承認には数分かかる場合があります
-
-### クオータの確認
-
-以下のリージョンでクオータを確認してください：
-- us-east-1
-- us-east-2
-- us-west-2
-
-1. AWS コンソールで Service Quotas に移動
-2. Amazon Bedrock を選択
-3. 以下のクオータを確認：
-   - TPM (Tokens per minute) が 1,000,000 以上であること
-   - Cross-region model inference tokens per minute for Anthropic Claude 3.7 Sonnet V1
-
-クオータが不足している場合は、引き上げリクエストを行ってください。
+| ツール | バージョン | 用途 |
+|--------|-----------|------|
+| AWS CLI | v2 | AWS 操作 |
 
 ## 実行環境の選択
 
-ワークショップを実施する環境を選択してください：
+ワークショップの実行環境として、以下の2つのオプションがあります：
 
-### EC2 環境（推奨）
+### 1. EC2環境（推奨）
 
-EC2 環境を使用すると以下のメリットがあります：
-- 事前に必要なツールがすべてインストール済み
-- IAM Role による安全な認証
-- 高速なネットワーク環境
-- すべてのワークショップに対応
+EC2インスタンスを使用してワークショップを実施する場合：
 
-👉 [EC2 環境のセットアップへ](./selfenv-ec2.md)
+- AWS CloudFormation によって事前設定済みの環境を利用可能
+- IAM Role による認証が可能
+- セキュアな実行環境
 
-### ローカル PC 環境
+👉 [EC2環境のセットアップへ](./selfenv-ec2.md)
 
-ローカル PC 環境を使用する場合：
-- 自分のマシンで直接実行
-- 追加ツールのインストールが必要
-- 一部のワークショップで制限あり
-- IAM Role 認証に対応していないワークショップあり
+### 2. ローカル PC 環境
+
+ローカル PC を使用してワークショップを実施する場合：
+
+- 既存の開発環境を利用可能
+- ローカル PC の環境依存によるトラブルシューティングの複雑化
+- ワークショップ実施に制限あり
 
 👉 [ローカル PC 環境のセットアップへ](./selfenv-local.md)
-
-## AWS アカウント認証情報の設定
-
-AWS CLI の認証情報を設定します。
-
-```bash
-# default のプロファイルが既にある場合に上書きをしないために
-# 既存の ~/.aws/{credentials,config} の profile 名と競合しない profile 名にしてください。
-export AWS_PROFILE=cline
-
-# IAM ユーザーの場合
-aws configure
-
-# または IAM Identity Center (SSO) の場合
-aws configure sso
-```
-
-設定されているプロファイルの一覧を確認：
-
-```bash
-aws configure list-profiles
-```
-
-AWS 認証情報が正しく設定されているか確認：
-
-```bash
-# デフォルトプロファイルの場合
-aws sts get-caller-identity
-
-# プロファイル名を指定する場合（例: cline）
-aws sts get-caller-identity --profile cline
-```
-
-正常に動作すると、以下のような情報が表示されます：
-```json
-{
-    "UserId": "XXXXXXXXXXXXXXXXXXXXX",
-    "Account": "123456789012",
-    "Arn": "arn:aws:iam::123456789012:user/username"
-}
-```
 
 ---
 
 **[次のステップ]**
-- [EC2 環境のセットアップ（推奨）](./selfenv-ec2.md)
+- [Amazon EC2 環境のセットアップ](./selfenv-ec2.md)
 - [ローカル PC 環境のセットアップ](./selfenv-local.md)
-- [戻る](./README.md)
+- [ワークショップ一覧に戻る](./README.md)
