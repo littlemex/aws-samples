@@ -1,6 +1,6 @@
 # Workshop Studio 環境セットアップ
 
-このガイドでは、AWS Workshop Studio 環境を使用してワークショップを実施する手順を説明します。
+このガイドでは、AWS が提供する Workshop Studio の AWS アカウント を使用してワークショップを実施する手順を説明します。
 
 ## ドキュメント構成
 
