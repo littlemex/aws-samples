@@ -227,18 +227,16 @@ AWS_SECRET_ACCESS_KEY=""
 
 ```bash
 ./manage-langfuse.sh -c access_key_config.yml start
+```
 
-### 2. サービスの起動
+#### LiteLLM Proxy の設定更新（Langfuse との連携設定）
 
 ```bash
-# Langfuse コンテナの起動
-./manage-langfuse.sh start
-
-# LiteLLM Proxy の設定更新（Langfuse との連携設定）
 ./manage-langfuse.sh update-config
 ```
 
-このコマンドは、LiteLLM Proxy が Langfuse と連携してログを送信できるように URI などの LiteLLM Proxy の設定を更新して 2.litellm のコンテナを再起動します。これにより、LLM の利用状況やプロンプトの実行履歴などを Langfuse で可視化できるようになります。
+このコマンドは、LiteLLM Proxy が Langfuse と連携してログを送信できるように URI などの LiteLLM Proxy の設定を更新して 2.litellm のコンテナを再起動します。
+これにより、LLM の利用状況やプロンプトの実行履歴などを Langfuse で可視化できるようになります。
 
 ### 3. 動作確認
 
