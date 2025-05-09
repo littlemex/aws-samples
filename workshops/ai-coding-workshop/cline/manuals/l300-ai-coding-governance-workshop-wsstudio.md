@@ -7,7 +7,7 @@
 
 ## はじめに
 
-本ワークショップは Workshop Studio 環境を利用して実施します。ワークショップ参加にあたっての事前準備や環境要件については、[prerequisites.md](./prerequisites.md) を必ずご確認ください。Workshop Studio 環境では AWS アカウントやクレデンシャルが提供されるため、独自の AWS アカウントの準備は不要です。
+本ワークショップは Workshop Studio 環境を利用して実施します。ワークショップ参加にあたっての事前準備や環境要件については、[manuals](./README.md) を必ずご確認ください。Workshop Studio 環境では AWS アカウントやクレデンシャルが提供されるため、独自の AWS アカウントの準備は不要です。
 
 ## 座学 (おおよそ 1 時間)
 

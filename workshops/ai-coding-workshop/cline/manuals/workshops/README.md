@@ -24,6 +24,7 @@ flowchart TD
     I --> K
     J --> K
     
+    K -->|Cline| CL[manuals/workshops/cline.md]
     K -->|MCP| L[manuals/workshops/mcp.md]
     K -->|LiteLLM| M[manuals/workshops/litellm.md]
     K -->|Langfuse| N[manuals/workshops/langfuse.md]
@@ -44,6 +45,7 @@ flowchart TD
     click L href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mcp.md"
     click M href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/litellm.md"
     click N href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/langfuse.md"
+    click CL href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/cline.md"
     click O href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mlflow.md"
 
     style K fill:#f96,stroke:#333,stroke-width:2px
@@ -53,10 +55,12 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[ワークショップ] --> B[MCP]
+    A[ワークショップ] --> Z[Cline]
+    A --> B[MCP]
     A --> C[ガバナンス]
     A --> D[分析・可視化]
     
+    Z --> ZZ[Cline 体験]
     B --> E[1.mcp]
     E --> F[Weather MCP Server 自作体験]
     E --> G[MCP Marketplace 体験]
@@ -83,6 +87,7 @@ flowchart TD
 
 | ワークショップ | Amazon EC2環境 | ローカルPC 環境 | AWS 認証方式 | 備考 |
 |--------------|---------|--------------|----------|------|
+| [0.cline](./cline.md) | ◎ | ◎ | IAM Role/Key | Amazon Bedrock が必要 |
 | [1.mcp](./mcp.md) | ◎ | ○ | IAM Role/Key | 他とは疎結合に実施可能 |
 | [2.litellm](./litellm.md) | ◎ | ○ | IAM Role/Key | Docker が必須 |
 | [4.langfuse](./langfuse.md) | ◎ | ○ | IAM Role/Key | 2.litellm とセット |
@@ -93,6 +98,18 @@ flowchart TD
 - ○：対応
 - △：一部制限あり
 - ×：非対応
+
+## 0. Cline
+
+Amazon Bedrock を API Provider として利用した Cline のセットアップと設定方法を学びます。
+Cline は VS Code 拡張機能として動作する AI エージェントで、Amazon Bedrock の Claude モデルを利用して開発をサポートすることができます。
+
+**主な学習内容：**
+- Cline 拡張機能のインストールと設定
+- Amazon Bedrock の設定
+- カスタマイズ設定（.clinerules）の活用方法
+
+👉 [Cline セットアップガイドへ](./cline.md)
 
 ## 1. MCP（Model Context Protocol）
 
@@ -163,6 +180,7 @@ Amazon SageMaker の managed MLflow を使用して、LiteLLM Proxy の実行ロ
 ---
 
 **[次のステップ]**
+- [Cline ワークショップを開始 - 推奨](./cline.md)
 - [MCP ワークショップを開始](./mcp.md)
 - [LiteLLM ワークショップを開始](./litellm.md)
 - [Langfuse ワークショップを開始](./langfuse.md)

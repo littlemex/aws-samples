@@ -28,6 +28,7 @@ flowchart TD
     I --> K
     J --> K
     
+    K -->|Cline| CL[manuals/workshops/cline.md]
     K -->|MCP| L[manuals/workshops/mcp.md]
     K -->|LiteLLM| M[manuals/workshops/litellm.md]
     K -->|Langfuse| N[manuals/workshops/langfuse.md]
@@ -48,6 +49,7 @@ flowchart TD
     click L href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mcp.md"
     click M href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/litellm.md"
     click N href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/langfuse.md"
+    click CL href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/cline.md"
     click O href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mlflow.md"
 
     style G fill:#f96,stroke:#333,stroke-width:2px
@@ -66,6 +68,7 @@ flowchart TD
         
         CloudShell -->|Amazon EC2 デプロイ| EC2
         EC2 -->|API 呼び出し| Bedrock
+        EC2 -->|Cline| Bedrock
     end
     
     subgraph "ローカル PC"
@@ -267,4 +270,3 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
 **[次のステップ]**
 - [ワークショップ一覧へ進む](./workshops/README.md)
 - [戻る](./selfenv.md)
-
