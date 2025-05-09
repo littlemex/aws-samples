@@ -4,6 +4,11 @@
 
 ## ドキュメント構成
 
+ワークショップは実施環境の違いを考慮した複数のドキュメントから構成されます。
+以下の図をご確認の上で、ご自身の環境に合わせて作業を進めてください。
+AWS アカウント選択として、セルフアカウント、もしくは Workshop Studio アカウント、を利用してください。
+そして、VS Code の実行環境としてローカル PC もしくは、Amazon EC2、を利用してください。
+
 ```mermaid
 flowchart TD
     A[manuals/README.md] --> B{アカウント選択}
@@ -13,10 +18,10 @@ flowchart TD
     C --> E{実行環境}
     D --> F{実行環境}
     
-    E -->|EC2環境| G[manuals/selfenv-ec2.md]
+    E -->|EC2環境(推奨)| G[manuals/selfenv-ec2.md]
     E -->|ローカル環境| H[manuals/selfenv-local.md]
     
-    F -->|EC2環境| I[manuals/ws-ec2.md]
+    F -->|EC2環境(推奨)| I[manuals/ws-ec2.md]
     F -->|ローカル環境| J[manuals/ws-local.md]
     
     G --> K[manuals/workshops/README.md]
@@ -34,76 +39,41 @@ flowchart TD
     N --> R[4.langfuse/README.md]
     O --> S[5.mlflow/README.md]
 
-    click C href "./selfenv.md"
-    click D href "./workshop-studio.md"
-    click G href "./selfenv-ec2.md"
-    click H href "./selfenv-local.md"
-    click I href "./ws-ec2.md"
-    click J href "./ws-local.md"
-    click K href "./workshops/README.md"
-    click L href "./workshops/mcp.md"
-    click M href "./workshops/litellm.md"
-    click N href "./workshops/langfuse.md"
-    click O href "./workshops/mlflow.md"
-    click P href "../1.mcp/README.md"
-    click Q href "../2.litellm/README.md"
-    click R href "../4.langfuse/README.md"
-    click S href "../5.mlflow/README.md"
+    click C href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv.md"
+    click D href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshop-studio.md"
+    click G href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv-ec2.md"
+    click H href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/selfenv-local.md"
+    click I href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/ws-ec2.md"
+    click J href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/ws-local.md"
+    click K href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/README.md"
+    click L href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mcp.md"
+    click M href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/litellm.md"
+    click N href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/langfuse.md"
+    click O href "https://github.com/littlemex/aws-samples/blob/feature/issue-53/workshops/ai-coding-workshop/cline/manuals/workshops/mlflow.md"
 
     style A fill:#f96,stroke:#333,stroke-width:2px
 ```
 
-フローチャートの各ノードをクリックすると、対応するドキュメントにジャンプできます。例えば、「企業アカウント」をクリックすると企業アカウントのセットアップガイドに移動します。
+フローチャートの各ノードをクリックすると、対応するドキュメントにジャンプできます。
+例えば、「manuals/selfenv.md」をクリックするとセルフアカウントのセットアップガイドに移動します。
 
 ## ワークショップの概要
-
-```mermaid
-flowchart TD
-    A[AI コーディング支援] --> B[MCP]
-    A --> C[LiteLLM]
-    A --> D[Langfuse]
-    A --> E[MLflow]
-    
-    B -->|拡張機能| F[Weather API]
-    B -->|拡張機能| G[AWS Documentation]
-    
-    C -->|統合| H[Amazon Bedrock]
-    
-    D -->|分析| I[プロンプト効果測定]
-    D -->|分析| J[キャッシュ管理]
-    
-    E -->|モニタリング| K[コスト追跡]
-    E -->|モニタリング| L[品質管理]
-
-    click B href "./workshops/mcp.md"
-    click C href "./workshops/litellm.md"
-    click D href "./workshops/langfuse.md"
-    click E href "./workshops/mlflow.md"
-```
-
-フローチャートの各ワークショップ名（MCP、LiteLLM、Langfuse、MLflow）をクリックすると、対応するワークショップのガイドにジャンプできます。
 
 このワークショップでは以下の内容を学びます：
 
 1. **MCP（Model Context Protocol）**
    - AI エージェントの機能拡張
-   - 外部 API との連携
    - AWS ドキュメント検索との統合
 
 2. **LiteLLM**
    - Amazon Bedrock との連携
-   - プロンプトのキャッシュ管理
    - 複数モデルの統合管理
 
 3. **Langfuse**
-   - プロンプトの効果測定
-   - 応答品質の分析
-   - コスト最適化の分析
+   - コストやレイテンシー、トレースログの分析
 
 4. **MLflow**
-   - AI 応答のモニタリング
-   - コストと品質の追跡
-   - 継続的な改善プロセス
+   - コストやレイテンシー、トレースログの分析
 
 ## 環境選択
 
@@ -137,15 +107,13 @@ AWS が提供する Workshop Studio 環境を使用する場合：
 
 ## 所要時間
 
-- 環境セットアップ：約30分
-- 各ワークショップ：約1-2時間
+- 環境セットアップ：約 30 分
+- 各ワークショップ：約 0.5-1 時間
 
 ## サポート
 
 問題が発生した場合は、以下を確認してください：
 - 各セクションのトラブルシューティングガイド
-- ワークショップ中の質問チャンネル
-- [AWS Support](https://aws.amazon.com/jp/support/)
 
 ---
 
