@@ -227,6 +227,7 @@ AWS_SECRET_ACCESS_KEY=""
 
 このコマンドは、LiteLLM Proxy が Langfuse と連携してログを送信できるように URI などの LiteLLM Proxy の設定を更新して 2.litellm のコンテナを再起動します。
 これにより、LLM の利用状況やプロンプトの実行履歴などを Langfuse で可視化できるようになります。
+Cline には既に LiteLLM Proxy が設定されているため、再起動後に Cline を何度か利用することで自動的にトレース情報が Langfuse に送られます。
 
 ### 3. 動作確認
 
