@@ -418,7 +418,7 @@ MCP Setting ファイル `/home/coder/.vscode-server/data/User/globalStorage/sao
 }
 ```
 
-### ワークショップ 2. AWS MCP サーバーの導入と活用
+### ワークショップ 2. AWS MCP Servers
 
 [AWS MCP Servers](https://github.com/awslabs/mcp) は、AWS のベストプラクティスと豊富な情報資源を開発ワークフローに直接統合する革新的なツールです。
 AWS MCP Servers は、Cline の MCP Marketplace から導入することも、単独でインストールすることも可能です。
