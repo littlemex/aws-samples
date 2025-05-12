@@ -243,9 +243,18 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
 
 ## VS Code の初期設定
 
-1. リポジトリのクローン
+1. リポジトリのダウンロードと展開
    ```bash
-   git clone https://github.com/aws-samples/workshops.git && cd workshops/ai-coding-workshop/cline
+   # バージョンを環境変数で指定（講師の指示に従ってください）
+   # 指示がない場合は heads/main を使用
+   # バージョン指定例: export VERSION="tags/v0.0.3"
+   export VERSION=${VERSION:-heads/main}
+   
+   # リポジトリのダウンロードと展開
+   curl -L -o aws-samples.zip https://github.com/littlemex/aws-samples/archive/refs/${VERSION}.zip && unzip -d aws-samples aws-samples.zip && mv aws-samples/*/* aws-samples/
+   
+   # 展開されたディレクトリに移動
+   cd aws-samples/workshops/ai-coding-workshop/cline
    ```
 
 2. VS Code でフォルダを開く
