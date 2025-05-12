@@ -272,12 +272,23 @@ Resources:
 
             # apt-getのロックが解放されるまで待機する関数
             wait_for_apt_lock() {
-              echo "apt-getのロックをチェックしています..."
+              log_success "apt-getのロックをチェックしています..."
+              local start_time=$(date +%s)
+              local timeout=600  # 10分のタイムアウト
+
               while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-                echo "apt-getのロックが検出されました。解放されるまで待機します（10秒ごとに再試行）"
+                local current_time=$(date +%s)
+                local elapsed_time=$((current_time - start_time))
+
+                if [ $elapsed_time -ge $timeout ]; then
+                  log_error "apt-getのロックが${timeout}秒以上解放されませんでした。インストールを中止します。"
+                  exit 1
+                fi
+
+                log_success "apt-getのロックが検出されました。解放されるまで待機します（10秒ごとに再試行、残り$((timeout - elapsed_time))秒）"
                 sleep 10
               done
-              echo "apt-getのロックは検出されませんでした。インストールを続行します"
+              log_success "apt-getのロックは検出されませんでした。インストールを続行します"
             }
 
             # コマンド実行を再試行する関数
@@ -302,7 +313,7 @@ Resources:
               return 1
             }
 
-            echo "インストールプロセスを開始します: $(date)" | tee /var/log/user-data.log
+            log_success  "インストールプロセスを開始します: $(date)"
 
             # Update package list
             wait_for_apt_lock
@@ -397,9 +408,11 @@ Resources:
             install -m 0755 -d /etc/apt/keyrings
             curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --yes --dearmor -o /etc/apt/keyrings/docker.gpg
             chmod a+r /etc/apt/keyrings/docker.gpg
+            log_success "Dockerの公式GPGキーを追加しました"
 
             # Docker のリポジトリを追加
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+            log_success "Dockerのリポジトリを追加しました"
 
             # パッケージリストの更新とDockerのインストール
             wait_for_apt_lock
@@ -418,8 +431,7 @@ Resources:
             EOF
             cat /tmp/docker_bashrc >> /home/coder/.bashrc
             rm /tmp/docker_bashrc
-
-            echo "Docker のインストールが完了しました"
+            log_success "Docker グループの設定を追加しました"
 
             # mise のインストール
             log_success "miseのインストールを開始します..."
@@ -456,30 +468,31 @@ Resources:
             retry_command "su - coder -c 'bash -l -c \"/usr/bin/mise use -g node@22 python@3.10 uv@0.6.16\"'"
 
             # インストール確認
-            echo "インストールされたツールを確認しています..."
+            log_success "インストールされたツールを確認しています..."
             su - coder -c 'bash -l -c "/usr/bin/mise ls"'
 
             # PATH を確認
-            echo "mise の PATH 設定を確認しています..."
+            log_success "mise の PATH 設定を確認しています..."
             su - coder -c 'bash -l -c "echo \$PATH"'
 
             # シンボリックリンクの作成（オプション）
-            echo "シンボリックリンクを作成しています..."
+            log_success "シンボリックリンクを作成しています..."
             su - coder -c 'mkdir -p ~/.local/bin'
             su - coder -c 'ln -sf ~/.local/share/mise/shims/uv ~/.local/bin/uv'
             su - coder -c 'ln -sf ~/.local/share/mise/shims/python ~/.local/bin/python'
             su - coder -c 'ln -sf ~/.local/share/mise/shims/node ~/.local/bin/node'
 
             # 最終確認とログ出力
-            echo "===== インストール完了 ====="
+            log_success "===== インストール完了 ====="
             log_success "インストールプロセスが完了しました"
-            echo "新しいシェルを開くか、以下のコマンドを実行して環境を更新してください："
-            echo "source ~/.bashrc"
+            log_success "新しいシェルを開くか、以下のコマンドを実行して環境を更新してください："
+            log_success "source ~/.bashrc"
 
             # 最終的なサービス状態の確認
-            echo "最終的なサービス状態の確認:" | tee -a /var/log/user-data-final.log
+            log_success "最終的なサービス状態の確認を開始します"
             systemctl status vscode-server | tee -a /var/log/user-data-final.log
             netstat -tuln | grep 8080 | tee -a /var/log/user-data-final.log
+            log_success "最終的なサービス状態の確認が完了しました"
       Tags:
         - Key: Name
           Value: !Join
