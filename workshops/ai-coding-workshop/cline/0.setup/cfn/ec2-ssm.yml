@@ -273,19 +273,20 @@ Resources:
             # apt-getのロックが解放されるまで待機する関数
             wait_for_apt_lock() {
               log_success "apt-getのロックをチェックしています..."
-              local start_time=$(date +%s)
-              local apt_lock_timeout=600  # 10分のタイムアウト
+              local _start_time="$(date +%s)"
+              local _timeout_seconds="600"  # 10分のタイムアウト
 
               while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-                local current_time=$(date +%s)
-                local elapsed_time=$((current_time - start_time))
+                local _current_time="$(date +%s)"
+                local _time_diff="$(( _current_time - _start_time ))"
 
-                if [ "${elapsed_time}" -ge "${apt_lock_timeout}" ]; then
-                  log_error "apt-getのロックが${apt_lock_timeout}秒以上解放されませんでした。インストールを中止します。"
+                if [ "$_time_diff" -ge "$_timeout_seconds" ]; then
+                  log_error "apt-getのロックが$_timeout_seconds秒以上解放されませんでした。インストールを中止します。"
                   exit 1
                 fi
 
-                log_success "apt-getのロックが検出されました。解放されるまで待機します（10秒ごとに再試行、残り$((apt_lock_timeout - elapsed_time))秒）"
+                local _remaining="$(( _timeout_seconds - _time_diff ))"
+                log_success "apt-getのロックが検出されました。解放されるまで待機します（10秒ごとに再試行、残り$_remaining秒）"
                 sleep 10
               done
               log_success "apt-getのロックは検出されませんでした。インストールを続行します"
