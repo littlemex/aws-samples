@@ -560,7 +560,7 @@ spawn node ENOENT
 この問題は、特に mise を使用している環境で発生することが確認されています。
 
 **解決策：**
-mise 環境では、`/home/coder/.local/share/mise/shims/` ディレクトリ内のコマンドへのフルパスを指定することで解決できます。
+mise 環境では、`/home/coder/.local/share/mise/shims/` ディレクトリ内のコマンドへのパスを指定することで解決できます。
 
 例：
 ```json
@@ -579,15 +579,6 @@ mise 環境では、`/home/coder/.local/share/mise/shims/` ディレクトリ内
     }
   }
 }
-```
-
-フルパスは `which コマンド名` で確認できます：
-```bash
-which npx
-/home/coder/.local/share/mise/shims/npx
-
-which uvx
-/home/coder/.local/share/mise/shims/uvx
 ```
 
 ### 3. Terminal output capture failure
