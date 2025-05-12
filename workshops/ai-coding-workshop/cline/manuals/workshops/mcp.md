@@ -583,7 +583,7 @@ mise 環境では、`/home/coder/.local/share/mise/shims/` ディレクトリ内
 
 ### 3. Terminal output capture failure
 
-コマンド実行自体はできても出力をうまく得られないバグが v3.15.0 で発生します。[Issue #3445](https://github.com/cline/cline/issues/3445)
+コマンド実行自体はできても出力をうまく得られないバグが v3.15.0 で発生します[Issue #3445](https://github.com/cline/cline/issues/3445)。  
 v3.14 では発生しないため、Cline 利用時にはバージョン指定でのインストールをお勧めします。
 
 ## セキュリティに関する注意事項
