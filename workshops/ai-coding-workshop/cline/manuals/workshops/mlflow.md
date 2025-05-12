@@ -53,7 +53,7 @@ flowchart TD
 
 ## MLflow 機能紹介
 
-[MLflow](https://mlflow.org/) は、機械学習のライフサイクル全体を管理するためのオープンソースプラットフォームです。このワークショップでは、Amazon SageMaker の Managed MLflow を使用して、LiteLLM Proxy の実行ログを収集・分析します。
+[MLflow](https://mlflow.org/) は、機械学習のライフサイクル全体を管理するためのオープンソースプラットフォームです。このワークショップでは、Amazon SageMaker の Amazon SageMaker Managed Service for MLflow を使用して、LiteLLM Proxy の実行ログを収集・分析します。
 
 ### 主要機能
 
@@ -137,7 +137,7 @@ graph TB
 
         subgraph "AWS Cloud"
             MS[Amazon SageMaker<br/>Managed MLflow]
-            S3[S3 Storage]
+            S3[Amazon S3]
             
             MS --> S3
         end
@@ -155,18 +155,18 @@ graph TB
 
 MLflow の環境は AWS CDK を使用して構築されています：
 
-1. **S3 バケット**
+1. **Amazon S3 バケット**
    - MLflow のアーティファクト保存用
-   - 暗号化: S3 マネージド暗号化
+   - 暗号化: Amazon S3 マネージド暗号化
    - バージョニング有効化
 
-2. **IAM ロール**
+2. **AWS Identity and Access Management (IAM) ロール**
    - MLflow サーバー用の実行ロール
-   - S3 バケットへの読み書き権限
+   - Amazon S3 バケットへの読み書き権限
 
 3. **MLflow トラッキングサーバー**
    - サイズ: Small
-   - アーティファクトストア: 作成した S3 バケット
+   - アーティファクトストア: 作成した Amazon S3 バケット
    - IAM ロール: 作成したサーバー実行ロール
 
 ## 環境別のセットアップ手順
@@ -244,7 +244,7 @@ MLflow との連携を有効にするために、LiteLLM Proxy の設定を更�
 
 ### アクセス方法
 
-MLflow UI にアクセスするには、presigned URL を使用します。この URL は一時的な認証付きアクセスを提供します。
+MLflow UI にアクセスするには、Amazon SageMaker の presigned URL を使用します。この URL は一時的な認証付きアクセスを提供します。
 
 1. **presigned URL の取得**
 ```bash
