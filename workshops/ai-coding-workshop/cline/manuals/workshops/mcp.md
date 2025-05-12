@@ -486,6 +486,21 @@ Cline は内部的に AWS Documentation MCP Server の `search_documentation` �
 
 このように、AWS Documentation MCP Server を使用することで、AWS のドキュメントを効率的に検索し、必要な情報を素早く取得することができます。
 
+## トラブルシューティング
+
+### 1. Shell Integration Unavailable エラー
+
+VS Code のシェル統合機能が正しく設定されていない場合、「Shell Integration Unavailable」エラーが表示されることがあります。
+
+**解決方法：**
+以下のコマンドを `~/.bashrc` ファイルに追加してください：
+
+```bash
+[[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path bash)"
+```
+
+その後 `source ~/.bashrc` を実行してください。詳細については、[Cline Wiki のトラブルシューティングページ](https://cline.bot/wiki/troubleshooting)を参照してください。
+
 ## セキュリティに関する注意事項
 
 MCP サーバーを導入・実行する際には、以下のセキュリティ上の注意点に留意してください：
