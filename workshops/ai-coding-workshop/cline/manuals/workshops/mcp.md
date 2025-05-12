@@ -71,6 +71,7 @@ flowchart TD
         subgraph Components["コンポーネント"]
             Tools[ツール]
             Resources[リソース]
+            Prompts[プロンプト]
         end
     end
     
@@ -78,28 +79,33 @@ flowchart TD
         LocalData[ローカルデータ]
         RemoteData[リモートデータ]
         APIs[外部 API]
+        Templates[プロンプトテンプレート]
     end
     
     %% 接続
     AIModel <--> Protocol
     Protocol <--> Tools
     Protocol <--> Resources
+    Protocol <--> Prompts
     Resources --> LocalData
     Resources --> RemoteData
     Tools --> APIs
+    Prompts --> Templates
     
-    %% スタイル設定
-    style AIModel fill:#f9f0ff,stroke:#6600cc,stroke-width:2px
-    style MCPServer fill:#e6ffe6,stroke:#006600,stroke-width:2px
-    style Components fill:#e6f7ff,stroke:#0066cc,stroke-width:1px
-    style DataSources fill:#fff0e6,stroke:#cc3300,stroke-width:1px
-    style LLM fill:#d4bbff,stroke:#333333,stroke-width:1px
-    style Protocol fill:#b3ffb3,stroke:#333333,stroke-width:1px
-    style Tools fill:#b3e6ff,stroke:#333333,stroke-width:1px
-    style Resources fill:#b3e6ff,stroke:#333333,stroke-width:1px
-    style LocalData fill:#ffccb3,stroke:#333333,stroke-width:1px
-    style RemoteData fill:#ffccb3,stroke:#333333,stroke-width:1px
-    style APIs fill:#ffccb3,stroke:#333333,stroke-width:1px
+    %% スタイル設定 - 色を濃くしました
+    style AIModel fill:#e6ccff,stroke:#4d0099,stroke-width:2px
+    style MCPServer fill:#ccffcc,stroke:#004d00,stroke-width:2px
+    style Components fill:#cce6ff,stroke:#004d99,stroke-width:1px
+    style DataSources fill:#ffe6cc,stroke:#994d00,stroke-width:1px
+    style LLM fill:#bf99ff,stroke:#333333,stroke-width:1px
+    style Protocol fill:#99ff99,stroke:#333333,stroke-width:1px
+    style Tools fill:#99ccff,stroke:#333333,stroke-width:1px
+    style Resources fill:#99ccff,stroke:#333333,stroke-width:1px
+    style Prompts fill:#99ccff,stroke:#333333,stroke-width:1px
+    style LocalData fill:#ffb380,stroke:#333333,stroke-width:1px
+    style RemoteData fill:#ffb380,stroke:#333333,stroke-width:1px
+    style APIs fill:#ffb380,stroke:#333333,stroke-width:1px
+    style Templates fill:#ffb380,stroke:#333333,stroke-width:1px
 ```
 
 1. **ツール（Tools）**
