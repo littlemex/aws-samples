@@ -175,6 +175,6 @@ VS Code の Extentions メニューから「Cline」を検索し、インスト�
 ---
 
 **[次のステップ]**
-- [MCP ワークショップへ進む](./workshops/mcp.md)
-- [LiteLLM ワークショップへ進む](./workshops/litellm.md)
+- [MCP ワークショップへ進む](./mcp.md)
+- [LiteLLM ワークショップへ進む](./litellm.md)
 - [戻る](./README.md)
