@@ -129,7 +129,7 @@ AWS が提供する Workshop Studio 環境を使用する場合：
 
 ### Amazon Bedrock のクオータの確認
 
-- [us-east-1 リージョン](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/bedrock/quotas)・[us-west-2 リージョン](https://us-west-2.console.aws.amazon.com/servicequotas/home/services/bedrock/quotas) で `tokens per minute for Anthropic Claude` をクオータ検索窓に入力し、各モデルが利用可能になっていることを確認します。
+-  [us-east-1 リージョン](https://us-east-1.console.aws.amazon.com/servicequotas/home/services/bedrock/quotas), [us-west-2 リージョン](https://us-west-2.console.aws.amazon.com/servicequotas/home/services/bedrock/quotas), [us-west-2 リージョン](https://us-west-2.console.aws.amazon.com/servicequotas/home/services/bedrock/quotas) で `tokens per minute for Anthropic Claude` をクオータ検索窓に入力し、各モデルが利用可能になっていることを確認します。
 
 - Amazon Bedrock のクオータ TPM (Tokens per minute) が 1,000,000 であることを確認
 - Cross-region model inference tokens per minute for Anthropic Claude 3.7 Sonnet V1 の確認
