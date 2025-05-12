@@ -501,6 +501,41 @@ VS Code のシェル統合機能が正しく設定されていない場合、「
 
 その後 `source ~/.bashrc` を実行してください。詳細については、[Cline Wiki のトラブルシューティングページ](https://cline.bot/wiki/troubleshooting)を参照してください。
 
+### 2. コマンドパスの問題
+
+MCP サーバーの設定で、`command` フィールドにコマンド名のみを指定すると、以下のようなエラーが発生する場合があります：
+
+```
+spawn uvx ENOENT
+spawn node ENOENT
+```
+
+この問題は、特に mise を使用している環境で発生することが確認されています。
+
+**解決策：**
+コマンドのフルパスを指定することで解決できます。
+
+例：
+```json
+{
+  "mcpServers": {
+    "awslabs.core-mcp-server": {
+      "command": "/home/ubuntu/.local/share/mise/installs/uv/0.6.16/uv-x86_64-unknown-linux-musl/uvx",
+      "args": ["awslabs.core-mcp-server@latest"]
+    }
+  }
+}
+```
+
+フルパスは `which コマンド名` で確認できます：
+```bash
+which uvx
+/home/ubuntu/.local/share/mise/installs/uv/0.6.16/uv-x86_64-unknown-linux-musl/uvx
+
+which node
+/home/ubuntu/.local/share/mise/installs/node/22.15.0/bin/node
+```
+
 ## セキュリティに関する注意事項
 
 MCP サーバーを導入・実行する際には、以下のセキュリティ上の注意点に留意してください：
