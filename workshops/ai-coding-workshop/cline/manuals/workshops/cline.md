@@ -132,7 +132,7 @@ VS Code の Extentions メニューから「Cline」を検索し、インスト�
 - AWS Region: us-east-1
   - Amazon Bedrock を有効化済みでサービスが利用可能なリージョンを指定
 - ☑️ Use cross-region inference
-  - このオプションは必ず有効にしてください
+  - このオプションは必ず有効にしてください。有効化しない場合エラーが出ます。
 - ☑️ Use prompt caching
   - [Amazon Bedrock プロンプトキャッシュ](https://aws.amazon.com/jp/bedrock/prompt-caching/) が有効になります。
 - ☑️ Enable extended thinking
