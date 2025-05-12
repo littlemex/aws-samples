@@ -260,29 +260,81 @@ Resources:
         Fn::Base64:
           !Sub |
             #!/bin/bash
-            set -e
+
+            # エラーと成功のログを記録する関数
+            log_error() {
+              echo "ERROR: $(date): $1" | tee -a /var/log/user-data-error.log
+            }
+
+            log_success() {
+              echo "SUCCESS: $(date): $1" | tee -a /var/log/user-data-success.log
+            }
+
+            # apt-getのロックが解放されるまで待機する関数
+            wait_for_apt_lock() {
+              log_success "apt-getのロックをチェックしています..."
+              local _start_time="$(date +%s)"
+              local _timeout_seconds="600"  # 10分のタイムアウト
+
+              while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+                local _current_time="$(date +%s)"
+                local _time_diff="$(( _current_time - _start_time ))"
+
+                if [ "$_time_diff" -ge "$_timeout_seconds" ]; then
+                  log_error "apt-getのロックが$_timeout_seconds秒以上解放されませんでした。インストールを中止します。"
+                  exit 1
+                fi
+
+                local _remaining="$(( _timeout_seconds - _time_diff ))"
+                log_success "apt-getのロックが検出されました。解放されるまで待機します（10秒ごとに再試行、残り$_remaining秒）"
+                sleep 10
+              done
+              log_success "apt-getのロックは検出されませんでした。インストールを続行します"
+            }
+
+            # コマンド実行を再試行する関数
+            retry_command() {
+              local cmd="$1"
+              local max_attempts=3
+              local attempt=1
+              
+              while [ $attempt -le $max_attempts ]; do
+                echo "試行 $attempt/$max_attempts: $cmd"
+                if eval "$cmd"; then
+                  log_success "コマンド成功: $cmd"
+                  return 0
+                else
+                  log_error "コマンド失敗 (試行 $attempt): $cmd"
+                  attempt=$((attempt + 1))
+                  sleep 5
+                fi
+              done
+              
+              log_error "コマンドは $max_attempts 回の試行後も失敗しました: $cmd"
+              return 1
+            }
+
+            log_success  "インストールプロセスを開始します: $(date)"
 
             # Update package list
-            apt-get update
+            wait_for_apt_lock
+            retry_command "apt-get update"
 
             # Install basic utilities
-            apt-get install -y \
-                curl \
-                wget \
-                unzip \
-                htop \
-                jq \
-                ca-certificates
+            wait_for_apt_lock
+            retry_command "apt-get install -y curl wget unzip htop jq ca-certificates"
 
-            echo "apt-get install done."
+            log_success "基本ユーティリティのインストールが完了しました"
 
             # Install VS Code via snap
-            snap install --classic code
+            retry_command "snap install --classic code"
 
             # Create VS Code Server user
-            adduser --disabled-password --gecos "" coder
+            retry_command "adduser --disabled-password --gecos \"\" coder"
             echo "coder ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/coder
-            usermod -aG sudo coder
+            retry_command "usermod -aG sudo coder"
+
+            log_success "VS Codeとcoderユーザーの設定が完了しました"
 
             # Create VS Code Server service file
             cat > /etc/systemd/system/vscode-server.service << 'EOF'
@@ -315,35 +367,62 @@ Resources:
             chown -R coder:coder /home/coder/.config
 
             # Start and enable VS Code Server service
-            systemctl daemon-reload
-            systemctl enable vscode-server
-            systemctl start vscode-server
+            retry_command "systemctl daemon-reload"
+            retry_command "systemctl enable vscode-server"
+            retry_command "systemctl start vscode-server"
+
+            # サービスの状態を確認
+            sleep 5  # サービスの起動を待機
+            if ! systemctl is-active --quiet vscode-server; then
+              log_error "VS Codeサーバーが起動していません"
+              systemctl status vscode-server
+              log_error "サービスの再起動を試みます"
+              retry_command "systemctl restart vscode-server"
+              sleep 5
+              if ! systemctl is-active --quiet vscode-server; then
+                log_error "VS Codeサーバーの起動に失敗しました"
+              else
+                log_success "VS Codeサーバーが正常に起動しました"
+              fi
+            else
+              log_success "VS Codeサーバーが正常に起動しました"
+            fi
 
             # install aws cli, see: https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/getting-started-install.html
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && unzip awscliv2.zip
             ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
 
-            # Docker インストール部分の修正
-            echo "Docker をインストールしています..."
-            # 古いバージョンの削除（docker.io のみを対象）
-            apt-get remove -y docker.io || true
+            # Docker インストール
+            log_success "Dockerのインストールを開始します..."
+            
+            # 古いバージョンの削除
+            wait_for_apt_lock
+            retry_command "apt-get remove -y docker.io || true"
 
             # 必要なパッケージをインストール
-            apt-get update
-            apt-get install -y ca-certificates curl gnupg
+            wait_for_apt_lock
+            retry_command "apt-get update"
+            wait_for_apt_lock
+            retry_command "apt-get install -y ca-certificates curl gnupg"
 
             # Docker の公式GPGキーを追加（--yes オプション使用）
             install -m 0755 -d /etc/apt/keyrings
             curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --yes --dearmor -o /etc/apt/keyrings/docker.gpg
             chmod a+r /etc/apt/keyrings/docker.gpg
+            log_success "Dockerの公式GPGキーを追加しました"
 
             # Docker のリポジトリを追加
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+            log_success "Dockerのリポジトリを追加しました"
 
             # パッケージリストの更新とDockerのインストール
-            apt-get update
-            apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-            usermod -aG docker coder
+            wait_for_apt_lock
+            retry_command "apt-get update"
+            wait_for_apt_lock
+            retry_command "apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+            retry_command "usermod -aG docker coder"
+
+            log_success "Dockerのインストールが完了しました"
 
             # .bashrc に Docker グループの設定を追加（正しいインデントで）
             cat > /tmp/docker_bashrc << EOF
@@ -353,16 +432,18 @@ Resources:
             EOF
             cat /tmp/docker_bashrc >> /home/coder/.bashrc
             rm /tmp/docker_bashrc
-
-            echo "Docker のインストールが完了しました"
+            log_success "Docker グループの設定を追加しました"
 
             # mise のインストール
-            echo "mise をインストールしています..."
-            apt update -y && apt install -y gpg sudo wget curl
-            wget -qO - https://mise.jdx.dev/gpg-key.pub | gpg --yes --dearmor -o /etc/apt/keyrings/mise-archive-keyring.gpg
+            log_success "miseのインストールを開始します..."
+            wait_for_apt_lock
+            retry_command "apt update -y && apt install -y gpg sudo wget curl"
+            retry_command "wget -qO - https://mise.jdx.dev/gpg-key.pub | gpg --yes --dearmor -o /etc/apt/keyrings/mise-archive-keyring.gpg"
             echo "deb [signed-by=/etc/apt/keyrings/mise-archive-keyring.gpg arch=amd64] https://mise.jdx.dev/deb stable main" | tee /etc/apt/sources.list.d/mise.list
-            apt update
-            apt install -y mise
+            wait_for_apt_lock
+            retry_command "apt update"
+            wait_for_apt_lock
+            retry_command "apt install -y mise"
 
             # coder ユーザーの .bashrc に mise の設定を追加
             su - coder -c 'echo "eval \"\$(/usr/bin/mise activate bash)\"" >> ~/.bashrc'
@@ -380,31 +461,39 @@ Resources:
             python.uv_venv_auto = true
             EOF'
 
-            # mise install コマンドを実行（ログインシェルで実行して環境変数を適切に設定）
-            echo "mise でツールをインストールしています..."
-            su - coder -c 'bash -l -c "/usr/bin/mise install"'
+            # mise install コマンドを実行
+            log_success "miseでツールをインストールしています..."
+            retry_command "su - coder -c 'bash -l -c \"/usr/bin/mise install\"'"
 
             # グローバル設定の適用
-            su - coder -c 'bash -l -c "/usr/bin/mise use -g node@22 python@3.10 uv@0.6.16"'
+            retry_command "su - coder -c 'bash -l -c \"/usr/bin/mise use -g node@22 python@3.10 uv@0.6.16\"'"
 
             # インストール確認
-            echo "インストールされたツールを確認しています..."
+            log_success "インストールされたツールを確認しています..."
             su - coder -c 'bash -l -c "/usr/bin/mise ls"'
 
             # PATH を確認
-            echo "mise の PATH 設定を確認しています..."
+            log_success "mise の PATH 設定を確認しています..."
             su - coder -c 'bash -l -c "echo \$PATH"'
 
             # シンボリックリンクの作成（オプション）
-            echo "シンボリックリンクを作成しています..."
+            log_success "シンボリックリンクを作成しています..."
             su - coder -c 'mkdir -p ~/.local/bin'
             su - coder -c 'ln -sf ~/.local/share/mise/shims/uv ~/.local/bin/uv'
             su - coder -c 'ln -sf ~/.local/share/mise/shims/python ~/.local/bin/python'
             su - coder -c 'ln -sf ~/.local/share/mise/shims/node ~/.local/bin/node'
 
-            echo "===== インストール完了 ====="
-            echo "新しいシェルを開くか、以下のコマンドを実行して環境を更新してください："
-            echo "source ~/.bashrc"
+            # 最終確認とログ出力
+            log_success "===== インストール完了 ====="
+            log_success "インストールプロセスが完了しました"
+            log_success "新しいシェルを開くか、以下のコマンドを実行して環境を更新してください："
+            log_success "source ~/.bashrc"
+
+            # 最終的なサービス状態の確認
+            log_success "最終的なサービス状態の確認を開始します"
+            systemctl status vscode-server | tee -a /var/log/user-data-final.log
+            netstat -tuln | grep 8080 | tee -a /var/log/user-data-final.log
+            log_success "最終的なサービス状態の確認が完了しました"
       Tags:
         - Key: Name
           Value: !Join
