@@ -263,12 +263,25 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    - `/home/coder/aws-samples/workshops/ai-coding-workshop/cline` フォルダを選択して開く
 
 3. 必要なパッケージのインストールとその確認
-
-   ここまでがうまくいけば Cline を使うための開発環境構築は完了です！
    ```bash
    mise ls && mise install && uv --version
    docker -v
    ```
+
+4. セットアップログの確認
+   ```bash
+   # インストール過程のログを確認
+   sudo cat /var/log/user-data-success.log
+   
+   # サービス（VS Code Server）の状態を確認
+   sudo cat /var/log/user-data-final.log
+   ```
+   
+   これらのログファイルを確認することで、以下を確認できます：
+   - user-data-success.log: 各コンポーネント（Docker、mise、VS Code Server等）のインストール過程と成功状態
+   - user-data-final.log: VS Code Serverの実行状態、メモリ使用量、ポート状態など
+
+   ここまでがうまくいけば Cline を使うための開発環境構築は完了です！
 
 ## トラブルシューティング
 
