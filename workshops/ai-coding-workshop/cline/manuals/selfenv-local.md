@@ -143,6 +143,23 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    }
    ```
 
+## VS Code の初期設定
+
+1. リポジトリのクローン
+   ```bash
+   git clone https://github.com/aws-samples/workshops.git && cd workshops/ai-coding-workshop/cline
+   ```
+
+2. VS Code でフォルダを開く
+   - VS Code を起動し、「ファイル」→「フォルダを開く」を選択
+   - `~/aws-samples/workshops/ai-coding-workshop/cline` フォルダを選択して開く
+
+3. 必要なパッケージのインストールとその確認
+   ```bash
+   mise ls && mise install && uv --version
+   docker -v
+   ```
+
 **ここまでがうまくいけば Cline を使うための開発環境構築は完了です！**
 
 ---

@@ -249,7 +249,12 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    git clone https://github.com/aws-samples/workshops.git && cd workshops/ai-coding-workshop/cline
    ```
 
-2. 必要なパッケージのインストールとその確認
+2. VS Code でフォルダを開く
+   - 左サイドバーのエクスプローラーアイコンをクリック
+   - 「フォルダを開く」をクリック
+   - `/home/coder/aws-samples/workshops/ai-coding-workshop/cline` フォルダを選択して開く
+
+3. 必要なパッケージのインストールとその確認
    ```bash
    mise ls && mise install && uv --version
    docker -v
