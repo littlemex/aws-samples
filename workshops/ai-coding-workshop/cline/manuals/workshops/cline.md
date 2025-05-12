@@ -163,6 +163,15 @@ VS Code の Extentions メニューから「Cline」を検索し、インスト�
    - VS Code を再起動してください
    - 拡張機能を一度アンインストールしてから再インストールしてください
 
+4. 「Shell Integration Unavailable」エラーが表示される場合
+   - このエラーは VS Code のシェル統合機能が正しく設定されていない場合に発生します
+   - 詳細については [Cline Wiki のトラブルシューティングページ](https://github.com/cline/cline/wiki/Troubleshooting-%E2%80%90-Shell-Integration-Unavailable) を参照してください
+   - 解決方法として、以下のコマンドを `~/.bashrc` ファイルに追加してください：
+     ```bash
+     [[ "$TERM_PROGRAM" == "vscode" ]] && . "$(code --locate-shell-integration-path bash)"
+     ```
+   - 変更後、ターミナルを再起動するか、`source ~/.bashrc` コマンドを実行して変更を適用してください
+
 ---
 
 **[次のステップ]**
