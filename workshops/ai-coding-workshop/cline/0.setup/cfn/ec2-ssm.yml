@@ -334,7 +334,7 @@ Resources:
             echo "coder ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/coder
             retry_command "usermod -aG sudo coder"
 
-            log_success "VSCodeとcoderユーザーの設定が完了しました"
+            log_success "VS Codeとcoderユーザーの設定が完了しました"
 
             # Create VS Code Server service file
             cat > /etc/systemd/system/vscode-server.service << 'EOF'
@@ -374,18 +374,18 @@ Resources:
             # サービスの状態を確認
             sleep 5  # サービスの起動を待機
             if ! systemctl is-active --quiet vscode-server; then
-              log_error "VSCodeサーバーが起動していません"
+              log_error "VS Codeサーバーが起動していません"
               systemctl status vscode-server
               log_error "サービスの再起動を試みます"
               retry_command "systemctl restart vscode-server"
               sleep 5
               if ! systemctl is-active --quiet vscode-server; then
-                log_error "VSCodeサーバーの起動に失敗しました"
+                log_error "VS Codeサーバーの起動に失敗しました"
               else
-                log_success "VSCodeサーバーが正常に起動しました"
+                log_success "VS Codeサーバーが正常に起動しました"
               fi
             else
-              log_success "VSCodeサーバーが正常に起動しました"
+              log_success "VS Codeサーバーが正常に起動しました"
             fi
 
             # install aws cli, see: https://docs.aws.amazon.com/ja_jp/cli/latest/userguide/getting-started-install.html
