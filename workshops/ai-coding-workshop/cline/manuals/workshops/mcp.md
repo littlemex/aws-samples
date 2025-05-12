@@ -462,7 +462,6 @@ MCP サーバーは以下のコマンドでインストールできます：
 
 ```
 **AWS Documentation MCP Server**
-```bash
 mkdir -p /home/coder/Cline/MCP/aws-documentation-mcp-server
 ```
 
