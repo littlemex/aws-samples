@@ -35,12 +35,12 @@ get_aws_credentials() {
         return 1
     fi
 
-    # [default]セクションから認証情報を取得
-    local access_key=$(grep -A2 '^\[default\]' "$credentials_file" | grep 'aws_access_key_id' | cut -d'=' -f2 | tr -d ' ')
-    local secret_key=$(grep -A2 '^\[default\]' "$credentials_file" | grep 'aws_secret_access_key' | cut -d'=' -f2 | tr -d ' ')
+    # [cline]セクションから認証情報を取得
+    local access_key=$(grep -A2 '^\[cline\]' "$credentials_file" | grep 'aws_access_key_id' | cut -d'=' -f2 | tr -d ' ')
+    local secret_key=$(grep -A2 '^\[cline\]' "$credentials_file" | grep 'aws_secret_access_key' | cut -d'=' -f2 | tr -d ' ')
 
     if [ -z "$access_key" ] || [ -z "$secret_key" ]; then
-        log_error "AWS認証情報が見つかりません。[default]プロファイルを確認してください。"
+        log_error "AWS認証情報が見つかりません。[cline]プロファイルを確認してください。"
         return 1
     fi
 

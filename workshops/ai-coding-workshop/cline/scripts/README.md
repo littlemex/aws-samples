@@ -1,12 +1,15 @@
 # スクリプト集
 
 このディレクトリには、ワークショップで使用する様々なユーティリティスクリプトが含まれています。
+ただし、このディレクトリのスクリプトの詳細を説明せずとも何をやっているのかコードから理解できる方のみ利用してください。
+このディレクトリのスクリプトを使わずともワークショップは実施できるようになっています。
 
 ## 共通のセットアップ手順
 
 このディレクトリのスクリプトは主に Python で実装されています。実行前に以下の手順で Python 環境をセットアップしてください：
 
 ```bash
+# mise で事前に uv を入れている前提
 uv venv && source .venv/bin/activate && uv sync
 ```
 
@@ -14,10 +17,10 @@ uv venv && source .venv/bin/activate && uv sync
 
 ## 目次
 
-- [SSMポートフォワーディングスクリプト](#ssmポートフォワーディングスクリプト)
+- [SSM ポートフォワーディングスクリプト](#ssmポートフォワーディングスクリプト)
 - [環境変数設定スクリプト](#環境変数設定スクリプト)
 
-## SSMポートフォワーディングスクリプト
+## SSM ポートフォワーディングスクリプト
 
 このスクリプトは、AWS Systems Manager を使用して Amazon Elastic Compute Cloud (Amazon EC2) インスタンスへの複数のポートフォワーディングを一括で行います。
 
@@ -25,7 +28,7 @@ uv venv && source .venv/bin/activate && uv sync
 
 ### 必要なライブラリ
 
-以下のライブラリが必要です（uvを使用して管理）：
+以下のライブラリが必要です（uv を使用して管理）：
 
 ```
 pyyaml
@@ -97,9 +100,9 @@ uv run port_forward.py -i <instance-id> -r <region> -c <config-file>
 
 ### 注意事項
 
-- このスクリプトを実行するには、AWS CLIとSession Managerプラグインがインストールされている必要があります。
+- このスクリプトを実行するには、AWS CLI と Session Manager プラグインがインストールされている必要があります。
 - 適切な AWS Identity and Access Management (IAM) 権限が必要です（`AmazonSSMManagedInstanceCore`など）。
-- Ctrl+Cでスクリプトを終了すると、すべてのポートフォワーディングセッションが終了します。
+- Ctrl+C でスクリプトを終了すると、すべてのポートフォワーディングセッションが終了します。
 
 ## 環境変数設定スクリプト
 
