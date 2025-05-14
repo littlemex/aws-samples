@@ -290,6 +290,8 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    An error occurred (TargetNotConnected) when calling the StartSession operation: {インスタンスID} is not connected.
    ```
    とエラーが出る場合は認証情報を確認し、数分待ちます。以前接続できない場合にはマネジメントコンソールからインスタンスを再起動してください。
+2. VS Code 起動に時間がかかる  
+   localhost:18080 に初回アクセスした際に白画面になり起動までに時間がかかるケースがあります。最新のバージョンへのアップデートを実行しているため数分かかる可能性があります。
 
 ---
 
