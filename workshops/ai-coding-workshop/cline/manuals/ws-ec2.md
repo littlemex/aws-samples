@@ -172,15 +172,12 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
 
 1. **認証情報の設定**:
    ```bash
-   # default のプロファイルが既にある場合に上書きをしないために既存の ~/.aws/{credenatials,config} の profile 名と競合しない profile 名にしてください。
-   # 必ず以下の環境変数を設定してください。
-   export AWS_PROFILE=cline
-
+   # default のプロファイルが既にある場合に上書きをしないために既存の ~/.aws/{credenatials,config} の profile 名と競合しない profile 名にしてください。以下は `cline` として説明を進めます。
    # IAM ユーザーの場合
-   aws configure
+   aws configure --profile cline
 
    # または IAM Identity Center (SSO) の場合
-   aws configure sso
+   aws configure sso --profile cline
    ```
 
 2. **プロファイル設定の確認**:
@@ -194,7 +191,7 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
 
 3. **AWS SSM コマンドの動作確認**:
    ```bash
-   aws sts get-caller-identity
+   aws sts get-caller-identity --profile cline
    ```
    
    正常に動作すると、以下のような情報が表示されます：
@@ -216,14 +213,16 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    aws ssm start-session \
       --target <インスタンス ID> \
       --document-name AWS-StartPortForwardingSession \
-      --parameters '{"portNumber":["8080"],"localPortNumber":["18080"]}'
+      --parameters '{"portNumber":["8080"],"localPortNumber":["18080"]}' \
+      --profile cline
    ```
 2. Windows PowerShell の場合
    ```powershell
    aws ssm start-session `
       --target <インスタンス ID> `
       --document-name AWS-StartPortForwardingSession `
-      --parameters '{\"portNumber\":[\"8080\"],\"localPortNumber\":[\"18080\"]}'
+      --parameters '{\"portNumber\":[\"8080\"],\"localPortNumber\":[\"18080\"]}' `
+      --profile cline
    ```
 3. 実行結果
 
@@ -290,6 +289,20 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
    An error occurred (TargetNotConnected) when calling the StartSession operation: {インスタンスID} is not connected.
    ```
    とエラーが出る場合は認証情報を確認し、数分待ちます。以前接続できない場合にはマネジメントコンソールからインスタンスを再起動してください。
+
+2. VS Code 起動に時間がかかる  
+   localhost:18080 に初回アクセスした際に白画面になり起動までに時間がかかるケースがあります。最新のバージョンへのアップデートを実行しているため数分かかる可能性があります。
+
+3. Windows PowerShell でのポートフォワーディングコマンドが失敗する場合  
+   以下の方法を試してください：
+   ```powershell
+   # インスタンス ID を変数として設定
+   $instanceId = ""
+   $params = '{"portNumber":["8080"],"localPortNumber":["18080"]}'
+   
+   # ポートフォワーディングを開始
+   aws ssm start-session --target $instanceId --document-name AWS-StartPortForwardingSession --parameters $params --profile cline
+   ```
 
 ---
 
