@@ -85,15 +85,13 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
 
 1. **認証情報の設定**:
    ```bash
-   # default のプロファイルが既にある場合に上書きをしないために既存の ~/.aws/{credenatials,config} の profile 名と競合しない profile 名にしてください。
-   # 必ず以下の環境変数を設定してください。
-   export AWS_PROFILE=cline
+   # default のプロファイルが既にある場合に上書きをしないために既存の ~/.aws/{credenatials,config} の profile 名と競合しない profile 名にしてください。以下は `cline` として説明を進めます。
 
    # IAM ユーザーの場合
-   aws configure
+   aws configure --profile cline
 
    # IAM Identity Center (SSO) の場合
-   aws configure sso
+   aws configure sso --profile cline
    # コマンド実行後、以下の情報の入力を求められます：
    # SSO start URL: [SSO のスタート URL を入力]
    # SSO Region: [SSO のリージョンを入力]
@@ -131,7 +129,7 @@ Windows, Mac, Linux など OS によらず以下のコマンドを実行でき�
 
 3. **AWS SSM コマンドの動作確認**:
    ```bash
-   aws sts get-caller-identity
+   aws sts get-caller-identity --profile cline
    ```
    
    正常に動作すると、以下のような情報が表示されます：
