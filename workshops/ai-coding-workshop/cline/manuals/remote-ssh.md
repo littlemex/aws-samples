@@ -1,6 +1,22 @@
 # VS Code Remote Development using SSH 接続セットアップガイド
 
 このガイドでは、AWS Systems Manager (SSM) を使用して EC2 インスタンスに VS Code から Remote Development using SSH で接続する方法を説明します。
+自ら設定を行って導入するパターンと AWS Toolkit を利用するパターンを紹介します。
+
+# 1. AWS Toolkit を利用するパターン
+
+事前にローカル PC で `aws configure --profile cline` 等の AWS 認証情報の設定が適切に行われていることを前提とします。
+
+まず、VS Code の Extensions から [AWS Toolkit](https://aws.amazon.com/visualstudiocode/) をインストールします。  
+そして、サイドバーの AWS Toolkit を選択し、「EXPLORER」>「EC2」> 「${USERNAME}-dev-instance」の「Connect VS Code to EC2 Instance」ボタンを押下します。
+
+![](./images/aws-toolkit-ec2-access-with-remote-ssh.png)
+
+必要な SSM Plugin や SSH Config などの設定が自動的に実行され、Amazon EC2 に Remote Development で接続できます。
+
+![](./images/aws-toolkit-remote-development.png)
+
+# 2. 自ら設定を行って導入するパターン
 
 ## 1. SSH キーペアの設定
 
