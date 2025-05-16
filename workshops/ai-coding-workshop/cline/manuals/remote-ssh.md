@@ -16,6 +16,12 @@
 
 ![](./images/aws-toolkit-remote-development.png)
 
+正常に接続が完了したら、作業用のユーザー `coder` に su します。
+
+```bash
+sudo su - coder
+```
+
 # 2. 自ら設定を行って導入するパターン
 
 ## 1. SSH キーペアの設定
