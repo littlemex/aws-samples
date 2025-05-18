@@ -1,0 +1,22 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "pi:DescribeDimensionKeys",
+                "pi:GetDimensionKeyDetails",
+                "pi:GetResourceMetrics"
+            ],
+            "Resource": "arn:aws:pi:*:*:metrics/rds/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "docdb:DescribeDBInstances",
+                "docdb:DescribeDBClusters"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
