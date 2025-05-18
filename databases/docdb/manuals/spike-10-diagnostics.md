@@ -1,4 +1,4 @@
-# [Amazon DocumentDB ユーザー診断ガイド](https://docs.aws.amazon.com/ja_jp/documentdb/latest/developerguide/user_diagnostics.html)
+ # [Amazon DocumentDB ユーザー診断ガイド](https://docs.aws.amazon.com/ja_jp/documentdb/latest/developerguide/user_diagnostics.html)
 
 ## 概要
 
