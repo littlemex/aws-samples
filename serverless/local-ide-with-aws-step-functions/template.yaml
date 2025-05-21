@@ -1,0 +1,230 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Step Functions with advanced features sample
+
+Parameters:
+  VpcCIDR:
+    Type: String
+    Default: 10.0.0.0/16
+  SubnetCIDR:
+    Type: String
+    Default: 10.0.0.0/24
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: 環境を指定（dev または prod）
+  DynamoDBTableBaseName:
+    Type: String
+    Default: data-table
+    Description: DynamoDBテーブルのベース名
+
+Conditions:
+  IsDevEnvironment: !Equals 
+    - !Ref Environment
+    - dev
+  IsProdEnvironment: !Equals 
+    - !Ref Environment
+    - prod
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: StepFunctionsVPC
+
+  Subnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref SubnetCIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: StepFunctionsSubnet
+
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-data-bucket-${AWS::Region}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  DevDataTable:
+    Type: AWS::DynamoDB::Table
+    Condition: IsDevEnvironment
+    Properties:
+      TableName: !Sub "${DynamoDBTableBaseName}-dev"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  ProdDataTable:
+    Type: AWS::DynamoDB::Table
+    Condition: IsProdEnvironment
+    Properties:
+      TableName: !Sub "${DynamoDBTableBaseName}-prod"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref VPC
+
+  S3ReaderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/s3_reader/
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:ListBucket
+              Resource:
+                - !Sub ${DataBucket.Arn}
+                - !Sub ${DataBucket.Arn}/*
+            - Effect: Allow
+              Action:
+                - ec2:CreateNetworkInterface
+                - ec2:DeleteNetworkInterface
+                - ec2:DescribeNetworkInterfaces
+                - ec2:DescribeVpcs
+                - ec2:DescribeSubnets
+                - ec2:DescribeSecurityGroups
+              Resource: '*'
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref DataBucket
+          PREFIX: "data/"
+      VpcConfig:
+        SubnetIds:
+          - !Ref Subnet
+        SecurityGroupIds:
+          - !GetAtt LambdaSecurityGroup.GroupId
+
+  DynamoDBWriterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/dynamodb_writer/
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                - !If 
+                  - IsDevEnvironment
+                  - !GetAtt DevDataTable.Arn
+                  - !GetAtt ProdDataTable.Arn
+            - Effect: Allow
+              Action:
+                - ec2:CreateNetworkInterface
+                - ec2:DeleteNetworkInterface
+                - ec2:DescribeNetworkInterfaces
+                - ec2:DescribeVpcs
+                - ec2:DescribeSubnets
+                - ec2:DescribeSecurityGroups
+              Resource: '*'
+      Environment:
+        Variables:
+          TABLE_NAME: !If 
+            - IsDevEnvironment
+            - !Ref DevDataTable
+            - !Ref ProdDataTable
+      VpcConfig:
+        SubnetIds:
+          - !Ref Subnet
+        SecurityGroupIds:
+          - !GetAtt LambdaSecurityGroup.GroupId
+
+  NotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/notification/
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ec2:CreateNetworkInterface
+                - ec2:DeleteNetworkInterface
+                - ec2:DescribeNetworkInterfaces
+                - ec2:DescribeVpcs
+                - ec2:DescribeSubnets
+                - ec2:DescribeSecurityGroups
+              Resource: '*'
+      VpcConfig:
+        SubnetIds:
+          - !Ref Subnet
+        SecurityGroupIds:
+          - !GetAtt LambdaSecurityGroup.GroupId
+
+  ProcessingStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine/workflow.asl.json
+      DefinitionSubstitutions:
+        S3ReaderFunction: !GetAtt S3ReaderFunction.Arn
+        DynamoDBWriterFunction: !GetAtt DynamoDBWriterFunction.Arn
+        NotificationFunction: !GetAtt NotificationFunction.Arn
+        DynamoDBTableName: !If 
+          - IsDevEnvironment
+          - !Ref DevDataTable
+          - !Ref ProdDataTable
+      Policies:
+        - AWSLambdaRole
+
+  ScheduledRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "定期的にStep Functionsを実行するルール"
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets:
+        - Arn: !Ref ProcessingStateMachine
+          Id: "StepFunctionsTarget"
+          RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/AWS_Events_Invoke_Step_Functions_${AWS::Region}
+
+Outputs:
+  StateMachineArn:
+    Description: "Step Functions ステートマシンのARN"
+    Value: !Ref ProcessingStateMachine
+  S3BucketName:
+    Description: "S3バケット名"
+    Value: !Ref DataBucket
+  DynamoDBTableName:
+    Description: "DynamoDBテーブル名"
+    Value: !If 
+      - IsDevEnvironment
+      - !Ref DevDataTable
+      - !Ref ProdDataTable

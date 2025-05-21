@@ -1,0 +1,79 @@
+{
+    "Comment": "S3からデータを読み取り、DynamoDBに保存するワークフロー",
+    "StartAt": "FetchFromS3",
+    "States": {
+        "FetchFromS3": {
+            "Type": "Task",
+            "Resource": "${S3ReaderFunction}",
+            "ResultPath": "$.s3Result",
+            "Next": "CheckData",
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "IntervalSeconds": 1,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 2
+                }
+            ],
+            "Parameters": {}
+        },
+        "CheckData": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.s3Result.hasData",
+                    "BooleanEquals": true,
+                    "Next": "ProcessData"
+                }
+            ],
+            "Default": "SendNotification"
+        },
+        "ProcessData": {
+            "Type": "Pass",
+            "InputPath": "$.s3Result.data",
+            "Parameters": {
+                "processedData": {
+                    "id.$": "$$.Execution.Id",
+                    "timestamp.$": "$$.Execution.StartTime",
+                    "fileInfo.$": "$.fileInfo",
+                    "content.$": "$.content"
+                }
+            },
+            "ResultPath": "$.processedData",
+            "Next": "SaveToDynamoDB"
+        },
+        "SaveToDynamoDB": {
+            "Type": "Task",
+            "Resource": "${DynamoDBWriterFunction}",
+            "Parameters": {
+                "TableName": "${DynamoDBTableName}",
+                "Item.$": "$.processedData.processedData"
+            },
+            "ResultPath": "$.dynamoResult",
+            "OutputPath": "$",
+            "End": true,
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "IntervalSeconds": 1,
+                    "MaxAttempts": 3,
+                    "BackoffRate": 2
+                }
+            ]
+        },
+        "SendNotification": {
+            "Type": "Task",
+            "Resource": "${NotificationFunction}",
+            "Parameters": {
+                "message": "S3バケットにデータが見つかりませんでした",
+                "executionId.$": "$$.Execution.Id",
+                "executionStartTime.$": "$$.Execution.StartTime"
+            },
+            "End": true
+        }
+    }
+}

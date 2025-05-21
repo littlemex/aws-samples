@@ -1,0 +1,10 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "sam-app"
+resolve_s3 = true
+s3_prefix = "sam-app"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "VpcCIDR=\"10.0.0.0/16\" SubnetCIDR=\"10.0.0.0/24\" Environment=\"dev\" DynamoDBTableBaseName=\"data-table\""
+image_repositories = []

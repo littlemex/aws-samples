@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-ide-with-aws-step-functions"
+dynamic = ["version"]
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aws-sam-cli>=1.138.0",
+    "boto3>=1.38.17",
+]
+
+[tool.setuptools_scm]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.5",
+    "moto>=4.2.14",
+]
