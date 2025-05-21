@@ -1,0 +1,21 @@
+{
+  "s3Result": {
+    "hasData": true,
+    "data": {
+      "fileInfo": {
+        "bucket": "test-bucket",
+        "key": "data/test.json",
+        "lastModified": "2023-01-01T00:00:00Z",
+        "size": 1024
+      },
+      "content": {
+        "id": "test-id",
+        "value": "test-value",
+        "metadata": {
+          "type": "test",
+          "version": "1.0"
+        }
+      }
+    }
+  }
+}
