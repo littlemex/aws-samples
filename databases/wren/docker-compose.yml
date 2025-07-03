@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  postgres:
+    build:
+      context: ./init/postgres
+    container_name: wren-postgres
+    environment:
+      POSTGRES_USER: wrenuser
+      POSTGRES_PASSWORD: wrenpass
+      POSTGRES_DB: wrendb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wrenuser -d wrendb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Wren AI の公式 Docker イメージを使用
+  wren-ai:
+    image: cannerhq/wrenai:latest
+    container_name: wren-ai
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"  # UI
+      - "8000:8000"  # API
+    volumes:
+      - ./init/wren:/app/config
+      - wren_data:/data
+    environment:
+      - AWS_REGION_NAME=${AWS_REGION_NAME:-us-east-1}
+      # IAM ロールが設定済みのため、以下は不要
+      # - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      # - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+
+  # DuckDB 用の S3 アクセスを容易にするための MinIO (オプション)
+  minio:
+    image: minio/minio
+    container_name: wren-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+
+volumes:
+  postgres_data:
+  wren_data:
+  minio_data:

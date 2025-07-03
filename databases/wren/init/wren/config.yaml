@@ -1,0 +1,78 @@
+---
+type: llm
+provider: litellm_llm
+models:
+- model: bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+  timeout: 600
+  kwargs:
+    n: 1
+    temperature: 0
+  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_session_name: "claude-3-7-sonnet-session"
+
+- model: bedrock/converse/us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  timeout: 600
+  kwargs:
+    n: 1
+    temperature: 0
+  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_session_name: "claude-3-5-sonnet-v2-us-session"
+
+- model: bedrock/converse/apac.anthropic.claude-3-5-sonnet-20241022-v2:0
+  timeout: 600
+  kwargs:
+    n: 1
+    temperature: 0
+  aws_region_name: ap-northeast-1
+  aws_session_name: "claude-3-5-sonnet-v2-apac-session"
+
+- model: bedrock/converse/anthropic.claude-3-5-sonnet-20240620-v1:0
+  timeout: 600
+  kwargs:
+    n: 1
+    temperature: 0
+  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_session_name: "claude-3-5-sonnet-v1-session"
+
+---
+type: embedder
+provider: litellm_embedder
+models:
+- model: openai/text-embedding-ada-002
+  timeout: 600
+
+---
+type: document_store
+provider: qdrant
+location: http://qdrant:6333
+embedding_model_dim: 1536
+timeout: 120
+recreate_index: true
+
+---
+type: pipeline
+llm: litellm_llm.bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+embedder: litellm_embedder.openai/text-embedding-ada-002
+
+---
+litellm_settings:
+  fallbacks: [
+    {"bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0": 
+      [
+        "bedrock/converse/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "bedrock/converse/apac.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "bedrock/converse/anthropic.claude-3-5-sonnet-20240620-v1:0"
+      ]
+    }
+  ]
+  num_retries: 2
+  request_timeout: 30
+  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_session_name: "litellm-bedrock-session"
+  drop_params: true
+
+router_settings:
+  default_model: bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+  failover: true
+  timeout: 30
+  retries: 3
