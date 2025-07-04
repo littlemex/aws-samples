@@ -5,9 +5,13 @@
 ## プロジェクト構成
 
 - **PostgreSQL**: ダミーデータを格納するデータベース
-- **S3**: ETL 後のデータ保存先
+- **S3/MinIO**: ETL 後のデータ保存先
 - **Wren AI**: S3 のデータを DuckDB 経由で分析するツール
 - **Amazon Bedrock**: 高性能な Claude LLM モデルを提供するサービス
+- **Bootstrap**: 初期化用のサービス
+- **Wren Engine**: Wren AI のコアエンジン
+- **Ibis Server**: データ処理サーバー
+- **Qdrant**: ベクトルデータベース
 
 ## セットアップ手順
 
@@ -16,25 +20,38 @@
 - AWS CLI がインストールされ、適切に設定されていること
 - Amazon Bedrock へのアクセス権限を持つ IAM ロールが設定されていること
 - AWS_REGION_NAME 環境変数が設定されていること（デフォルト: us-east-1）
+docker system prune -a
 
-### 1. 環境構築
+### 1. セットアップスクリプトの実行
+
+このリポジトリには、Wren AI と Amazon Bedrock の連携環境を簡単にセットアップするための `setup-wren.sh` スクリプトが含まれています。このスクリプトは以下の処理を行います：
+
+- 公式リポジトリから最新の `docker-compose.yaml` をダウンロード
+- 公式リポジトリから最新の `.env.example` をダウンロード
+- AWS Bedrock 用の `.env.example.dev` ファイルを作成
+- 既存の `config.yaml` ファイルをルートディレクトリにコピー
+- データファイル用の `data` ディレクトリを作成
+- `.env.example.dev` を `.env` にコピー
 
 ```bash
-# 環境変数の設定（オプション）
-export OPENAI_API_KEY=your_openai_api_key
-
-# Docker コンテナを起動
-docker-compose up -d
+# セットアップスクリプトを実行
+./setup-wren.sh
 
 # S3 バケットを作成
-chmod +x scripts/setup-s3.sh
 ./scripts/setup-s3.sh
+
+# Docker コンテナを起動
+./scripts/start-wren.sh
+
+# 統合テストを実行（オプション）
+./scripts/integration-test.sh
 ```
+
+> **注意**: OPENAI_API_KEY は不要になりました。Amazon Bedrock の Claude モデルを使用するため、AWS の認証情報のみが必要です。
 
 ### 2. ETL サンプル実行
 
 ```bash
-chmod +x scripts/etl-sample.sh
 ./scripts/etl-sample.sh
 ```
 
@@ -91,6 +108,35 @@ Wren AI の UI から自然言語クエリを使用してデータを分析で�
 
 フォールバック機能により、プライマリモデルが利用できない場合は自動的に代替モデルを使用します。
 
+## バージョン管理
+
+`setup-wren.sh` スクリプトは、GitHub から最新バージョンの Wren AI コンポーネントを自動的に取得します。バージョン情報は `.env.example` ファイルから抽出され、`.env.example.dev` ファイルに反映されます。
+
+これにより、Wren AI の公式リポジトリがアップデートされた場合でも、スクリプトを再実行するだけで最新バージョンを取得できます。
+
+```bash
+# バージョン情報の例
+WREN_PRODUCT_VERSION=0.25.0
+WREN_ENGINE_VERSION=0.17.1
+WREN_AI_SERVICE_VERSION=0.24.3
+IBIS_SERVER_VERSION=0.17.1
+WREN_UI_VERSION=0.30.0
+WREN_BOOTSTRAP_VERSION=0.1.5
+```
+
+## Docker Compose 構成
+
+新しい `docker-compose.yaml` ファイルには、以下のサービスが含まれています：
+
+1. **bootstrap**: 初期化用のサービス
+2. **wren-engine**: Wren AI のコアエンジン
+3. **ibis-server**: データ処理サービス
+4. **wren-ai-service**: AI サービス（Amazon Bedrock と連携）
+5. **qdrant**: ベクトルデータベース
+6. **wren-ui**: ユーザーインターフェース
+
+これらのサービスは環境変数を使用して設定され、`.env` ファイルで管理されます。
+
 ## 次のステップ
 
 このデモでは ETL プロセスを手動で実行していますが、次のステップとして以下の拡張が考えられます：
@@ -98,6 +144,7 @@ Wren AI の UI から自然言語クエリを使用してデータを分析で�
 1. MCP サーバーを実装して ETL プロセスを自動化
 2. Amazon Bedrock の特定のユースケース向けにカスタマイズされたプロンプトの作成
 3. 複数のデータソースを統合した高度な分析パイプラインの構築
+4. 定期的なバージョン更新の自動化
 
 ## トラブルシューティング
 
