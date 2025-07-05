@@ -11,7 +11,7 @@ models:
   kwargs:
     n: 1
     temperature: 0
-  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_region_name: us-east-1
 
 # Claude 3.5 Sonnet v2 (US)
 - model: bedrock/converse/us.anthropic.claude-3-5-sonnet-20241022-v2:0
@@ -19,7 +19,7 @@ models:
   kwargs:
     n: 1
     temperature: 0
-  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_region_name: us-east-1
 
 # Claude 3.5 Sonnet v2 (APAC)
 - model: bedrock/converse/apac.anthropic.claude-3-5-sonnet-20241022-v2:0
@@ -35,7 +35,7 @@ models:
   kwargs:
     n: 1
     temperature: 0
-  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_region_name: us-east-1
   aws_session_name: "claude-3-5-sonnet-v1-session"
 
 ---
@@ -44,7 +44,7 @@ provider: litellm_embedder
 models:
 - model: bedrock/amazon.titan-embed-text-v1
   timeout: 600
-  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_region_name: us-east-1
 
 ---
 type: document_store
@@ -83,7 +83,7 @@ settings:
     ]
     num_retries: 2
     request_timeout: 30
-    aws_region_name: os.environ/AWS_REGION_NAME
+    aws_region_name: us-east-1
     aws_session_name: "litellm-bedrock-session"
     drop_params: true
 
