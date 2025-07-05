@@ -42,7 +42,7 @@ models:
 type: embedder
 provider: litellm_embedder
 models:
-- model: bedrock/amazon.titan-embed-text-v1
+- model: bedrock/amazon.titan-embed-text-v2:0
   timeout: 600
   aws_region_name: us-east-1
 
@@ -50,22 +50,23 @@ models:
 type: document_store
 provider: qdrant
 location: http://qdrant:6333
-embedding_model_dim: 1536
+embedding_model_dim: 1024
 timeout: 120
 recreate_index: true
 
 ---
 type: pipeline
 llm: litellm_llm.bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
-embedder: litellm_embedder.bedrock/amazon.titan-embed-text-v1
+embedder: litellm_embedder.bedrock/amazon.titan-embed-text-v2:0
 pipes:
   - name: db_schema_indexing
-    embedder: litellm_embedder.bedrock/amazon.titan-embed-text-v1
+    embedder: litellm_embedder.bedrock/amazon.titan-embed-text-v2:0
     document_store: qdrant
   - name: sql_generation
     llm: litellm_llm.bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
-    embedder: litellm_embedder.bedrock/amazon.titan-embed-text-v1
+    embedder: litellm_embedder.bedrock/amazon.titan-embed-text-v2:0
     document_store: qdrant
+    engine: wren_ui
   - name: sql_answer
     llm: litellm_llm.bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
 

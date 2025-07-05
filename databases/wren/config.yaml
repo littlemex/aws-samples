@@ -44,7 +44,7 @@ models:
 type: embedder
 provider: litellm_embedder
 models:
-- model: bedrock/amazon.titan-embed-text-v1
+- model: bedrock/amazon.titan-embed-text-v2:0
   alias: default
   timeout: 600
   aws_region_name: us-east-1
@@ -63,7 +63,7 @@ endpoint: http://ibis-server:8000
 type: document_store
 provider: qdrant
 location: http://qdrant:6333
-embedding_model_dim: 1536
+embedding_model_dim: 1024
 timeout: 120
 recreate_index: true
 
@@ -77,6 +77,7 @@ pipes:
     llm: litellm_llm.default
     embedder: litellm_embedder.default
     document_store: qdrant
+    engine: wren_ui
   - name: sql_answer
     llm: litellm_llm.default
   - name: historical_question_indexing
