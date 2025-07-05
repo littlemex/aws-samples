@@ -1,0 +1,95 @@
+---
+type: llm
+provider: litellm_llm
+models:
+# Amazon Bedrock Claude モデル設定
+# 注意: 推論プロファイルを使用する場合は、AWS コンソールで作成した推論プロファイルの ID を使用してください
+
+# Claude 3.7 Sonnet
+- model: bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+  timeout: 600
+  kwargs:
+    n: 1
+    temperature: 0
+  aws_region_name: us-east-1
+
+# Claude 3.5 Sonnet v2 (US)
+- model: bedrock/converse/us.anthropic.claude-3-5-sonnet-20241022-v2:0
+  timeout: 600
+  kwargs:
+    n: 1
+    temperature: 0
+  aws_region_name: us-east-1
+
+# Claude 3.5 Sonnet v2 (APAC)
+- model: bedrock/converse/apac.anthropic.claude-3-5-sonnet-20241022-v2:0
+  timeout: 600
+  kwargs:
+    n: 1
+    temperature: 0
+  aws_region_name: ap-northeast-1
+
+# Claude 3.5 Sonnet v1
+- model: bedrock/converse/anthropic.claude-3-5-sonnet-20240620-v1:0
+  timeout: 600
+  kwargs:
+    n: 1
+    temperature: 0
+  aws_region_name: us-east-1
+  aws_session_name: "claude-3-5-sonnet-v1-session"
+
+---
+type: embedder
+provider: litellm_embedder
+models:
+- model: bedrock/amazon.titan-embed-text-v2:0
+  timeout: 600
+  aws_region_name: us-east-1
+
+---
+type: document_store
+provider: qdrant
+location: http://qdrant:6333
+embedding_model_dim: 1024
+timeout: 120
+recreate_index: true
+
+---
+type: pipeline
+llm: litellm_llm.bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+embedder: litellm_embedder.bedrock/amazon.titan-embed-text-v2:0
+pipes:
+  - name: db_schema_indexing
+    embedder: litellm_embedder.bedrock/amazon.titan-embed-text-v2:0
+    document_store: qdrant
+  - name: sql_generation
+    llm: litellm_llm.bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+    embedder: litellm_embedder.bedrock/amazon.titan-embed-text-v2:0
+    document_store: qdrant
+    engine: wren_ui
+  - name: sql_answer
+    llm: litellm_llm.bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+
+---
+settings:
+  litellm_settings:
+    fallbacks: [
+      {"bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0": 
+        [
+          "bedrock/converse/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+          "bedrock/converse/apac.anthropic.claude-3-5-sonnet-20241022-v2:0",
+          "bedrock/converse/anthropic.claude-3-5-sonnet-20240620-v1:0"
+        ]
+      }
+    ]
+    num_retries: 2
+    request_timeout: 30
+    aws_region_name: us-east-1
+    aws_session_name: "litellm-bedrock-session"
+    drop_params: true
+
+  router_settings:
+    default_model: bedrock/converse/us.anthropic.claude-3-7-sonnet-20250219-v1:0
+    failover: true
+    timeout: 30
+    retries: 3
