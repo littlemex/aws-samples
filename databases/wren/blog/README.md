@@ -1,7 +1,7 @@
 
 ## データ活用における現代の課題と Wren AI による新しいアプローチ
 
-<img src="resource/demo.gif" width="600">
+<img src="./genbi.gif" width="600">
 
 ```mermaid
 mindmap
