@@ -1,6 +1,8 @@
 
 ## データ活用における現代の課題と Wren AI による新しいアプローチ
 
+<img src="resource/demo.gif" width="600">
+
 ```mermaid
 mindmap
   root((データ活用の<br>5大課題))
