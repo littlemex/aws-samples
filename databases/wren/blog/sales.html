@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenBI によるデータ活用開始 - 営業向け概要</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #0066cc;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        h2 {
+            color: #0066cc;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eaeaea;
+            padding-bottom: 10px;
+        }
+        p {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+        .demo-container {
+            text-align: center;
+            margin: 40px 0;
+        }
+        .demo-gif {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        .highlight {
+            background-color: #f0f7ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+        .cta {
+            background-color: #0066cc;
+            color: white;
+            text-align: center;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 40px 0;
+        }
+        .cta h3 {
+            margin-top: 0;
+            font-size: 1.5em;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GenBI によるデータ活用</h1>
+        <p style="text-align: center; font-size: 1.3em;">データ活用の数多の導入障壁を打ち破り、自然言語で即座にビジネスインサイトを得てみませんか？</p>
+
+        <div class="demo-container">
+            <img src="./genbi.gif" alt="GenBI デモ" class="demo-gif" width="1000">
+        </div>
+
+        <div class="section">
+            <h2>データ活用の課題</h2>
+            <p>多くの企業がデータ活用を開始しようとする際、大きな壁に直面します。これらの課題が解決されない限り、データ活用の開始を意思決定することが困難でしょう。</p>
+
+            <div class="highlight">
+                <h3>データ活用のデッドロック</h3>
+                <p>データ環境構築には投資判断が必要ですが、その投資判断には価値証明が必要です。しかし価値証明のためにはデータ環境が必要というデッドロック問題に陥っています。いくつかの企業では、この循環から抜け出せずにデータ活用が進まない状況が続いています。</p>
+            </div>
+
+            <div class="highlight">
+                <h3>技術的な障壁</h3>
+                <p>データ活用には SQL スキルやデータモデリングの専門知識、インフラ管理の専門性が必要です。一般的なビジネスユーザーにとって、これらの技術的なハードルは非常に高く、「データを見たい」という単純な要求を満たすことさえ困難になっています。</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>GenBI と MCP による解決策</h2>
+            <p>GenBI（Generative Business Intelligence）と MCP（Model Context Protocol）の組み合わせは、これらの課題に対する解決策の一例を提供します。</p>
+
+            <p>GenBI は自然言語でデータにアクセスできる GenAI 時代の新しい仕組みです。ユーザーは「先月の地域別売上トップ 10 を教えて」のように、日常会話のような言葉で質問するだけで、データ分析が可能になります。裏側では、GenBI がこの質問を適切な SQL クエリに変換し、必要なデータを取得します。</p>
+
+            <p>MCP は AI モデルと外部システムを接続する「共通言語」のような役割を果たします。これにより、異なる部門が使用している様々なシステムやデータベースに対して、統一された方法でアクセスできるようになります。MCP を活用することで、既存の AI アシスタントから GenBI の機能にアクセスできるようになります。</p>
+
+            <p>この組み合わせにより、以下のような価値が生まれます：</p>
+            <p>・ 自然言語でのデータアクセスにより、技術的な障壁を解消<br>
+            ・ 複雑な ETL 構築なしで複数データソースを即座に連携<br>
+            ・ セキュアなサンドボックス環境での安全な実行<br>
+            ・ 小規模から始め、価値を証明しながら段階的に拡大可能</p>
+        </div>
+
+        <div class="section">
+            <h2>半日で始められる導入の流れ</h2>
+            <p>GenBI と MCP の価値を体験するための導入は簡単です。</p>
+
+            <p><strong>1. セキュアサンドボックスの構築</strong><br>
+            Amazon Elastic Compute Cloud（Amazon EC2）インスタンスをセキュアサンドボックスとして起動します。サンプルを活用すれば、SSH を利用することなく AWS の仕組みを使ってインスタンスに安全にアクセスできます。このサンプル環境はすぐに利用可能な状態です。</p>
+
+            <p><strong>2. コーディングエージェントの活用</strong><br>
+            サンドボックス環境内でコーディングエージェントを利用します。これにより、技術的な知識がなくても、AI の支援を受けながらデータ分析の準備を進めることができます。</p>
+
+            <p><strong>3. Docker での MCP と GenBI の実行</strong><br>
+            サンドボックス環境内で Docker を使って MCP や GenBI を簡単に起動できます。これにより、複雑なインストール作業なしで、すぐに機能を利用できるようになります。</p>
+
+            <p><strong>4. データソースへの接続</strong><br>
+            Amazon Aurora などのデータソースに直接接続し、デモ画像のような分析をすぐに始めることができます。複雑な ETL プロセスを構築することなく、既存のデータから価値あるインサイトを得ることが可能です。</p>
+        </div>
+
+        <div class="section">
+            <h2>データ活用の発展</h2>
+            <p>GenBI と MCP による初期の体験を基に、ビジネス要求に応じてデータ活用は段階的に発展していきます。</p>
+
+            <p>コーディングエージェントと GenBI で SQL と ETL の流れが確立された後は、より本格的なビジネスインテリジェンス環境への移行が可能です。Amazon S3、Amazon Athena、Amazon QuickSight などを活用したマネージドなデータ分析基盤を構築することで、非エンジニアを含む組織全体でのデータ活用が促進されます。</p>
+
+            <p>データソースへの負荷が懸念される場合は、Amazon Aurora の Clone 機能などを活用することで、本番環境に影響を与えることなく分析を行うことができます。さらに高度なニーズが出てきた場合は、本格的なクラウドサービスや Snowflake などのパートナーサービスの活用も検討できます。</p>
+
+            <p>GenBI と MCP は、データ活用の第一歩として有用なソリューションであり、将来的な発展への橋渡しとなります。</p>
+        </div>
+
+        <div class="cta">
+            <h3>まずは体感してみませんか？</h3>
+            <p>5 ステップですぐに小さく素早く GenBI 分析を開始できます。<br>
+            データ活用の価値を、複雑なインフラ構築なしでまずは体験してみましょう。</p>
+        </div>
+
+        <div class="section">
+            <h2>よくある質問</h2>
+            <p>権限管理やコスト、セキュリティなど、詳細な技術的質問については、ソリューションアーキテクトにご相談ください。お客様の環境や要件に合わせた最適なソリューションを一緒に検討いたします。</p>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 GenBI データ活用ソリューション</p>
+        </div>
+    </div>
+</body>
+</html>
