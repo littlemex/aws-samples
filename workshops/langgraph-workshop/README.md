@@ -2,10 +2,10 @@
 
 Original: https://github.com/aws-samples/langgraph-agents-with-amazon-bedrock/blob/main/README.md の日本語翻訳版です。（個人利用用途）
 
+> uv 利用に変更するなど一部改変
+
 このリポジトリは、[Harrison Chase](https://www.linkedin.com/in/harrison-chase-961287118)（[LangChain](https://www.langchain.com/) の共同創設者兼CEO）と [Rotem Weiss](https://www.linkedin.com/in/rotem-weiss)（[Tavily](https://tavily.com/) の共同創設者兼CEO）によって作成され、[DeepLearning.AI](https://www.deeplearning.ai/) でホストされている [LangGraph における AI エージェント](https://www.deeplearning.ai/short-courses/ai-agents-in-langgraph/) コースから適応されたワークショップを含んでいます。
 オリジナルのコンテンツは著者の同意を得て使用されています。
-
-このワークショップは AWS Workshop Studio [こちら](https://catalog.us-east-1.prod.workshops.aws/workshops/9bc28f51-d7c3-468b-ba41-72667f3273f1/en-US) でも利用可能です。
 
 スムーズな体験を確保するために、資料に取り組む前にこの README を読み、指示に従ってください。
 
@@ -37,52 +37,28 @@ LangGraph を初めて使用する場合は、詳細なビデオ説明につい�
 
 ## 仮想環境のセットアップ
 
-この指示は、[AWS 認証](https://docs.aws.amazon.com/cli/v1/userguide/cli-authentication-short-term.html) を使用してローカルで使用するためのものであり、[Amazon SageMaker JupyterLab](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-updated-jl.html) または [Amazon SageMaker Code Editor](https://docs.aws.amazon.com/sagemaker/latest/dg/code-editor.html) インスタンス内でも使用できます。
+### 前提
 
-このコースには `Python >=3.10` が必要です（インストールするには、このリンクにアクセスしてください：https://www.python.org/downloads/）
+- uv を導入済み
 
-### 1. リポジトリのダウンロード
-
-```
-git clone https://github.com/aws-samples/langgraph-agents-with-amazon-bedrock.git
-```
-
-### 2. OS 依存関係のインストール（Ubuntu/Debian）
+### 1. 仮想環境の作成と Python 依存関係のインストール
 
 ```
-sudo apt update
-sudo apt-get install graphviz graphviz-dev python3-dev
-pip install pipx
-pipx install poetry
-pipx ensurepath
-source ~/.bashrc
+# プロジェクトディレクトリ pyproject.toml のあるディレクトリ上
+uv venv && source .venv/bin/activate
+uv sync
 ```
 
-他の OS のインストールコマンドはこちらで見つけることができます：https://pygraphviz.github.io/documentation/stable/install.html
-
-### 3. 仮想環境の作成と Python 依存関係のインストール
-
-```
-cd langgraph-agents-with-amazon-bedrock
-export POETRY_VIRTUALENVS_PATH="$PWD/.venv"
-export INITIAL_WORKING_DIRECTORY=$(pwd)
-poetry shell
-```
-
-```
-cd $INITIAL_WORKING_DIRECTORY
-poetry install
-```
-
-### 4. Jupyter Notebook サーバーにカーネルを追加する
+### 2. Jupyter Notebook サーバーにカーネルを追加する
 新しく作成された Python 環境を Jupyter Notebook サーバーの利用可能なカーネルのリストに追加する必要があります。
-これは poetry 環境内から次のコマンドで可能です：
+
 ```
-poetry run python -m ipykernel install --user --name agents-dev-env
+uv pip install ipykernel
+ipython kernel install --user --name=agents-dev-env
 ```
 カーネルがリストにすぐに表示されない場合は、リストの更新が必要になります。
 
-### 5. Tavily API キーの作成と設定
+### 3. Tavily API キーの作成と設定
 
 https://app.tavily.com/home にアクセスして、無料で API キーを作成してください。
 
