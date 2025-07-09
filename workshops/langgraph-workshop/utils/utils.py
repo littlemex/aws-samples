@@ -67,3 +67,30 @@ def get_tavily_api(key: str, region_name: str) -> str:
         secret = env_value
 
     return secret
+
+
+def visualize_graph(agent):
+    """
+    LangGraphのグラフを可視化する関数
+    
+    Parameters:
+    -----------
+    agent : Agent
+        可視化するグラフを持つAgentオブジェクト
+    
+    Returns:
+    --------
+    None
+        グラフを表示するか、エラーが発生した場合はASCII表示を行います
+    """
+    from IPython.display import Image, display
+    
+    try:
+        # Mermaid PNGでグラフを可視化
+        display(Image(agent.graph.get_graph().draw_mermaid_png()))
+    except Exception as e:
+        # エラーメッセージを表示
+        print(f"グラフの可視化に失敗しました: {str(e)}")
+        print("代わりにASCII表示を使用します:\n")
+        # 代替としてASCII表示を使用
+        print(agent.graph.get_graph().draw_ascii())

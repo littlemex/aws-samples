@@ -2,7 +2,10 @@
 
 Original: https://github.com/aws-samples/langgraph-agents-with-amazon-bedrock/blob/main/README.md の日本語翻訳版です。（個人利用用途）
 
-> uv 利用に変更するなど一部改変
+変更点
+
+> uv 利用に変更
+> graphviz を利用しない
 
 このリポジトリは、[Harrison Chase](https://www.linkedin.com/in/harrison-chase-961287118)（[LangChain](https://www.langchain.com/) の共同創設者兼CEO）と [Rotem Weiss](https://www.linkedin.com/in/rotem-weiss)（[Tavily](https://tavily.com/) の共同創設者兼CEO）によって作成され、[DeepLearning.AI](https://www.deeplearning.ai/) でホストされている [LangGraph における AI エージェント](https://www.deeplearning.ai/short-courses/ai-agents-in-langgraph/) コースから適応されたワークショップを含んでいます。
 オリジナルのコンテンツは著者の同意を得て使用されています。
@@ -62,7 +65,7 @@ ipython kernel install --user --name=agents-dev-env
 
 https://app.tavily.com/home にアクセスして、無料で API キーを作成してください。
 
-### 6. ローカル環境変数の設定
+### 4. ローカル環境変数の設定
 
 一時環境ファイル [env.tmp](env.tmp) の個人用コピーを `.env` という名前で作成します。これは個人情報をコミットしないように [.gitignore](.gitignore) に既に追加されています。
 ```
@@ -70,7 +73,7 @@ cp env.tmp .env
 ```
 必要に応じて、`.env` ファイル内で Amazon Bedrock を使用する優先リージョンを編集できます（デフォルトは `us-east-1` です）。
 
-### 7. Tavily API キーの保存
+### 5. Tavily API キーの保存
 Tavily API キーを保存するには 2 つのオプションがあります：
 
 1. Tavily API キーを `.env` ファイル内にコピーします。このオプションが常に最初にチェックされます。
