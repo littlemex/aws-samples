@@ -21,29 +21,49 @@ def set_pretty_printer():
 
 
 def get_tavily_api(key: str, region_name: str) -> str:
-
-    if not os.path.isfile("../.env"):
-        raise Exception('Local environment variable file .env not existing! Please create with the command: cp .env.tmp .env')
+    # 現在のディレクトリから見た.envファイルのパスを確認
+    env_paths = ["../.env", ".env"]
+    env_file_exists = False
+    
+    for path in env_paths:
+        if os.path.isfile(path):
+            env_file_exists = True
+            break
+    
+    if not env_file_exists:
+        raise Exception('Local environment variable file .env not existing! Please create with the command: cp env.tmp .env')
     
     tavily_api_prefix = "tvly-"
-    if not os.environ[key].startswith(tavily_api_prefix):
-        logger.info(f"{key} value not correctly set in the .env file, expected a key to start with \"{tavily_api_prefix}\" but got it starting with \"{os.environ[key][:5]}\". Trying from AWS Secrets Manager.")
+    # os.environ.get()を使用してKeyErrorを回避
+    env_value = os.environ.get(key)
+    
+    # 環境変数が存在しないか、正しいプレフィックスで始まらない場合
+    if env_value is None or not env_value.startswith(tavily_api_prefix):
+        if env_value is None:
+            logger.info(f"{key} not found in environment variables. Trying from AWS Secrets Manager.")
+        else:
+            logger.info(f"{key} value not correctly set in the .env file, expected a key to start with \"{tavily_api_prefix}\" but got it starting with \"{env_value[:5]}\". Trying from AWS Secrets Manager.")
+        
         session = boto3.session.Session()
         secrets_manager = session.client(service_name="secretsmanager", region_name=region_name)
         try:
             secret_value = secrets_manager.get_secret_value(SecretId=key)
         except Exception as e:
             logger.error(f"{key} secret couldn't be retrieved correctly from AWS Secrets Manager either! Received error message:\n{e}")
+            # 環境変数が存在する場合は、それを使用する（プレフィックスが正しくなくても）
+            if env_value is not None:
+                logger.warning(f"Falling back to environment variable value for {key} despite incorrect prefix.")
+                return env_value
             raise e
 
         logger.info(f"{key} variable correctly retrieved from the AWS Secret Manager.")
         secret_string = secret_value["SecretString"]
         secret = eval(secret_string, {"__builtins__": {}}, {})[key]
         if not secret:
-            raise Exception(f"{key} value not correctly set in the AWS Secrets Manager, expected a key to start with \"{tavily_api_prefix}\" but got it starting with \"{os.environ[key][:5]}\".")
+            raise Exception(f"{key} value not correctly set in the AWS Secrets Manager.")
         os.environ[key] = secret
     else:
         logger.info(f"{key} variable correctly retrieved from the .env file.")
-        secret = os.environ[key]
+        secret = env_value
 
     return secret

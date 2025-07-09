@@ -75,7 +75,7 @@ Tavily API キーを保存するには 2 つのオプションがあります：
 
 1. Tavily API キーを `.env` ファイル内にコピーします。このオプションが常に最初にチェックされます。
 
-2. "TAVILY_API_KEY" という名前で [AWS Secrets Manager に新しいシークレットを作成](https://docs.aws.amazon.com/secretsmanager/latest/userguide/create_secret.html) し、クリックしてシークレット `arn` を取得し、[シークレットを読み取る権限](https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access_examples.html#auth-and-access_examples_read) を持つ [インラインポリシーを追加](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html#add-policies-console) して、以下の例でコピーした `arn` を置き換えて [SageMaker 実行ロール](https://docs.aws.amazon.com/sagemaker/latest/dg/domain-user-profile-view-describe.html) に追加します。
+2. "TAVILY_API_KEY" という名前で [AWS Secrets Manager に新しいシークレットを作成](https://docs.aws.amazon.com/secretsmanager/latest/userguide/create_secret.html) し、クリックしてシークレット `arn` を取得し、[シークレットを読み取る権限](https://docs.aws.amazon.com/secretsmanager/latest/userguide/auth-and-access_examples.html#auth-and-access_examples_read) を持つ [インラインポリシーを追加](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_manage-attach-detach.html#add-policies-console) して、以下の例でコピーした `arn` を置き換えて [SageMaker 実行ロール](https://docs.aws.amazon.com/sagemaker/latest/dg/domain-user-profile-view-describe.html) に追加(実行環境が SageMaker 以外であれば実行環境に対応した形で設定する)します。
 ```
 {
     "Version": "2012-10-17",
