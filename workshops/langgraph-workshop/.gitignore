@@ -5,3 +5,4 @@
 .ipynb_checkpoints/
 .virtual_documents/
 .env
+__pycache__
