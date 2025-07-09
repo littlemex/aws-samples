@@ -1,6 +1,6 @@
 # Amazon Bedrock を使用した LangGraph エージェント
 
-Original: https://github.com/aws-samples/langgraph-agents-with-amazon-bedrock/blob/main/README.md
+Original: https://github.com/aws-samples/langgraph-agents-with-amazon-bedrock/blob/main/README.md の日本語翻訳版です。（個人利用用途）
 
 このリポジトリは、[Harrison Chase](https://www.linkedin.com/in/harrison-chase-961287118)（[LangChain](https://www.langchain.com/) の共同創設者兼CEO）と [Rotem Weiss](https://www.linkedin.com/in/rotem-weiss)（[Tavily](https://tavily.com/) の共同創設者兼CEO）によって作成され、[DeepLearning.AI](https://www.deeplearning.ai/) でホストされている [LangGraph における AI エージェント](https://www.deeplearning.ai/short-courses/ai-agents-in-langgraph/) コースから適応されたワークショップを含んでいます。
 オリジナルのコンテンツは著者の同意を得て使用されています。
