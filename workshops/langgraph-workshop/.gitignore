@@ -6,3 +6,4 @@
 .virtual_documents/
 .env
 __pycache__
+.gradio
