@@ -9,6 +9,7 @@ dependencies = [
     "beautifulsoup4>=4.13.4",
     "boto3>=1.39.3",
     "duckduckgo-search>=8.1.1",
+    "ipywidgets>=8.1.7",
     "langchain-aws>=0.2.27",
     "langchain-community>=0.3.27",
     "langgraph>=0.5.1",
