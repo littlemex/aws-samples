@@ -26,9 +26,9 @@ Parameters:
     Default: us-east-1
     Description: AWS Region
   AmiId:
-    Type: AWS::EC2::Image::Id
-    Default: ami-084568db4383264d4
-    Description: Ubuntu Server 22.04 LTS (HVM),EBS General Purpose (SSD) Volume Type. Support available from Canonical (http://www.ubuntu.com/cloud/services).
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id'
+    Description: Latest Ubuntu Server 22.04 LTS (HVM),EBS General Purpose (SSD) Volume Type. Support available from Canonical (http://www.ubuntu.com/cloud/services).
 
   VpcCidr:
     Type: String
@@ -42,10 +42,6 @@ Parameters:
     MaxValue: 16384
 
   # ネットワーク設定関連
-  AvailabilityZone1:
-    Type: AWS::EC2::AvailabilityZone::Name
-    Default: us-east-1a
-    Description: Availability Zone for the first public subnet
   PublicSubnet1Cidr:
     Type: String
     Default: 10.0.0.0/24
@@ -76,7 +72,6 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Ref AvailabilityZone1
       CidrBlock: !Ref PublicSubnet1Cidr
       MapPublicIpOnLaunch: true
       Tags:
@@ -89,7 +84,6 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Ref AvailabilityZone1
       CidrBlock: !Ref PrivateSubnet1Cidr
       MapPublicIpOnLaunch: false
       Tags:
@@ -550,3 +544,4 @@ Outputs:
             - '\nEBS Volume Size: '
             - !Ref EbsVolumeSize
             - ' GB'
+
