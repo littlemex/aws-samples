@@ -31,7 +31,7 @@ aws s3api put-bucket-cors --bucket $BUCKET_NAME --cors-configuration file://cors
 rm cors.json
 
 # バケット名を設定ファイルに保存
-echo "BUCKET_NAME=$BUCKET_NAME" > .env
+echo "BUCKET_NAME=$BUCKET_NAME" >> .env
 
 echo "S3 bucket created successfully: $BUCKET_NAME"
 echo "Bucket name saved to .env file"
