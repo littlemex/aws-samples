@@ -37,9 +37,6 @@
 
 # 統合テストを実行、docker 起動して health チェックまで実施します
 ./scripts/integration-test.sh
-
-# Docker コンテナを起動
-docker compose up -d
 ```
 
 localhost:3000 で UI にアクセスしてください。公式の [Get Start](https://docs.getwren.ai/oss/getting_started/sample_data/hr) を確認しながら UI からサンプルデータを用いて動作を確認できます。
