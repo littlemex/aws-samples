@@ -38,6 +38,7 @@ docker system prune -a
 ./scripts/setup-wren.sh
 
 # S3 バケットを作成
+# 必要に応じて export AWS_PROFILE=xx を設定してください。
 ./scripts/setup-s3.sh
 
 # Docker コンテナを起動
