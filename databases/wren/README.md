@@ -35,7 +35,7 @@ docker system prune -a
 
 ```bash
 # セットアップスクリプトを実行
-./setup-wren.sh
+./scripts/setup-wren.sh
 
 # S3 バケットを作成
 ./scripts/setup-s3.sh
