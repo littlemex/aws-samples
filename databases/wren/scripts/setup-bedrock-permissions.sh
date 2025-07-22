@@ -148,16 +148,6 @@ if [ -n "$SPECIFIED_POLICY_FILE" ]; then
 else
   echo "Bedrock 権限チェックを実行中..."
   
-  # check-bedrock-permissions.sh スクリプトを実行
-  CHECK_SCRIPT="$SCRIPT_DIR/check-bedrock-permissions.sh"
-  if [ ! -f "$CHECK_SCRIPT" ]; then
-    echo -e "${RED}エラー: Bedrock 権限チェックスクリプトが見つかりません: $CHECK_SCRIPT${NC}"
-    exit 1
-  fi
-  
-  # 権限チェックスクリプトを実行して結果を取得
-  CHECK_OUTPUT=$($CHECK_SCRIPT)
-  
   # config.yaml からモデル情報を抽出
   echo "設定ファイルからモデル情報を抽出中..."
   if [ ! -f "$CONFIG_FILE" ]; then
