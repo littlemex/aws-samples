@@ -64,7 +64,7 @@ services:
     env_file:
       - ${PROJECT_DIR}/.env
     volumes:
-      - ${PROJECT_DIR}/config.yaml:/app/data/config.yaml
+      - ${PROJECT_DIR}/init/wren/config.yaml:/app/data/config.yaml
     networks:
       - wren
     depends_on:
