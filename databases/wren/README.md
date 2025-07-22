@@ -1,16 +1,12 @@
-# Wren AI + PostgreSQL + S3 + Amazon Bedrock デモ
+# Wren AI + PostgreSQL + Amazon S3 + Amazon Bedrock デモ
 
-このプロジェクトは、Wren AI、PostgreSQL、Amazon S3、Amazon Bedrock を使用したデータ分析環境のデモです。PostgreSQL のデータを S3 に ETL し、Wren AI と Amazon Bedrock の Claude モデルで分析する流れを実装しています。
+このプロジェクトは、Wren AI、PostgreSQL、Amazon S3、Amazon Bedrock を使用したデータ分析環境のデモです。PostgreSQL のデータを Amazon S3 に ETL し、Wren AI と Amazon Bedrock の Claude モデルで分析する流れを実装しています。
 
 ## プロジェクト構成
 
-- **PostgreSQL**: ダミーデータを格納するデータベース
+- **PostgreSQL**: ダミーサービスデータを格納するデータベース
 - **S3/MinIO**: ETL 後のデータ保存先
-- **Wren AI**: S3 のデータを DuckDB 経由で分析するツール
-- **Bootstrap**: 初期化用のサービス
-- **Wren Engine**: Wren AI のコアエンジン
-- **Ibis Server**: データ処理サーバー
-- **Qdrant**: ベクトルデータベース
+- **Wren AI**: Amazon S3 のデータを DuckDB 経由で分析するツール
 
 ## セットアップ手順
 
@@ -41,9 +37,44 @@
 
 localhost:3000 で UI にアクセスしてください。公式の [Get Start](https://docs.getwren.ai/oss/getting_started/sample_data/hr) を確認しながら UI からサンプルデータを用いて動作を確認できます。
 
-## Amazon S3 との接続
+## Postgres 設定画面
 
-To be determined..
+> step 01
+![](./images/fig01.png)
+
+> step 02
+![](./images/fig02.png)
+
+> step 03
+![](./images/fig03.png)
+
+> step 04
+![](./images/fig04.png)
+
+> step 05
+![](./images/fig05.png)
+
+## DuckDB with Amazon S3 設定画面 
+
+```bash
+# Amazon S3 の作成と .env へのバケット情報の環境変数の追加
+./scripts/setup-s3.sh
+
+# MCP でのライブ ETL を実施した想定で PostgreSQL から CSV 作成して S3 に Push
+./scripts/etl-sample.sh
+
+# DuckDB の設定用のクエリを生成させる、認証情報は環境変数で設定ください。
+./scripts/generate_duckdb_queries.sh
+```
+
+> step 06
+![](./images/fig06.png)
+
+> step 07
+![](./images/fig07.png)
+
+> step 08
+![](./images/fig08.png)
 
 ## トラブルシューティング
 
