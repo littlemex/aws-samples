@@ -1,0 +1,96 @@
+model_list:
+  - model_name: bedrock-converse-us-claude-opus-4-v1
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-opus-4-20250514-v1:0
+      aws_region_name: os.environ/AWS_REGION_NAME
+      aws_session_name: "claude-opus-4-v1-us-session"
+
+  - model_name: bedrock-converse-apac-claude-opus-4-v1
+    litellm_params:
+      model: bedrock/converse/apac.anthropic.claude-opus-4-20250514-v1:0
+      aws_region_name: ap-northeast-1
+      aws_session_name: "claude-opus-4-v1-apac-session"
+
+  - model_name: bedrock-converse-eu-claude-opus-4-v1
+    litellm_params:
+      model: bedrock/converse/eu.anthropic.anthropic.claude-opus-4-20250514-v1:0
+      aws_region_name: eu-west-1
+      aws_session_name: "claude-opus-4-v1-eu-session"
+
+  - model_name: bedrock-converse-us-claude-opus-4-1-v1
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-opus-4-1-20250805-v1:0
+      aws_region_name: os.environ/AWS_REGION_NAME
+      aws_session_name: "claude-opus-4-1-v1-us-session"
+  
+  - model_name: bedrock-converse-apac-claude-opus-4-1-v1
+    litellm_params:
+      model: bedrock/converse/apac.anthropic.claude-opus-4-1-20250805-v1:0
+      aws_region_name: ap-northeast-1
+      aws_session_name: "claude-opus-4-1-v1-apac-session"
+  
+  - model_name: bedrock-converse-eu-claude-opus-4-1-v1
+    litellm_params:
+       model: bedrock/converse/eu.anthropic.claude-opus-4-1-20250805-v1:0
+       aws_region_name: eu-west-1
+       aws_session_name: "claude-opus-4-1-v1-eu-session"
+
+  - model_name: bedrock-converse-us-claude-sonnet-4-v1
+    litellm_params:
+      model: bedrock/converse/us.anthropic.claude-sonnet-4-20250514-v1:0
+      aws_region_name: os.environ/AWS_REGION_NAME
+      aws_session_name: "claude-sonnet-4-v1-us-session"
+
+  - model_name: bedrock-converse-apac-claude-sonnet-4-v1
+    litellm_params:
+      model: bedrock/converse/apac.anthropic.claude-sonnet-4-20250514-v1:0
+      aws_region_name: ap-northeast-1
+      aws_session_name: "claude-sonnet-4-v1-apac-session"
+
+  - model_name: bedrock-converse-eu-claude-sonnet-4-v1
+    litellm_params:
+      model: bedrock/converse/eu.anthropic.claude-sonnet-4-20250514-v1:0
+      aws_region_name: eu-west-1
+      aws_session_name: "claude-sonnet-4-v1-eu-session"
+
+litellm_settings:
+  fallbacks: [
+    {"bedrock-converse-us-claude-opus-4-1-v1": 
+      [
+        "bedrock-converse-us-claude-opus-4-v1",
+        "bedrock-converse-apac-claude-opus-4-v1",
+        "bedrock-converse-eu-claude-opus-4-v1",
+        "bedrock-converse-apac-claude-opus-4-1-v1",
+        "bedrock-converse-eu-claude-opus-4-1-v1",
+        "bedrock-converse-us-claude-sonnet-4-v1",
+        "bedrock-converse-apac-claude-sonnet-4-v1",
+        "bedrock-converse-eu-claude-sonnet-4-v1"
+      ]
+    }
+  ]
+  num_retries: 2
+  request_timeout: 30
+  aws_region_name: os.environ/AWS_REGION_NAME
+  aws_session_name: "litellm-bedrock-session"
+  drop_params: true # サポート外のパラメータを無視する
+
+general_settings:
+  store_prompts_in_spend_logs: false
+  log_level: debug
+  openai_api_base: "/v1"
+  disable_user_auth: true  # 開発中は認証を無効化（本番環境では使用しないでください）
+
+router_settings:
+  default_model: bedrock-converse-us-claude-opus-4-1-v1
+  failover: true
+  timeout: 30
+  retries: 3
+
+openapi:
+  openapi_version: "3.1.0"
+  title: "LiteLLM API"
+  description: "LiteLLM API for multiple LLM models"
+  servers:
+    - url: "/"
+  info:
+    version: "1.0.0"
