@@ -1,0 +1,457 @@
+#!/bin/bash
+set -e
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default values
+PATTERN=""
+CONFIG_FILE=""
+BASTION_COMMAND=""
+UPLOAD_SCRIPT=""
+DRY_RUN=false
+
+# Function to print colored output
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to show usage
+show_usage() {
+    cat << EOF
+Usage: $0 [OPTIONS]
+
+Phase 2: Bastion Host Remote Command Execution
+
+OPTIONS:
+    -p, --pattern PATTERN       Zero-ETL pattern (required)
+    -c, --config CONFIG_FILE    JSON configuration file (required)
+    --bastion-command COMMAND   Execute command on Bastion Host via SSM
+    --upload-script SCRIPT      Upload and execute script file on Bastion Host
+    --dry-run                   Show what would be executed without running
+    -h, --help                  Show this help message
+
+EXAMPLES:
+    # Execute command on Bastion Host
+    $0 -p aurora-postgresql -c config.json --bastion-command "ls -la"
+
+    # Test basic connectivity
+    $0 -p aurora-postgresql -c config.json --bastion-command "whoami"
+
+    # Upload and execute script on Bastion Host
+    $0 -p aurora-postgresql -c config.json --upload-script "test-script.sh"
+
+    # Dry run mode
+    $0 -p aurora-postgresql -c config.json --bastion-command "df -h" --dry-run
+
+PREREQUISITES:
+    Phase 1 must be completed first:
+    ./1-etl-manager.sh -p PATTERN -c CONFIG_FILE
+
+EOF
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -p|--pattern)
+            PATTERN="$2"
+            shift 2
+            ;;
+        -c|--config)
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        --bastion-command)
+            BASTION_COMMAND="$2"
+            shift 2
+            ;;
+        --upload-script)
+            UPLOAD_SCRIPT="$2"
+            shift 2
+            ;;
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        *)
+            print_error "Unknown option: $1"
+            show_usage
+            exit 1
+            ;;
+    esac
+done
+
+# Validate required arguments
+if [[ -z "$PATTERN" ]]; then
+    print_error "Pattern is required. Use -p or --pattern option."
+    show_usage
+    exit 1
+fi
+
+if [[ -z "$CONFIG_FILE" ]]; then
+    print_error "Configuration file is required. Use -c or --config option."
+    show_usage
+    exit 1
+fi
+
+# Validate pattern
+case $PATTERN in
+    aurora-mysql|aurora-postgresql|rds-mysql)
+        ;;
+    *)
+        print_error "Invalid pattern: $PATTERN"
+        exit 1
+        ;;
+esac
+
+# Validate config file exists
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    print_error "Configuration file not found: $CONFIG_FILE"
+    exit 1
+fi
+
+print_info "=== Bastion Host Remote Command Execution ==="
+print_info "Pattern: $PATTERN"
+print_info "Config: $CONFIG_FILE"
+
+# Function to get AWS region
+get_aws_region() {
+    local region=$(aws configure get region 2>/dev/null || echo "us-east-1")
+    echo "$region"
+}
+
+# Function to get Bastion Host instance ID from CloudFormation
+get_bastion_instance_id() {
+    local region=$(get_aws_region)
+    
+    print_info "Looking for Bastion Host instance..." >&2
+    
+    local bastion_stack=$(aws cloudformation list-stacks --region "$region" \
+        --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE \
+        --query 'StackSummaries[?contains(StackName, `ClientHost`) || contains(StackName, `Bastion`)].StackName' \
+        --output text | head -1)
+    
+    if [[ -z "$bastion_stack" ]]; then
+        print_error "Bastion Host stack not found. Please run Phase 1 first:" >&2
+        print_error "  ./1-etl-manager.sh -p $PATTERN -c $CONFIG_FILE" >&2
+        exit 1
+    fi
+    
+    local bastion_instance_id=$(aws cloudformation describe-stacks \
+        --stack-name "$bastion_stack" --region "$region" \
+        --query 'Stacks[0].Outputs[?contains(OutputKey, `InstanceId`)].OutputValue' \
+        --output text)
+    
+    if [[ -z "$bastion_instance_id" ]]; then
+        print_error "Could not retrieve Bastion Host instance ID from stack: $bastion_stack" >&2
+        exit 1
+    fi
+    
+    print_success "Found Bastion Host: $bastion_instance_id" >&2
+    echo "$bastion_instance_id"
+}
+
+# Function to execute command on Bastion Host via SSM
+execute_bastion_command() {
+    local command="$1"
+    local bastion_instance_id="$2"
+    local region=$(get_aws_region)
+    
+    print_info "=== BASTION HOST COMMAND EXECUTION ==="
+    print_info "Instance ID: $bastion_instance_id"
+    print_info "Command: $command"
+    print_info "Region: $region"
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would execute command on Bastion Host"
+        return 0
+    fi
+    
+    # Capture start time
+    local start_time=$(date +%s)
+    
+    print_info "Sending command via SSM..."
+    
+    # Execute command via SSM
+    local command_id=$(aws ssm send-command \
+        --instance-ids "$bastion_instance_id" \
+        --document-name "AWS-RunShellScript" \
+        --parameters "{\"commands\":[\"$command\"]}" \
+        --comment "Bastion Command: $(echo "$command" | head -c 50)..." \
+        --timeout-seconds 300 \
+        --region "$region" \
+        --query 'Command.CommandId' --output text)
+    
+    if [[ -z "$command_id" ]]; then
+        print_error "Failed to initiate SSM command"
+        exit 1
+    fi
+    
+    print_info "SSM Command ID: $command_id"
+    print_info "Waiting for command completion..."
+    
+    # Wait for command to complete
+    aws ssm wait command-executed \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" || {
+        print_warning "Command execution may have timed out"
+    }
+    
+    # Calculate execution time
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    
+    # Get command results
+    local command_output=$(aws ssm get-command-invocation \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" \
+        --query 'StandardOutputContent' --output text 2>/dev/null)
+    
+    local command_error=$(aws ssm get-command-invocation \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" \
+        --query 'StandardErrorContent' --output text 2>/dev/null)
+    
+    local exit_code=$(aws ssm get-command-invocation \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" \
+        --query 'ResponseCode' --output text 2>/dev/null)
+    
+    # Display results
+    print_info "=== COMMAND OUTPUT ==="
+    if [[ -n "$command_output" ]] && [[ "$command_output" != "None" ]]; then
+        echo "$command_output"
+    else
+        print_warning "No standard output"
+    fi
+    
+    if [[ -n "$command_error" ]] && [[ "$command_error" != "None" ]]; then
+        print_warning "=== ERROR OUTPUT ==="
+        echo "$command_error"
+    fi
+    
+    print_info "=== EXECUTION SUMMARY ==="
+    print_info "Exit code: ${exit_code:-unknown}"
+    print_info "Execution time: ${duration}s"
+    print_info "Command ID: $command_id"
+    
+    if [[ "$exit_code" == "0" ]]; then
+        print_success "Command executed successfully on Bastion Host!"
+        return 0
+    else
+        print_error "Command failed on Bastion Host with exit code: ${exit_code:-unknown}"
+        return 1
+    fi
+}
+
+# Function to upload and execute script on Bastion Host
+upload_and_execute_script() {
+    local script_path="$1"
+    local bastion_instance_id="$2"
+    
+    print_info "=== SCRIPT UPLOAD AND EXECUTION ==="
+    print_info "Script: $script_path"
+    print_info "Instance ID: $bastion_instance_id"
+    
+    # Validate script file exists
+    if [[ ! -f "$script_path" ]]; then
+        print_error "Script file not found: $script_path"
+        exit 1
+    fi
+    
+    # Get script content and metadata
+    local script_content=$(cat "$script_path")
+    local script_name=$(basename "$script_path")
+    local region=$(get_aws_region)
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would upload and execute script"
+        print_info "Script size: $(wc -c < "$script_path") bytes"
+        print_info "Script name: $script_name"
+        return 0
+    fi
+    
+    print_info "Uploading script content via SSM..."
+    
+    # Encode script content as base64 to avoid JSON escaping issues
+    local script_b64=$(base64 -w 0 < "$script_path")
+    
+    # Create a command that decodes and executes the script
+    # This avoids complex JSON escaping of multi-line content with quotes
+    local upload_command="echo 'Creating script file: /tmp/$script_name' && echo '$script_b64' | base64 -d > /tmp/$script_name && chmod +x /tmp/$script_name && echo 'Executing script: /tmp/$script_name' && cd /tmp && ./$script_name && echo 'Script execution completed'"
+    
+    print_info "Executing upload command via SSM..."
+    
+    # Capture start time
+    local start_time=$(date +%s)
+    
+    # Execute command via SSM with proper JSON escaping
+    local command_id=$(aws ssm send-command \
+        --instance-ids "$bastion_instance_id" \
+        --document-name "AWS-RunShellScript" \
+        --parameters "{\"commands\":[\"$upload_command\"]}" \
+        --comment "Script Upload: $script_name" \
+        --timeout-seconds 300 \
+        --region "$region" \
+        --query 'Command.CommandId' --output text)
+    
+    if [[ -z "$command_id" ]]; then
+        print_error "Failed to initiate SSM script upload command"
+        exit 1
+    fi
+    
+    print_info "SSM Command ID: $command_id"
+    print_info "Waiting for script execution completion..."
+    
+    # Wait for command to complete
+    aws ssm wait command-executed \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" || {
+        print_warning "Script execution may have timed out"
+    }
+    
+    # Calculate execution time
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    
+    # Get command results
+    local command_output=$(aws ssm get-command-invocation \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" \
+        --query 'StandardOutputContent' --output text 2>/dev/null)
+    
+    local command_error=$(aws ssm get-command-invocation \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" \
+        --query 'StandardErrorContent' --output text 2>/dev/null)
+    
+    local exit_code=$(aws ssm get-command-invocation \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" \
+        --query 'ResponseCode' --output text 2>/dev/null)
+    
+    # Display results
+    print_info "=== SCRIPT OUTPUT ==="
+    if [[ -n "$command_output" ]] && [[ "$command_output" != "None" ]]; then
+        echo "$command_output"
+    else
+        print_warning "No standard output"
+    fi
+    
+    if [[ -n "$command_error" ]] && [[ "$command_error" != "None" ]]; then
+        print_warning "=== ERROR OUTPUT ==="
+        echo "$command_error"
+    fi
+    
+    print_info "=== SCRIPT EXECUTION SUMMARY ==="
+    print_info "Script: $script_name"
+    print_info "Exit code: ${exit_code:-unknown}"
+    print_info "Execution time: ${duration}s"
+    print_info "Command ID: $command_id"
+    
+    if [[ "$exit_code" == "0" ]]; then
+        print_success "Script uploaded and executed successfully on Bastion Host!"
+        return 0
+    else
+        print_error "Script execution failed on Bastion Host with exit code: ${exit_code:-unknown}"
+        return 1
+    fi
+}
+
+# Main execution
+main() {
+    print_info "Starting Bastion Host operations..."
+    
+    # Handle different operation modes
+    local operation_count=0
+    
+    if [[ -n "$BASTION_COMMAND" ]]; then
+        operation_count=$((operation_count + 1))
+    fi
+    
+    if [[ -n "$UPLOAD_SCRIPT" ]]; then
+        operation_count=$((operation_count + 1))
+    fi
+    
+    # If no specific operation is requested, show usage
+    if [[ $operation_count -eq 0 ]]; then
+        print_warning "No operation specified. Use one of:"
+        print_warning "  --bastion-command     Execute command on Bastion Host"
+        print_warning "  --upload-script       Upload and execute script on Bastion Host"
+        echo ""
+        show_usage
+        exit 1
+    fi
+    
+    # Validate only one operation at a time
+    if [[ $operation_count -gt 1 ]]; then
+        print_error "Only one operation can be performed at a time"
+        print_error "Choose one of: --bastion-command, --upload-script"
+        exit 1
+    fi
+    
+    # Execute the requested operation
+    if [[ -n "$BASTION_COMMAND" ]]; then
+        if [[ "$DRY_RUN" == true ]]; then
+            print_info "DRY RUN: Would execute command on Bastion Host"
+            print_info "Command: $BASTION_COMMAND"
+            print_success "=== DRY RUN COMPLETED ==="
+            return
+        fi
+        
+        # Get Bastion Host instance ID for actual execution
+        local bastion_instance_id=$(get_bastion_instance_id)
+        execute_bastion_command "$BASTION_COMMAND" "$bastion_instance_id"
+        
+    elif [[ -n "$UPLOAD_SCRIPT" ]]; then
+        if [[ "$DRY_RUN" == true ]]; then
+            print_info "DRY RUN: Would upload and execute script on Bastion Host"
+            if [[ -f "$UPLOAD_SCRIPT" ]]; then
+                print_info "Script: $UPLOAD_SCRIPT"
+                print_info "Script size: $(wc -c < "$UPLOAD_SCRIPT") bytes"
+                print_success "=== DRY RUN COMPLETED ==="
+            else
+                print_error "Script file not found: $UPLOAD_SCRIPT"
+            fi
+            return
+        fi
+        
+        # Get Bastion Host instance ID for actual execution
+        local bastion_instance_id=$(get_bastion_instance_id)
+        upload_and_execute_script "$UPLOAD_SCRIPT" "$bastion_instance_id"
+    fi
+    
+    print_success "=== OPERATION COMPLETED ==="
+}
+
+# Run main function
+main "$@"
