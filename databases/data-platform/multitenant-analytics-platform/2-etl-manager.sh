@@ -15,6 +15,7 @@ BASTION_COMMAND=""
 UPLOAD_SCRIPT=""
 DRY_RUN=false
 LOCAL_EXECUTION=false
+SKIP_COPY=false
 
 # Function to print colored output
 print_info() {
@@ -45,6 +46,7 @@ OPTIONS:
     -c, --config CONFIG_FILE    JSON configuration file (required)
     --bastion-command COMMAND   Execute command on Bastion Host via SSM or locally
     --upload-script SCRIPT      Upload and execute script file on Bastion Host
+    --skip-copy                Skip file transfer to Bastion Host (use existing workspace)
     --local                    Execute commands locally with docker compose
     --dry-run                  Show what would be executed without running
     -h, --help                 Show this help message
@@ -53,6 +55,9 @@ EXAMPLES:
     # Remote Bastion Host operations
     $0 -p aurora-postgresql -c config.json --bastion-command "whoami"
     $0 -p aurora-postgresql -c config.json --upload-script "test-script.sh"
+
+    # Skip file transfer for faster execution (requires previous transfer)
+    $0 -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
 
     # Local execution with docker compose
     $0 -p aurora-postgresql -c config.json --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql" --local
@@ -65,6 +70,8 @@ PREREQUISITES:
     ./1-etl-manager.sh -p PATTERN -c CONFIG_FILE
     
     For local operations, docker and docker compose must be installed.
+    
+    The --skip-copy option requires files to have been transferred previously.
 
 EOF
 }
@@ -90,6 +97,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --local)
             LOCAL_EXECUTION=true
+            shift
+            ;;
+        --skip-copy)
+            SKIP_COPY=true
             shift
             ;;
         --dry-run)
@@ -451,109 +462,45 @@ execute_bastion_command() {
     # Get Aurora connection info for remote execution
     get_aurora_connection_info "false" "$PATTERN"
     
-    # Create and transfer directory archive if configured
-    local archive_path=""
+    # Handle file transfer or skip-copy logic
     local workspace_dir="/tmp/workspace"
     
-    archive_path=$(create_directory_archive "$CONFIG_FILE")
-    if [[ $? -eq 0 ]] && [[ -n "$archive_path" ]]; then
-        print_info "Transferring directories to Bastion Host..."
+    if [[ "$SKIP_COPY" == true ]]; then
+        print_info "Skipping file transfer (--skip-copy specified)"
+        print_info "Using existing workspace: $workspace_dir"
         
-        # Encode archive as base64 (split into chunks to avoid command line length limits)
-        local archive_size=$(stat -c%s "$archive_path" 2>/dev/null || echo "0")
-        print_info "[DEBUG] Archive size: $archive_size bytes"
+        # Verify existing workspace directory exists
+        local check_workspace_command="if [ -d $workspace_dir ]; then echo 'WORKSPACE: Directory exists'; ls -la $workspace_dir | head -10; else echo 'WORKSPACE: Directory does not exist'; fi"
         
-        if [[ $archive_size -gt 1048576 ]]; then  # 1MB limit for base64 encoding
-            print_error "Archive too large for transfer ($archive_size bytes). Consider reducing files or using exclude patterns."
-            return 1
-        fi
-        
-        local archive_b64=$(base64 -w 0 < "$archive_path")
-        local b64_length=${#archive_b64}
-        print_info "[DEBUG] Base64 encoded size: $b64_length characters"
-        
-        # Create setup command for directory transfer with better error handling
-        local setup_command="mkdir -p $workspace_dir && cd $workspace_dir && echo 'Starting base64 decode...' && echo '$archive_b64' | base64 -d > archive.tar.gz && echo 'Base64 decode completed, extracting...' && tar -xzf archive.tar.gz && rm -f archive.tar.gz && echo 'Directory transfer completed successfully'"
-        
-        # Execute directory setup
-        print_info "Setting up workspace directories..."
-        local setup_command_id=$(aws ssm send-command \
+        local check_command_id=$(aws ssm send-command \
             --instance-ids "$bastion_instance_id" \
             --document-name "AWS-RunShellScript" \
-            --parameters "{\"commands\":[\"$setup_command\"]}" \
-            --comment "Directory Transfer Setup" \
-            --timeout-seconds 300 \
+            --parameters "{\"commands\":[\"$check_workspace_command\"]}" \
+            --comment "Workspace Check" \
+            --timeout-seconds 60 \
             --region "$region" \
             --query 'Command.CommandId' --output text)
         
-        if [[ -n "$setup_command_id" ]]; then
-            print_info "Waiting for directory transfer completion..."
+        if [[ -n "$check_command_id" ]]; then
             aws ssm wait command-executed \
-                --command-id "$setup_command_id" \
+                --command-id "$check_command_id" \
                 --instance-id "$bastion_instance_id" \
-                --region "$region" || {
-                print_warning "Directory transfer may have timed out"
-            }
-            
-            # Get transfer results
-            local transfer_output=$(aws ssm get-command-invocation \
-                --command-id "$setup_command_id" \
+                --region "$region" 2>/dev/null || true
+                
+            local check_output=$(aws ssm get-command-invocation \
+                --command-id "$check_command_id" \
                 --instance-id "$bastion_instance_id" \
                 --region "$region" \
                 --query 'StandardOutputContent' --output text 2>/dev/null)
                 
-            local transfer_error=$(aws ssm get-command-invocation \
-                --command-id "$setup_command_id" \
-                --instance-id "$bastion_instance_id" \
-                --region "$region" \
-                --query 'StandardErrorContent' --output text 2>/dev/null)
-                
-            local transfer_exit_code=$(aws ssm get-command-invocation \
-                --command-id "$setup_command_id" \
-                --instance-id "$bastion_instance_id" \
-                --region "$region" \
-                --query 'ResponseCode' --output text 2>/dev/null)
-            
-            print_info "[DEBUG] Transfer results:"
-            print_info "  Exit code: ${transfer_exit_code:-unknown}"
-            if [[ -n "$transfer_output" ]] && [[ "$transfer_output" != "None" ]]; then
-                print_info "  Output: $transfer_output"
-            fi
-            if [[ -n "$transfer_error" ]] && [[ "$transfer_error" != "None" ]]; then
-                print_warning "  Error: $transfer_error"
-            fi
-            
-            # Verify files were transferred successfully
-            print_info "Verifying transferred files on Bastion Host..."
-            # Use a simpler verification approach to avoid JSON escaping issues
-            local verify_command="cd $workspace_dir && echo 'VERIFY: Current directory:' && pwd && echo 'VERIFY: Directory contents:' && ls -la && echo 'VERIFY: Checking key files:' && if [ -f scripts/2-sql-execute.sh ]; then echo 'VERIFY: scripts/2-sql-execute.sh exists'; else echo 'VERIFY: scripts/2-sql-execute.sh MISSING'; fi && if [ -f config.json ]; then echo 'VERIFY: config.json exists'; else echo 'VERIFY: config.json MISSING'; fi && if [ -f sql/aurora/schema/create-tenant-schemas.sql ]; then echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql exists'; else echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql MISSING'; fi && echo 'VERIFY: Setting execute permissions on scripts...' && chmod +x scripts/*.sh 2>/dev/null || true && echo 'VERIFY: Verification completed'"
-            
-            local verify_command_id=$(aws ssm send-command \
-                --instance-ids "$bastion_instance_id" \
-                --document-name "AWS-RunShellScript" \
-                --parameters "{\"commands\":[\"$verify_command\"]}" \
-                --comment "File Verification" \
-                --timeout-seconds 60 \
-                --region "$region" \
-                --query 'Command.CommandId' --output text)
-                
-            if [[ -n "$verify_command_id" ]]; then
-                print_info "Waiting for file verification..."
-                aws ssm wait command-executed \
-                    --command-id "$verify_command_id" \
-                    --instance-id "$bastion_instance_id" \
-                    --region "$region" 2>/dev/null || true
-                    
-                local verify_output=$(aws ssm get-command-invocation \
-                    --command-id "$verify_command_id" \
-                    --instance-id "$bastion_instance_id" \
-                    --region "$region" \
-                    --query 'StandardOutputContent' --output text 2>/dev/null)
-                    
-                if [[ -n "$verify_output" ]] && [[ "$verify_output" != "None" ]]; then
-                    print_info "[DEBUG] Bastion Host file verification:"
-                    echo "$verify_output" | while read line; do
-                        if [[ "$line" == *"VERIFY:"* ]]; then
+            if [[ -n "$check_output" ]] && [[ "$check_output" != "None" ]]; then
+                if [[ "$check_output" == *"Directory does not exist"* ]]; then
+                    print_warning "Workspace directory $workspace_dir does not exist on Bastion Host"
+                    print_warning "You may need to run without --skip-copy first to transfer files"
+                else
+                    print_info "Workspace directory verified:"
+                    echo "$check_output" | while read line; do
+                        if [[ "$line" == *"WORKSPACE:"* ]]; then
                             print_info "  $line"
                         fi
                     done
@@ -561,14 +508,128 @@ execute_bastion_command() {
             fi
         fi
         
-        # Clean up local archive  
-        rm -f "$archive_path"
-        
         # Update command to run from workspace directory and set environment variables
         command="cd $workspace_dir && export AURORA_ENDPOINT='$AURORA_ENDPOINT' AURORA_PORT='$AURORA_PORT' AURORA_USER='$AURORA_USER' AURORA_PASSWORD='$AURORA_PASSWORD' && $command"
+        
     else
-        # Set environment variables even without directory transfer
-        command="export AURORA_ENDPOINT='$AURORA_ENDPOINT' AURORA_PORT='$AURORA_PORT' AURORA_USER='$AURORA_USER' AURORA_PASSWORD='$AURORA_PASSWORD' && $command"
+        # Create and transfer directory archive if configured
+        local archive_path=""
+        
+        archive_path=$(create_directory_archive "$CONFIG_FILE")
+        if [[ $? -eq 0 ]] && [[ -n "$archive_path" ]]; then
+            print_info "Transferring directories to Bastion Host..."
+            
+            # Encode archive as base64 (split into chunks to avoid command line length limits)
+            local archive_size=$(stat -c%s "$archive_path" 2>/dev/null || echo "0")
+            print_info "[DEBUG] Archive size: $archive_size bytes"
+            
+            if [[ $archive_size -gt 1048576 ]]; then  # 1MB limit for base64 encoding
+                print_error "Archive too large for transfer ($archive_size bytes). Consider reducing files or using exclude patterns."
+                return 1
+            fi
+            
+            local archive_b64=$(base64 -w 0 < "$archive_path")
+            local b64_length=${#archive_b64}
+            print_info "[DEBUG] Base64 encoded size: $b64_length characters"
+            
+            # Create setup command for directory transfer with better error handling
+            local setup_command="mkdir -p $workspace_dir && cd $workspace_dir && echo 'Starting base64 decode...' && echo '$archive_b64' | base64 -d > archive.tar.gz && echo 'Base64 decode completed, extracting...' && tar -xzf archive.tar.gz && rm -f archive.tar.gz && echo 'Directory transfer completed successfully'"
+            
+            # Execute directory setup
+            print_info "Setting up workspace directories..."
+            local setup_command_id=$(aws ssm send-command \
+                --instance-ids "$bastion_instance_id" \
+                --document-name "AWS-RunShellScript" \
+                --parameters "{\"commands\":[\"$setup_command\"]}" \
+                --comment "Directory Transfer Setup" \
+                --timeout-seconds 300 \
+                --region "$region" \
+                --query 'Command.CommandId' --output text)
+            
+            if [[ -n "$setup_command_id" ]]; then
+                print_info "Waiting for directory transfer completion..."
+                aws ssm wait command-executed \
+                    --command-id "$setup_command_id" \
+                    --instance-id "$bastion_instance_id" \
+                    --region "$region" || {
+                    print_warning "Directory transfer may have timed out"
+                }
+                
+                # Get transfer results
+                local transfer_output=$(aws ssm get-command-invocation \
+                    --command-id "$setup_command_id" \
+                    --instance-id "$bastion_instance_id" \
+                    --region "$region" \
+                    --query 'StandardOutputContent' --output text 2>/dev/null)
+                    
+                local transfer_error=$(aws ssm get-command-invocation \
+                    --command-id "$setup_command_id" \
+                    --instance-id "$bastion_instance_id" \
+                    --region "$region" \
+                    --query 'StandardErrorContent' --output text 2>/dev/null)
+                    
+                local transfer_exit_code=$(aws ssm get-command-invocation \
+                    --command-id "$setup_command_id" \
+                    --instance-id "$bastion_instance_id" \
+                    --region "$region" \
+                    --query 'ResponseCode' --output text 2>/dev/null)
+                
+                print_info "[DEBUG] Transfer results:"
+                print_info "  Exit code: ${transfer_exit_code:-unknown}"
+                if [[ -n "$transfer_output" ]] && [[ "$transfer_output" != "None" ]]; then
+                    print_info "  Output: $transfer_output"
+                fi
+                if [[ -n "$transfer_error" ]] && [[ "$transfer_error" != "None" ]]; then
+                    print_warning "  Error: $transfer_error"
+                fi
+                
+                # Verify files were transferred successfully
+                print_info "Verifying transferred files on Bastion Host..."
+                # Use a simpler verification approach to avoid JSON escaping issues
+                local verify_command="cd $workspace_dir && echo 'VERIFY: Current directory:' && pwd && echo 'VERIFY: Directory contents:' && ls -la && echo 'VERIFY: Checking key files:' && if [ -f scripts/2-sql-execute.sh ]; then echo 'VERIFY: scripts/2-sql-execute.sh exists'; else echo 'VERIFY: scripts/2-sql-execute.sh MISSING'; fi && if [ -f config.json ]; then echo 'VERIFY: config.json exists'; else echo 'VERIFY: config.json MISSING'; fi && if [ -f sql/aurora/schema/create-tenant-schemas.sql ]; then echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql exists'; else echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql MISSING'; fi && echo 'VERIFY: Setting execute permissions on scripts...' && chmod +x scripts/*.sh 2>/dev/null || true && echo 'VERIFY: Verification completed'"
+                
+                local verify_command_id=$(aws ssm send-command \
+                    --instance-ids "$bastion_instance_id" \
+                    --document-name "AWS-RunShellScript" \
+                    --parameters "{\"commands\":[\"$verify_command\"]}" \
+                    --comment "File Verification" \
+                    --timeout-seconds 60 \
+                    --region "$region" \
+                    --query 'Command.CommandId' --output text)
+                    
+                if [[ -n "$verify_command_id" ]]; then
+                    print_info "Waiting for file verification..."
+                    aws ssm wait command-executed \
+                        --command-id "$verify_command_id" \
+                        --instance-id "$bastion_instance_id" \
+                        --region "$region" 2>/dev/null || true
+                        
+                    local verify_output=$(aws ssm get-command-invocation \
+                        --command-id "$verify_command_id" \
+                        --instance-id "$bastion_instance_id" \
+                        --region "$region" \
+                        --query 'StandardOutputContent' --output text 2>/dev/null)
+                        
+                    if [[ -n "$verify_output" ]] && [[ "$verify_output" != "None" ]]; then
+                        print_info "[DEBUG] Bastion Host file verification:"
+                        echo "$verify_output" | while read line; do
+                            if [[ "$line" == *"VERIFY:"* ]]; then
+                                print_info "  $line"
+                            fi
+                        done
+                    fi
+                fi
+            fi
+            
+            # Clean up local archive  
+            rm -f "$archive_path"
+            
+            # Update command to run from workspace directory and set environment variables
+            command="cd $workspace_dir && export AURORA_ENDPOINT='$AURORA_ENDPOINT' AURORA_PORT='$AURORA_PORT' AURORA_USER='$AURORA_USER' AURORA_PASSWORD='$AURORA_PASSWORD' && $command"
+        else
+            # Set environment variables even without directory transfer
+            command="export AURORA_ENDPOINT='$AURORA_ENDPOINT' AURORA_PORT='$AURORA_PORT' AURORA_USER='$AURORA_USER' AURORA_PASSWORD='$AURORA_PASSWORD' && $command"
+        fi
     fi
     
     # Capture start time
