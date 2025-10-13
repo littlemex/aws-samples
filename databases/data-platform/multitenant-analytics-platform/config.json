@@ -1,0 +1,67 @@
+{
+  "project": {
+    "name": "multitenant-analytics-platform",
+    "description": "Multitenant Analytics Platform with dbt and Zero-ETL",
+    "environment": "dev",
+    "region": "us-east-1"
+  },
+  "networking": {
+    "vpcName": "multitenant-analytics-vpc",
+    "createNewVpc": true,
+    "vpcCidr": "10.0.0.0/16"
+  },
+  "aurora": {
+    "clusterName": "multitenant-analytics-aurora",
+    "engine": "postgresql",
+    "version": "16.4",
+    "instanceClass": "t4g.medium",
+    "masterUsername": "postgres",
+    "databaseName": "multitenant_analytics",
+    "multiAz": true,
+    "backupRetention": 7,
+    "encrypted": true,
+    "connection": {
+      "host": "${AURORA_ENDPOINT}",
+      "port": 5432,
+      "database": "multitenant_analytics",
+      "username": "${AURORA_USER}",
+      "password": "${AURORA_PASSWORD}"
+    }
+  },
+  "redshift": {
+    "dbName": "multitenant_analytics",
+    "namespace": "multitenant-analytics-ns",
+    "workgroup": "multitenant-analytics-wg",
+    "baseCapacity": 4,
+    "encrypted": true,
+    "caseSensitive": true
+  },
+  "zeroEtl": {
+    "integrationName": "multitenant-analytics-integration",
+    "dataFilter": "include: multitenant_analytics.tenant_a.users, include: multitenant_analytics.tenant_b.users, include: multitenant_analytics.tenant_c.users",
+    "description": "Zero-ETL integration for multitenant analytics"
+  },
+  "dbt": {
+    "enabled": true,
+    "profileName": "multitenant_analytics",
+    "targetDatabase": "multitenant_analytics",
+    "targetSchema": "analytics"
+  },
+  "bastion": {
+    "autoTransfer": {
+      "enabled": true,
+      "directories": ["sql", "scripts"],
+      "files": ["config.json"],
+      "excludePatterns": ["*.log", "*.tmp", "target/", "*.pyc", "__pycache__/"],
+      "compressionLevel": 6
+    },
+    "workingDirectory": "/tmp/workspace"
+  },
+  "tags": {
+    "Project": "MultitenantAnalyticsPlatform",
+    "Environment": "dev",
+    "Owner": "data-platform-team",
+    "CostCenter": "analytics",
+    "Purpose": "MultitenantAnalytics"
+  }
+}

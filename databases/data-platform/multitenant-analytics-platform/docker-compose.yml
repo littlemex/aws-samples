@@ -1,0 +1,57 @@
+services:
+  # PostgreSQL database for local development
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: multitenant_analytics
+      POSTGRES_USER: dbt_user
+      POSTGRES_PASSWORD: dbt_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - multitenant_network
+
+  # dbt container for local development
+  dbt-local:
+    build:
+      context: ./dbt
+      dockerfile: Dockerfile.local
+    environment:
+      DBT_TARGET: local
+      DBT_LOCAL_HOST: postgres
+      DBT_LOCAL_USER: dbt_user
+      DBT_LOCAL_PASSWORD: dbt_password
+      DBT_LOCAL_DATABASE: multitenant_analytics
+      DBT_LOCAL_SCHEMA: public
+    volumes:
+      - ./dbt:/usr/app/dbt
+      - dbt_profiles:/root/.dbt
+    depends_on:
+      - postgres
+    networks:
+      - multitenant_network
+    command: tail -f /dev/null  # Keep container running
+
+  # pgAdmin for database management (optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    networks:
+      - multitenant_network
+
+volumes:
+  postgres_data:
+  dbt_profiles:
+
+networks:
+  multitenant_network:
+    driver: bridge
