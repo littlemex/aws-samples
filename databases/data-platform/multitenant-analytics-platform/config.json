@@ -73,6 +73,24 @@
       "excludePatterns": ["*.log", "*.tmp", "target/", "*.pyc", "__pycache__/"],
       "compressionLevel": 6
     },
+    "phase2": {
+      "autoTransfer": {
+        "enabled": true,
+        "directories": ["sql/aurora"],
+        "files": ["config.json", "scripts/2-sql-execute.sh"],
+        "excludePatterns": ["*.log", "*.tmp", "target/", "*.pyc", "__pycache__/", ".venv/", "dbt_packages/", "logs/"],
+        "compressionLevel": 6
+      }
+    },
+    "phase3": {
+      "autoTransfer": {
+        "enabled": true,
+        "directories": ["sql/redshift"],
+        "files": ["config.json", "scripts/3-sql-execute.sh", "bastion-redshift-connection.json"],
+        "excludePatterns": ["*.log", "*.tmp", "target/", "*.pyc", "__pycache__/", ".venv/", "dbt_packages/", "logs/"],
+        "compressionLevel": 6
+      }
+    },
     "workingDirectory": "/tmp/workspace"
   },
   "tags": {
