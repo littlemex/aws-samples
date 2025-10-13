@@ -409,13 +409,24 @@ get_aurora_connection_info() {
             exit 1
         fi
         
-        # Export environment variables
-        export AURORA_ENDPOINT="$aurora_endpoint"
+        # Separate host and port from endpoint (format: host:port)
+        local aurora_host="${aurora_endpoint%:*}"  # Remove :port suffix
+        local aurora_port="${aurora_endpoint##*:}" # Extract port number
+        
+        # Validate that we actually have a port, otherwise use default
+        if [[ "$aurora_port" == "$aurora_endpoint" ]] || [[ ! "$aurora_port" =~ ^[0-9]+$ ]]; then
+            aurora_port="5432"  # Default PostgreSQL port
+        fi
+        
+        # Export environment variables with separated host and port
+        export AURORA_ENDPOINT="$aurora_host"
+        export AURORA_PORT="$aurora_port"
         export AURORA_USER="$aurora_user"
         export AURORA_PASSWORD="$aurora_password"
         
         print_success "Aurora connection configured:"
         print_info "  AURORA_ENDPOINT=$AURORA_ENDPOINT"
+        print_info "  AURORA_PORT=$AURORA_PORT"
         print_info "  AURORA_USER=$AURORA_USER"
         print_info "  AURORA_PASSWORD=***set***"
     fi
@@ -554,10 +565,10 @@ execute_bastion_command() {
         rm -f "$archive_path"
         
         # Update command to run from workspace directory and set environment variables
-        command="cd $workspace_dir && export AURORA_ENDPOINT='$AURORA_ENDPOINT' AURORA_USER='$AURORA_USER' AURORA_PASSWORD='$AURORA_PASSWORD' && $command"
+        command="cd $workspace_dir && export AURORA_ENDPOINT='$AURORA_ENDPOINT' AURORA_PORT='$AURORA_PORT' AURORA_USER='$AURORA_USER' AURORA_PASSWORD='$AURORA_PASSWORD' && $command"
     else
         # Set environment variables even without directory transfer
-        command="export AURORA_ENDPOINT='$AURORA_ENDPOINT' AURORA_USER='$AURORA_USER' AURORA_PASSWORD='$AURORA_PASSWORD' && $command"
+        command="export AURORA_ENDPOINT='$AURORA_ENDPOINT' AURORA_PORT='$AURORA_PORT' AURORA_USER='$AURORA_USER' AURORA_PASSWORD='$AURORA_PASSWORD' && $command"
     fi
     
     # Capture start time
