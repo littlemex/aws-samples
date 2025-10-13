@@ -26,6 +26,24 @@
       "database": "multitenant_analytics",
       "username": "${AURORA_USER}",
       "password": "${AURORA_PASSWORD}"
+    },
+    "phases": {
+      "database": {
+        "connection_db": "postgres", 
+        "description": "Database creation phase - connects to default postgres DB"
+      },
+      "schema": {
+        "connection_db": "multitenant_analytics",
+        "description": "Schema creation phase - connects to target DB"
+      },
+      "data": {
+        "connection_db": "multitenant_analytics",
+        "description": "Data insertion phase - connects to target DB"
+      },
+      "verification": {
+        "connection_db": "multitenant_analytics",
+        "description": "Verification phase - connects to target DB"
+      }
     }
   },
   "redshift": {
