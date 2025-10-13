@@ -14,6 +14,7 @@ CONFIG_FILE=""
 BASTION_COMMAND=""
 SKIP_COPY=false
 DRY_RUN=false
+STEP0=false
 STEP1=false
 STEP2=false
 
@@ -47,6 +48,7 @@ OPTIONS:
     -c, --config CONFIG_FILE      JSON configuration file (required)
     
     # Step-by-step workflow:
+    --step0                     Step 0: Setup dbt environment on Bastion Host
     --step1                     Step 1: Create dbt-style analytics Views in Redshift
     --step2                     Step 2: Verify created Views and show analytics results
     
@@ -92,6 +94,10 @@ while [[ $# -gt 0 ]]; do
         -c|--config)
             CONFIG_FILE="$2"
             shift 2
+            ;;
+        --step0)
+            STEP0=true
+            shift
             ;;
         --step1)
             STEP1=true
@@ -575,58 +581,81 @@ execute_bastion_dbt_command() {
     execute_ssm_command "$bastion_instance_id" "$command" "$region"
 }
 
-# Step 1: Create dbt-style analytics Views
-step1_create_dbt_views() {
-    print_info "=== STEP 1: Creating dbt-style Analytics Views ==="
+# Step 0: Setup dbt environment on Bastion Host
+step0_setup_dbt_environment() {
+    print_info "=== STEP 0: Setting up dbt Environment on Bastion Host ==="
     
     if [[ "$DRY_RUN" == true ]]; then
-        print_info "DRY RUN: Would create analytics Views in Redshift"
+        print_info "DRY RUN: Would setup dbt environment on Bastion Host"
         return 0
     fi
     
-    # Execute View creation command
-    local create_command="scripts/4-dbt-execute.sh config.json sql/redshift/dbt/simple-all-users-view.sql"
+    print_info "Setting up dbt environment on Bastion Host..."
     
-    print_info "Creating analytics.all_users_view in Redshift..."
-    
-    if execute_bastion_dbt_command "$create_command"; then
-        print_success "=== Step 1 completed successfully ==="
-        print_info "Next step: Run --step2 to verify the created Views"
+    # Execute dbt setup script from scripts directory
+    if execute_bastion_dbt_command "scripts/setup-dbt-environment.sh"; then
+        print_success "=== Step 0 completed successfully ==="
+        print_info "Next step: Run --step1 to create dbt models"
+        print_info "dbt-redshift is now available in: /tmp/dbt-venv/"
     else
-        print_error "Step 1 failed - View creation unsuccessful"
+        print_error "Step 0 failed - dbt environment setup unsuccessful"
         return 1
     fi
 }
 
-# Step 2: Verify created Views and show analytics results
-step2_verify_views() {
-    print_info "=== STEP 2: Verifying Analytics Views ==="
+# Step 1: Create dbt-style analytics models
+step1_create_dbt_models() {
+    print_info "=== STEP 1: Running dbt Models ==="
     
     if [[ "$DRY_RUN" == true ]]; then
-        print_info "DRY RUN: Would verify analytics Views in Redshift"
+        print_info "DRY RUN: Would run dbt models in Redshift"
         return 0
     fi
     
-    # Execute View verification command
-    local verify_command="scripts/4-dbt-execute.sh config.json sql/redshift/dbt/verify-all-users-view.sql"
+    # Execute dbt run command
+    local dbt_run_command="scripts/4-dbt-execute.sh config.json 'dbt run'"
     
-    print_info "Verifying analytics.all_users_view in Redshift..."
+    print_info "Running dbt models with Zero-ETL integration..."
     
-    if execute_bastion_dbt_command "$verify_command"; then
+    if execute_bastion_dbt_command "$dbt_run_command"; then
+        print_success "=== Step 1 completed successfully ==="
+        print_info "Next step: Run --step2 to test the dbt models"
+    else
+        print_error "Step 1 failed - dbt run unsuccessful"
+        return 1
+    fi
+}
+
+# Step 2: Test dbt models and show results
+step2_test_dbt_models() {
+    print_info "=== STEP 2: Testing dbt Models ==="
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would test dbt models in Redshift"
+        return 0
+    fi
+    
+    # Execute dbt test command
+    local dbt_test_command="scripts/4-dbt-execute.sh config.json 'dbt test'"
+    
+    print_info "Testing dbt models..."
+    
+    if execute_bastion_dbt_command "$dbt_test_command"; then
         print_success "=== Step 2 completed successfully ==="
-        print_success "🎉 dbt-style Analytics Setup Complete!"
+        print_success "🎉 Real dbt Analytics Setup Complete!"
         echo ""
-        print_info "Your dbt-style analytics Views are now ready:"
-        print_info "  ✅ analytics.all_users_view - Multi-tenant user analytics"
-        print_info "  ✅ Cross-tenant data aggregation working"
+        print_info "Your dbt analytics models are now ready:"
+        print_info "  ✅ dbt models executed successfully"
+        print_info "  ✅ Multi-tenant data integration working"
         print_info "  ✅ Zero-ETL integration providing real-time data"
         echo ""
         print_info "You can now:"
         print_info "  • Connect BI tools to Redshift Serverless"
-        print_info "  • Query analytics.all_users_view for insights"
-        print_info "  • Extend with additional dbt models"
+        print_info "  • Query dbt-generated models for insights"  
+        print_info "  • Run dbt docs generate to create documentation"
+        print_info "  • Extend with additional dbt models and tests"
     else
-        print_error "Step 2 failed - View verification unsuccessful"
+        print_error "Step 2 failed - dbt test unsuccessful"
         return 1
     fi
 }
@@ -647,6 +676,10 @@ main() {
     # Validate at least one operation is requested
     local operation_count=0
     
+    if [[ "$STEP0" == true ]]; then
+        operation_count=$((operation_count + 1))
+    fi
+    
     if [[ "$STEP1" == true ]]; then
         operation_count=$((operation_count + 1))
     fi
@@ -657,6 +690,7 @@ main() {
     
     if [[ $operation_count -eq 0 ]]; then
         print_warning "No operation specified. Use one of:"
+        print_warning "  --step0         Setup dbt environment on Bastion Host"
         print_warning "  --step1         Create dbt-style analytics Views"
         print_warning "  --step2         Verify Views and show analytics results"
         print_warning "  --bastion-command  Execute custom dbt command on Bastion Host"
@@ -666,12 +700,16 @@ main() {
     fi
     
     # Execute step-based operations
+    if [[ "$STEP0" == true ]]; then
+        step0_setup_dbt_environment
+    fi
+    
     if [[ "$STEP1" == true ]]; then
-        step1_create_dbt_views
+        step1_create_dbt_models
     fi
     
     if [[ "$STEP2" == true ]]; then
-        step2_verify_views
+        step2_test_dbt_models
     fi
     
     print_success "=== Phase 4 dbt Analytics operations completed successfully ==="
