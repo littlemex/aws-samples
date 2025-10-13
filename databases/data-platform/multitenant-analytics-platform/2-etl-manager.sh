@@ -699,7 +699,7 @@ execute_bastion_command() {
         echo "$command_error"
     fi
     
-    print_insfo "=== EXECUTION SUMMARY ==="
+    print_info "=== EXECUTION SUMMARY ==="
     print_info "Exit code: ${exit_code:-unknown}"
     print_info "Execution time: ${duration}s"
     print_info "Command ID: $command_id"
