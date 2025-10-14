@@ -70,7 +70,7 @@
       "enabled": true,
       "directories": ["sql", "scripts"],
       "files": ["config.json"],
-      "excludePatterns": ["*.log", "*.tmp", "target/", "*.pyc", "__pycache__/"],
+      "excludePatterns": ["*.log", "*.tmp", "target/", "*.pyc", "__pycache__/", ".venv/", "dbt_packages/", "logs/", "node_modules/", "aws-samples-zero-etl/"],
       "compressionLevel": 6
     },
     "phase2": {
