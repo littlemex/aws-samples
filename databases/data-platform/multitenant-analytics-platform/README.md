@@ -525,7 +525,6 @@ aws cloudformation describe-stack-events --stack-name STACK_NAME
 - [Phase 2 詳細ガイド](README-PHASE-2.md)  
 - [Phase 3 詳細ガイド](README-PHASE-3.md)
 - [Phase 4 詳細ガイド](README-PHASE-4.md)
-- [Zero-ETL統合ガイド](ZERO_ETL_INTEGRATION_GUIDE.md)
 
 ---
 
