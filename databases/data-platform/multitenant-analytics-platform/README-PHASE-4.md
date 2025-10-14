@@ -7,25 +7,34 @@ Phase 4では、Zero-ETL統合されたRedshift Serverlessデータベースでd
 
 ### Phase 4: 3-step dbtワークフロー
 
-#### Step 0: dbt環境セットアップ
-```bash
-./4-etl-manager.sh -p aurora-postgresql -c config.json --step0
-```
-
-#### Step 1: dbtモデル実行
+#### Step 1: dbt環境セットアップ
 ```bash
 ./4-etl-manager.sh -p aurora-postgresql -c config.json --step1
 ```
 
-#### Step 2: dbtテスト実行
+#### Step 2: dbtモデル実行
 ```bash
 ./4-etl-manager.sh -p aurora-postgresql -c config.json --step2
 ```
 
+#### Step 3: dbtテスト実行
+```bash
+./4-etl-manager.sh -p aurora-postgresql -c config.json --step3
+```
+
 ### 実行結果確認
 ```bash
-# 作成されたテーブルの内容確認
-./2-etl-manager.sh -p aurora-postgresql -c config.json --skip-copy --bastion-command "export PGPASSWORD='AV8n808r' && psql -h multitenant-analytics-wg.776010787911.us-east-1.redshift-serverless.amazonaws.com -p 5439 -U admin -d dev -c 'SELECT * FROM analytics_analytics.zero_etl_all_users LIMIT 10;'"
+# 作成されたテーブルの内容確認（統一認証システム使用）
+./4-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/4-sql-execute.sh config.json sql/redshift/verification/verify-zero-etl-all-users.sql"
+```
+
+### Phase 4向け汎用SQL実行
+```bash
+# Phase 4専用のSQL実行スクリプト（4-sql-execute.sh）を使用
+./4-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/4-sql-execute.sh config.json sql/redshift/verification/verify-zero-etl-all-users.sql"
+
+# その他のdbt Analytics関連SQL実行
+./4-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/4-sql-execute.sh config.json sql/redshift/dbt/verify-all-users-view.sql"
 ```
 
 ## 📋 前提条件
@@ -226,33 +235,66 @@ ORDER BY tenant_id, user_id
 ## 🏃‍♂️ クイックスタート
 
 ```bash
-# Phase 4の完全実行
-./4-etl-manager.sh -p aurora-postgresql -c config.json --step0
-./4-etl-manager.sh -p aurora-postgresql -c config.json --step1  
-./4-etl-manager.sh -p aurora-postgresql -c config.json --step2
+# Phase 4の完全実行（統一認証システム対応）
+./4-etl-manager.sh -p aurora-postgresql -c config.json --step1
+./4-etl-manager.sh -p aurora-postgresql -c config.json --step2  
+./4-etl-manager.sh -p aurora-postgresql -c config.json --step3
 
 # 成功時の出力例
-[SUCCESS] dbt environment setup and verification completed successfully!
-[SUCCESS] 1 of 1 OK created sql table model analytics_analytics.zero_etl_all_users [SUCCESS in 16.46s]
+[SUCCESS] === Step 1 completed successfully ===
+[SUCCESS] 1 of 1 OK created sql table model analytics_analytics.zero_etl_all_users [SUCCESS in 1.53s]
+[SUCCESS] === Step 2 completed successfully ===
 [SUCCESS] 1 of 1 PASS test test_zero_etl_all_users [PASS in 4.21s]
+[SUCCESS] === Step 3 completed successfully ===
 [SUCCESS] 🎉 Real dbt Analytics Setup Complete!
+
+# 統一認証システムでの結果確認
+./4-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/4-sql-execute.sh config.json sql/redshift/verification/verify-zero-etl-all-users.sql"
 ```
 
-## 💡 実装の重要なポイント
+## � Phase 4新機能：統一認証システム
+
+### **4-sql-execute.sh スクリプト**
+Phase 4専用のSQL実行スクリプトで、他のフェーズと統一した認証情報管理を実現：
+
+#### 主な特徴：
+- **統一認証**: `bastion-redshift-connection.json`からの自動認証情報読み込み
+- **Phase検出**: SQLファイルパスから自動的に適切なデータベースを選択
+- **セキュリティ**: パスワードのハードコーディングを完全排除
+- **Phase 4最適化**: dbt作成テーブルへのアクセス用に`dev`データベースを自動選択
+
+#### 使用例：
+```bash
+# 基本的な使用方法
+./4-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/4-sql-execute.sh config.json sql/redshift/verification/verify-zero-etl-all-users.sql"
+
+# 高速実行（ファイル転送をスキップ）
+./4-etl-manager.sh -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/4-sql-execute.sh config.json sql/redshift/verification/verify-zero-etl-all-users.sql"
+```
+
+#### Phase検出ロジック：
+- `sql/redshift/verification/` → `dev`データベース（dbtテーブルにアクセス）
+- `sql/redshift/dbt/` → `dev`データベース（dbt関連操作）
+- `sql/redshift/schema/` → `multitenant_analytics_zeroetl`データベース（スキーマ操作）
+
+## �💡 実装の重要なポイント
 
 ### 1. **本格dbtフレームワーク**
 単純なSQLビューではなく、完全なdbtプロジェクト構造とマテリアライゼーション
 
-### 2. **Zero-ETL外部テーブル対応**
+### 2. **統一認証情報管理**
+全フェーズで一貫した認証情報管理システムにより、セキュリティとメンテナンス性を向上
+
+### 3. **Zero-ETL外部テーブル対応**
 Redshiftの外部テーブル制限を理解し、適切なテーブルマテリアライゼーションで回避
 
-### 3. **依存関係管理**
+### 4. **依存関係管理**
 dbt-redshift、redshift-connector、gitの正確なバージョン管理
 
-### 4. **型安全な設定**
+### 5. **型安全な設定**
 profiles.ymlのパラメータ型を適切に管理してOSError回避
 
-### 5. **実際のデータ検証**
+### 6. **実際のデータ検証**
 作成されたテーブルに実際のマルチテナントデータ（10行以上）が格納されることを確認
 
 Phase 4により、マルチテナント分析プラットフォームの本格的なdbt基盤が完成し、エンタープライズレベルのデータ変換・分析パイプラインが利用可能になりました。

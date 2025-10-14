@@ -14,9 +14,9 @@ CONFIG_FILE=""
 BASTION_COMMAND=""
 SKIP_COPY=false
 DRY_RUN=false
-STEP0=false
 STEP1=false
 STEP2=false
+STEP3=false
 
 # Function to print colored output
 print_info() {
@@ -48,9 +48,9 @@ OPTIONS:
     -c, --config CONFIG_FILE      JSON configuration file (required)
     
     # Step-by-step workflow:
-    --step0                     Step 0: Setup dbt environment on Bastion Host
-    --step1                     Step 1: Create dbt-style analytics Views in Redshift
-    --step2                     Step 2: Verify created Views and show analytics results
+    --step1                     Step 1: Setup dbt environment on Bastion Host
+    --step2                     Step 2: Create dbt-style analytics Views in Redshift
+    --step3                     Step 3: Verify created Views and show analytics results
     
     # Bastion Host operations:
     --bastion-command COMMAND   Execute command on Bastion Host via SSM
@@ -65,8 +65,14 @@ EXAMPLES:
     $0 -p aurora-postgresql -c config.json --step2   # Verify and show results
 
     # Manual dbt command execution:
-    $0 -p aurora-postgresql -c config.json --bastion-command "scripts/4-dbt-execute.sh config.json sql/redshift/dbt/simple-all-users-view.sql"
-    $0 -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/4-dbt-execute.sh config.json sql/redshift/dbt/verify-all-users-view.sql"
+    $0 -p aurora-postgresql -c config.json --bastion-command "scripts/4-dbt-execute.sh config.json 'dbt run'"
+    
+    # Phase 4 SQL execution (unified authentication):
+    $0 -p aurora-postgresql -c config.json --bastion-command "scripts/4-sql-execute.sh config.json sql/redshift/verification/verify-zero-etl-all-users.sql"
+    $0 -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/4-sql-execute.sh config.json sql/redshift/verification/verify-zero-etl-all-users.sql"
+    
+    # Any Redshift query with unified authentication:
+    $0 -p aurora-postgresql -c config.json --bastion-command "psql -h \$REDSHIFT_HOST -p \$REDSHIFT_PORT -U \$REDSHIFT_USER -d dev -c 'SELECT COUNT(*) FROM analytics_analytics.zero_etl_all_users;'"
 
 PREREQUISITES:
     Phase 1, 2, and 3 must be completed first:
@@ -95,16 +101,16 @@ while [[ $# -gt 0 ]]; do
             CONFIG_FILE="$2"
             shift 2
             ;;
-        --step0)
-            STEP0=true
-            shift
-            ;;
         --step1)
             STEP1=true
             shift
             ;;
         --step2)
             STEP2=true
+            shift
+            ;;
+        --step3)
+            STEP3=true
             shift
             ;;
         --bastion-command)
@@ -530,7 +536,227 @@ execute_ssm_command() {
     fi
 }
 
-# Function to execute command on Bastion Host via SSM (Phase4 specific)
+# Function to get Redshift connection information for Phase 4
+get_redshift_connection_info() {
+    local connection_file="bastion-redshift-connection.json"
+    
+    print_info "Loading Redshift connection information for Phase 4..."
+    
+    # Check if connection file exists
+    if [[ ! -f "$connection_file" ]]; then
+        print_warning "Connection file not found: $connection_file"
+        print_info "Phase 4 commands may not have Redshift connection info"
+        return 1
+    fi
+    
+    # Validate jq is available
+    if ! command -v jq >/dev/null 2>&1; then
+        print_warning "jq not available, skipping Redshift connection setup"
+        return 1
+    fi
+    
+    # Extract connection information
+    local host=$(jq -r '.connection.host // empty' "$connection_file" 2>/dev/null)
+    local port=$(jq -r '.connection.port // 5439' "$connection_file" 2>/dev/null)
+    local user=$(jq -r '.connection.username // "admin"' "$connection_file" 2>/dev/null)
+    local password=$(jq -r '.connection.password // empty' "$connection_file" 2>/dev/null)
+    
+    # Set connection variables if available
+    if [[ -n "$host" ]] && [[ "$host" != "null" ]]; then
+        export REDSHIFT_HOST="$host"
+        export REDSHIFT_PORT="$port"
+        export REDSHIFT_USER="$user"
+        export REDSHIFT_PASSWORD="$password"
+        
+        print_success "Phase 4 Redshift connection configured:"
+        print_info "  REDSHIFT_HOST=$REDSHIFT_HOST"
+        print_info "  REDSHIFT_PORT=$REDSHIFT_PORT"
+        print_info "  REDSHIFT_USER=$REDSHIFT_USER"
+        print_info "  REDSHIFT_PASSWORD=***set***"
+        return 0
+    else
+        print_warning "Could not load Redshift connection info from $connection_file"
+        return 1
+    fi
+}
+
+# Function to execute command on Bastion Host via SSM (Generic - similar to 2-etl-manager.sh)
+execute_bastion_command() {
+    local command="$1"
+    local bastion_instance_id="$2"
+    local region=$(get_aws_region)
+    
+    print_info "=== BASTION HOST COMMAND EXECUTION ==="
+    print_info "Instance ID: $bastion_instance_id"
+    print_info "Command: $command"
+    print_info "Region: $region"
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would execute command on Bastion Host"
+        return 0
+    fi
+    
+    # Get Redshift connection info for Phase 4
+    get_redshift_connection_info
+    
+    # Handle file transfer or skip-copy logic
+    local workspace_dir="/tmp/workspace"
+    
+    if [[ "$SKIP_COPY" == true ]]; then
+        print_info "Skipping file transfer (--skip-copy specified)"
+        print_info "Using existing workspace: $workspace_dir"
+        
+        # Verify existing workspace directory exists
+        local check_workspace_command="if [ -d $workspace_dir ]; then echo 'WORKSPACE: Directory exists'; ls -la $workspace_dir | head -10; else echo 'WORKSPACE: Directory does not exist'; fi"
+        
+        local check_command_id=$(aws ssm send-command \
+            --instance-ids "$bastion_instance_id" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "{\"commands\":[\"$check_workspace_command\"]}" \
+            --comment "Workspace Check" \
+            --timeout-seconds 60 \
+            --region "$region" \
+            --query 'Command.CommandId' --output text)
+        
+        if [[ -n "$check_command_id" ]]; then
+            aws ssm wait command-executed \
+                --command-id "$check_command_id" \
+                --instance-id "$bastion_instance_id" \
+                --region "$region" 2>/dev/null || true
+                
+            local check_output=$(aws ssm get-command-invocation \
+                --command-id "$check_command_id" \
+                --instance-id "$bastion_instance_id" \
+                --region "$region" \
+                --query 'StandardOutputContent' --output text 2>/dev/null)
+                
+            if [[ -n "$check_output" ]] && [[ "$check_output" != "None" ]]; then
+                if [[ "$check_output" == *"Directory does not exist"* ]]; then
+                    print_warning "Workspace directory $workspace_dir does not exist on Bastion Host"
+                    print_warning "You may need to run without --skip-copy first to transfer files"
+                else
+                    print_info "Workspace directory verified:"
+                    echo "$check_output" | while read line; do
+                        if [[ "$line" == *"WORKSPACE:"* ]]; then
+                            print_info "  $line"
+                        fi
+                    done
+                fi
+            fi
+        fi
+        
+        # Update command to run from workspace directory and set environment variables
+        local env_vars=""
+        if [[ -n "$REDSHIFT_HOST" ]]; then
+            env_vars="export REDSHIFT_HOST='$REDSHIFT_HOST' REDSHIFT_PORT='$REDSHIFT_PORT' REDSHIFT_USER='$REDSHIFT_USER' REDSHIFT_PASSWORD='$REDSHIFT_PASSWORD' && "
+        fi
+        command="cd $workspace_dir && ${env_vars}$command"
+        
+    else
+        # Create and transfer directory archive if configured
+        local archive_path=""
+        
+        archive_path=$(create_directory_archive "$CONFIG_FILE")
+        if [[ $? -eq 0 ]] && [[ -n "$archive_path" ]]; then
+            print_info "Transferring directories to Bastion Host..."
+            
+            # Transfer and setup workspace
+            transfer_workspace_to_bastion "$bastion_instance_id" "$archive_path" "$workspace_dir"
+            
+            # Clean up local archive  
+            rm -f "$archive_path"
+        fi
+        
+        # Update command to run from workspace directory and set environment variables
+        local env_vars=""
+        if [[ -n "$REDSHIFT_HOST" ]]; then
+            env_vars="export REDSHIFT_HOST='$REDSHIFT_HOST' REDSHIFT_PORT='$REDSHIFT_PORT' REDSHIFT_USER='$REDSHIFT_USER' REDSHIFT_PASSWORD='$REDSHIFT_PASSWORD' && "
+        fi
+        command="cd $workspace_dir && ${env_vars}$command"
+    fi
+    
+    # Capture start time
+    local start_time=$(date +%s)
+    
+    print_info "Sending command via SSM..."
+    
+    # Execute command via SSM
+    local command_id=$(aws ssm send-command \
+        --instance-ids "$bastion_instance_id" \
+        --document-name "AWS-RunShellScript" \
+        --parameters "{\"commands\":[\"$command\"]}" \
+        --comment "Phase 4 Bastion Command: $(echo "$command" | head -c 50)..." \
+        --timeout-seconds 600 \
+        --region "$region" \
+        --query 'Command.CommandId' --output text)
+    
+    if [[ -z "$command_id" ]]; then
+        print_error "Failed to initiate SSM command"
+        exit 1
+    fi
+    
+    print_info "SSM Command ID: $command_id"
+    print_info "Waiting for command completion..."
+    
+    # Wait for command to complete
+    aws ssm wait command-executed \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" || {
+        print_warning "Command execution may have timed out"
+    }
+    
+    # Calculate execution time
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    
+    # Get command results
+    local command_output=$(aws ssm get-command-invocation \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" \
+        --query 'StandardOutputContent' --output text 2>/dev/null)
+    
+    local command_error=$(aws ssm get-command-invocation \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" \
+        --query 'StandardErrorContent' --output text 2>/dev/null)
+    
+    local exit_code=$(aws ssm get-command-invocation \
+        --command-id "$command_id" \
+        --instance-id "$bastion_instance_id" \
+        --region "$region" \
+        --query 'ResponseCode' --output text 2>/dev/null)
+    
+    # Display results
+    print_info "=== COMMAND OUTPUT ==="
+    if [[ -n "$command_output" ]] && [[ "$command_output" != "None" ]]; then
+        echo "$command_output"
+    else
+        print_warning "No standard output"
+    fi
+    
+    if [[ -n "$command_error" ]] && [[ "$command_error" != "None" ]]; then
+        print_warning "=== ERROR OUTPUT ==="
+        echo "$command_error"
+    fi
+    
+    print_info "=== EXECUTION SUMMARY ==="
+    print_info "Exit code: ${exit_code:-unknown}"
+    print_info "Execution time: ${duration}s"
+    print_info "Command ID: $command_id"
+    
+    if [[ "$exit_code" == "0" ]]; then
+        print_success "Command executed successfully on Bastion Host!"
+        return 0
+    else
+        print_error "Command failed on Bastion Host with exit code: ${exit_code:-unknown}"
+        return 1
+    fi
+}
+
+# Function to execute dbt-specific command on Bastion Host via SSM (Phase4 dbt specific)
 execute_bastion_dbt_command() {
     local command="$1"
     local region=$(get_aws_region)
@@ -581,9 +807,9 @@ execute_bastion_dbt_command() {
     execute_ssm_command "$bastion_instance_id" "$command" "$region"
 }
 
-# Step 0: Setup dbt environment on Bastion Host
-step0_setup_dbt_environment() {
-    print_info "=== STEP 0: Setting up dbt Environment on Bastion Host ==="
+# Step 1: Setup dbt environment on Bastion Host
+step1_setup_dbt_environment() {
+    print_info "=== STEP 1: Setting up dbt Environment on Bastion Host ==="
     
     if [[ "$DRY_RUN" == true ]]; then
         print_info "DRY RUN: Would setup dbt environment on Bastion Host"
@@ -594,18 +820,18 @@ step0_setup_dbt_environment() {
     
     # Execute dbt setup script from scripts directory
     if execute_bastion_dbt_command "scripts/setup-dbt-environment.sh"; then
-        print_success "=== Step 0 completed successfully ==="
-        print_info "Next step: Run --step1 to create dbt models"
+        print_success "=== Step 1 completed successfully ==="
+        print_info "Next step: Run --step2 to create dbt models"
         print_info "dbt-redshift is now available in: /tmp/dbt-venv/"
     else
-        print_error "Step 0 failed - dbt environment setup unsuccessful"
+        print_error "Step 1 failed - dbt environment setup unsuccessful"
         return 1
     fi
 }
 
-# Step 1: Create dbt-style analytics models
-step1_create_dbt_models() {
-    print_info "=== STEP 1: Running dbt Models ==="
+# Step 2: Create dbt-style analytics models
+step2_create_dbt_models() {
+    print_info "=== STEP 2: Creating dbt Analytics Models ==="
     
     if [[ "$DRY_RUN" == true ]]; then
         print_info "DRY RUN: Would run dbt models in Redshift"
@@ -618,17 +844,17 @@ step1_create_dbt_models() {
     print_info "Running dbt models with Zero-ETL integration..."
     
     if execute_bastion_dbt_command "$dbt_run_command"; then
-        print_success "=== Step 1 completed successfully ==="
-        print_info "Next step: Run --step2 to test the dbt models"
+        print_success "=== Step 2 completed successfully ==="
+        print_info "Next step: Run --step3 to test the dbt models"
     else
-        print_error "Step 1 failed - dbt run unsuccessful"
+        print_error "Step 2 failed - dbt run unsuccessful"
         return 1
     fi
 }
 
-# Step 2: Test dbt models and show results
-step2_test_dbt_models() {
-    print_info "=== STEP 2: Testing dbt Models ==="
+# Step 3: Test dbt models and show results  
+step3_test_dbt_models() {
+    print_info "=== STEP 3: Testing dbt Models and Verification ==="
     
     if [[ "$DRY_RUN" == true ]]; then
         print_info "DRY RUN: Would test dbt models in Redshift"
@@ -641,7 +867,7 @@ step2_test_dbt_models() {
     print_info "Testing dbt models..."
     
     if execute_bastion_dbt_command "$dbt_test_command"; then
-        print_success "=== Step 2 completed successfully ==="
+        print_success "=== Step 3 completed successfully ==="
         print_success "🎉 Real dbt Analytics Setup Complete!"
         echo ""
         print_info "Your dbt analytics models are now ready:"
@@ -655,7 +881,7 @@ step2_test_dbt_models() {
         print_info "  • Run dbt docs generate to create documentation"
         print_info "  • Extend with additional dbt models and tests"
     else
-        print_error "Step 2 failed - dbt test unsuccessful"
+        print_error "Step 3 failed - dbt test unsuccessful"
         return 1
     fi
 }
@@ -669,16 +895,14 @@ main() {
     
     # Handle bastion command if specified
     if [[ -n "$BASTION_COMMAND" ]]; then
-        execute_bastion_dbt_command "$BASTION_COMMAND"
+        # Get Bastion Host instance ID from CloudFormation
+        local bastion_instance_id=$(get_bastion_instance_id)
+        execute_bastion_command "$BASTION_COMMAND" "$bastion_instance_id"
         exit $?
     fi
     
     # Validate at least one operation is requested
     local operation_count=0
-    
-    if [[ "$STEP0" == true ]]; then
-        operation_count=$((operation_count + 1))
-    fi
     
     if [[ "$STEP1" == true ]]; then
         operation_count=$((operation_count + 1))
@@ -688,11 +912,15 @@ main() {
         operation_count=$((operation_count + 1))
     fi
     
+    if [[ "$STEP3" == true ]]; then
+        operation_count=$((operation_count + 1))
+    fi
+    
     if [[ $operation_count -eq 0 ]]; then
         print_warning "No operation specified. Use one of:"
-        print_warning "  --step0         Setup dbt environment on Bastion Host"
-        print_warning "  --step1         Create dbt-style analytics Views"
-        print_warning "  --step2         Verify Views and show analytics results"
+        print_warning "  --step1         Setup dbt environment on Bastion Host"
+        print_warning "  --step2         Create dbt-style analytics Views"
+        print_warning "  --step3         Verify Views and show analytics results"
         print_warning "  --bastion-command  Execute custom dbt command on Bastion Host"
         echo ""
         show_usage
@@ -700,16 +928,16 @@ main() {
     fi
     
     # Execute step-based operations
-    if [[ "$STEP0" == true ]]; then
-        step0_setup_dbt_environment
-    fi
-    
     if [[ "$STEP1" == true ]]; then
-        step1_create_dbt_models
+        step1_setup_dbt_environment
     fi
     
     if [[ "$STEP2" == true ]]; then
-        step2_test_dbt_models
+        step2_create_dbt_models
+    fi
+    
+    if [[ "$STEP3" == true ]]; then
+        step3_test_dbt_models
     fi
     
     print_success "=== Phase 4 dbt Analytics operations completed successfully ==="

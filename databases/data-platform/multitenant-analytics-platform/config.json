@@ -94,8 +94,8 @@
     "phase4": {
       "autoTransfer": {
         "enabled": true,
-        "directories": ["sql/redshift/dbt"],
-        "files": ["config.json", "scripts/4-dbt-execute.sh", "scripts/setup-dbt-environment.sh", "bastion-redshift-connection.json"],
+        "directories": ["sql/redshift"],
+        "files": ["config.json", "scripts/4-sql-execute.sh", "scripts/4-dbt-execute.sh", "scripts/setup-dbt-environment.sh", "bastion-redshift-connection.json"],
         "excludePatterns": ["*.log", "*.tmp", "target/", "*.pyc", "__pycache__/", ".venv/", "dbt_packages/", "logs/", "node_modules/"],
         "compressionLevel": 6
       }
