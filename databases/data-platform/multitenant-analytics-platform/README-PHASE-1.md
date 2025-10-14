@@ -11,12 +11,12 @@ AWS CDKを使用してZero-ETL統合に必要なインフラストラクチャ�
 
 ### ドライラン（推奨）
 ```bash
-./etl-manager.sh -p aurora-postgresql -c scripts/config/multitenant-analytics.json --infrastructure-only --dry-run
+./1-etl-manager.sh -p aurora-postgresql -c config.json --dry-run
 ```
 
 ### 実際のデプロイ
 ```bash
-./etl-manager.sh -p aurora-postgresql -c scripts/config/multitenant-analytics.json --infrastructure-only
+./1-etl-manager.sh -p aurora-postgresql -c config.json
 ```
 
 ## 📦 デプロイされるリソース
@@ -34,18 +34,59 @@ AWS CDKを使用してZero-ETL統合に必要なインフラストラクチャ�
 - Parameter groups
 - Subnet groups
 - Secrets Manager integration
+- マルチテナント用スキーマ設定
 
 ### 3. Bastion Host Stack
 - EC2 instance in public subnet
 - SSM Session Manager enabled
 - PostgreSQL client pre-installed
 - IAM roles and policies
+- **🆕 自動ファイル転送機能**（config.json設定に基づく）
 
 ### 4. Redshift Serverless Stack
 - Redshift Serverless namespace
 - Redshift Serverless workgroup
 - IAM service roles
 - Resource policies (for Zero-ETL integration)
+- dbt統合用設定
+
+## 🆕 Config.json の新機能
+
+### Phase別データベース接続設定
+```json
+"phases": {
+  "database": {
+    "connection_db": "postgres", 
+    "description": "Database creation phase - connects to default postgres DB"
+  },
+  "schema": {
+    "connection_db": "multitenant_analytics",
+    "description": "Schema creation phase - connects to target DB"
+  }
+}
+```
+
+### Bastion Host自動転送設定
+```json
+"bastion": {
+  "autoTransfer": {
+    "enabled": true,
+    "directories": ["sql", "scripts"],
+    "files": ["config.json"],
+    "excludePatterns": ["*.log", "*.tmp", "target/"]
+  }
+}
+```
+
+### dbt統合設定
+```json
+"dbt": {
+  "enabled": true,
+  "profileName": "multitenant_analytics",
+  "targetDatabase": "multitenant_analytics",
+  "targetSchema": "analytics"
+}
+```
 
 ## ✅ 成功条件
 
@@ -100,7 +141,9 @@ Phase 2（Database Setup）に進むための必須条件：
 - jq (JSON processor)
 
 ### 設定ファイル
-- `scripts/config/multitenant-analytics.json` 存在確認
+- `config.json` 存在確認（プロジェクト設定、Aurora、Redshift、Zero-ETL設定を含む）
+- dbt統合設定が有効化されていること
+- Bastion Host自動転送設定が適切に構成されていること
 
 ## 🐛 トラブルシューティング
 

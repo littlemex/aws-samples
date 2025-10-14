@@ -204,11 +204,11 @@ get_transfer_directories() {
         return 1
     fi
     
-    # Extract bastion configuration
-    local auto_transfer_enabled=$(jq -r '.bastion.autoTransfer.enabled // false' "$config_file" 2>/dev/null)
+    # Extract Phase 2 specific bastion configuration
+    local auto_transfer_enabled=$(jq -r '.bastion.phase2.autoTransfer.enabled // false' "$config_file" 2>/dev/null)
     
     if [[ "$auto_transfer_enabled" == "true" ]]; then
-        local directories=$(jq -r '.bastion.autoTransfer.directories[]? // empty' "$config_file" 2>/dev/null)
+        local directories=$(jq -r '.bastion.phase2.autoTransfer.directories[]? // empty' "$config_file" 2>/dev/null)
         echo "$directories"
         return 0
     else
@@ -230,10 +230,10 @@ create_directory_archive() {
         has_directories=true
     fi
     
-    # Get individual files to transfer
+    # Get individual files to transfer (Phase 2 specific)
     local files=""
     if command -v jq >/dev/null 2>&1; then
-        files=$(jq -r '.bastion.autoTransfer.files[]? // empty' "$config_file" 2>/dev/null)
+        files=$(jq -r '.bastion.phase2.autoTransfer.files[]? // empty' "$config_file" 2>/dev/null)
     fi
     
     # Check if we have anything to transfer
@@ -242,10 +242,10 @@ create_directory_archive() {
         return 1
     fi
     
-    # Get exclude patterns
+    # Get exclude patterns (Phase 2 specific)
     local exclude_patterns=""
     if command -v jq >/dev/null 2>&1; then
-        local patterns=$(jq -r '.bastion.autoTransfer.excludePatterns[]? // empty' "$config_file" 2>/dev/null)
+        local patterns=$(jq -r '.bastion.phase2.autoTransfer.excludePatterns[]? // empty' "$config_file" 2>/dev/null)
         for pattern in $patterns; do
             exclude_patterns="$exclude_patterns --exclude='$pattern'"
         done

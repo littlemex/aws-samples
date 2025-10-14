@@ -52,13 +52,13 @@ OPTIONS:
 
 EXAMPLES:
     # Deploy Aurora PostgreSQL infrastructure
-    $0 -p aurora-postgresql -c config/multitenant-analytics.json
+    $0 -p aurora-postgresql -c config.json
 
     # Dry run to see what would be deployed
-    $0 -p aurora-postgresql -c config/dev.json --dry-run
+    $0 -p aurora-postgresql -c config.json --dry-run
 
     # Clean up resources
-    $0 -p aurora-postgresql -c config/dev.json --cleanup
+    $0 -p aurora-postgresql -c config.json --cleanup
 
 SUPPORTED PATTERNS:
     - aurora-mysql: Aurora MySQL to Redshift Serverless
@@ -67,7 +67,16 @@ SUPPORTED PATTERNS:
 
 NEXT STEPS:
     After Phase 1 completes successfully, run:
-    ./2-etl-manager.sh -p PATTERN -c CONFIG_FILE --setup-database
+    ./2-etl-manager.sh -p PATTERN -c config.json --setup-database
+
+CONFIG FILE:
+    The config.json file should contain:
+    - Project settings (name, region, environment)
+    - Aurora configuration (cluster settings, connection details)
+    - Redshift Serverless settings (namespace, workgroup)
+    - Zero-ETL integration settings
+    - Bastion host auto-transfer configuration
+    - dbt integration settings
 
 EOF
 }
