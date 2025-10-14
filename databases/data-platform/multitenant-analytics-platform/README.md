@@ -155,34 +155,14 @@ graph LR
 ### Phase 1: インフラストラクチャ構築
 Aurora PostgreSQLクラスターとBastion Hostを構築します。すべてのデータベースはプライベートサブネット内に配置され、Bastion Host経由でのみアクセス可能になります。
 
-```bash
-./1-etl-manager.sh -p aurora-postgresql -c config.json --deploy
-```
-
 ### Phase 2: マルチテナントデータ投入
 Bastion Host経由でAurora PostgreSQLにアクセスし、3つのテナント（tenant_a、tenant_b、tenant_c）のスキーマとサンプルデータを作成します。
-
-```bash
-./2-etl-manager.sh -p aurora-postgresql -c config.json --deploy
-```
 
 ### Phase 3: Zero-ETL統合
 Redshift Serverlessを構築し、Aurora PostgreSQLからのリアルタイムデータ同期を確立します。Zero-ETL統合により、運用データベースに負荷をかけることなく分析が可能になります。
 
-```bash
-./3-etl-manager.sh -p aurora-postgresql -c config.json --step1
-./3-etl-manager.sh -p aurora-postgresql -c config.json --step2
-./3-etl-manager.sh -p aurora-postgresql -c config.json --step3
-```
-
 ### Phase 4: dbt分析基盤
 dbtフレームワークを活用し、Zero-ETL統合されたデータから分析テーブルを作成します。全テナントのデータを統合した分析ビューと品質テストを自動化します。
-
-```bash
-./4-etl-manager.sh -p aurora-postgresql -c config.json --step0
-./4-etl-manager.sh -p aurora-postgresql -c config.json --step1
-./4-etl-manager.sh -p aurora-postgresql -c config.json --step2
-```
 
 ## ⚙️ config.json 設定ガイド
 
@@ -464,6 +444,7 @@ multitenant-analytics-platform/
 ├── scripts/                       # 📁 実行スクリプト群
 │   ├── 2-sql-execute.sh          # Phase 2 SQL実行
 │   ├── 3-sql-execute.sh          # Phase 3 SQL実行
+│   ├── 4-sql-execute.sh          # Phase 4 SQL実行
 │   ├── 4-dbt-execute.sh          # Phase 4 dbt実行
 │   ├── setup-dbt-environment.sh  # dbt環境セットアップ
 │   └── configure-bastion-redshift-sg.py  # セキュリティグループ設定
