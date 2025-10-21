@@ -111,10 +111,23 @@ MCP サーバーを導入・実行する際には、以下のセキュリティ�
    - MCP サーバーのリソース使用状況を監視すること
    - 不要なサーバーは無効化または削除すること
 
+## MCP 機能テスト
+
+MCP サーバーが正しく動作しているかを確認するために、[MCP 機能テストガイド](./test-mcp.md)を用意しています。このガイドでは、基本的な機能テストから高度な連携テスト、セキュリティテストまで、包括的なテスト方法を説明しています。
+
+### テスト項目
+
+- 基本環境の確認
+- 各 MCP サーバーの動作確認
+- 複数サーバーの連携テスト
+- エラーハンドリングの確認
+- パフォーマンステスト
+- セキュリティテスト
+
 ## 参考リンク
 
 - [Model Context Protocol 公式ドキュメント](https://modelcontextprotocol.github.io/)
 - [MCP Servers GitHub リポジトリ](https://github.com/modelcontextprotocol/servers)
 - [TypeScript 公式ドキュメント](https://www.typescriptlang.org/docs/)
 - [Anthropic Claude 開発者ドキュメント](https://docs.anthropic.com/)
-- [AWS MCP GitHub リポジトリ](https://github.com/aws/aws-mcp)
+- [AWS MCP GitHub リポジトリ](https://github.com/awslabs/mcp)
