@@ -17,6 +17,7 @@ DRY_RUN=false
 STEP1=false
 STEP2=false
 STEP3=false
+DELETE_INTEGRATION=false
 
 # Function to print colored output
 print_info() {
@@ -66,8 +67,8 @@ EXAMPLES:
     $0 -p aurora-postgresql -c config.json --step3   # Verify and complete
 
     # Bastion Host SQL execution (similar to Phase2):
-    $0 -p aurora-postgresql -c config.json --bastion-command "scripts/3-sql-execute.sh config.json sql/redshift/database/create-integration-database.sql"
-    $0 -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/3-sql-execute.sh config.json sql/redshift/verification/verify-zero-etl-setup.sql"
+    $0 -p aurora-postgresql -c config.json --bastion-command "scripts/redshift-sql-execute.sh config.json sql/redshift/database/create-integration-database.sql"
+    $0 -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/redshift-sql-execute.sh config.json sql/redshift/verification/verify-zero-etl-setup.sql"
 
 PREREQUISITES:
     Phase 1 and Phase 2 must be completed first:
@@ -533,225 +534,157 @@ verify_data_replication() {
     fi
 }
 
+
+# Function to generate SQL files from templates (simplified)
+generate_sql_files() {
+    print_info "Generating SQL files from templates..."
+    
+    # Generate database creation SQL from template
+    if [[ -f "sql/redshift/database/create-integration-database.template.sql" ]]; then
+        if scripts/generate-integration-sql.sh \
+            --template sql/redshift/database/create-integration-database.template.sql \
+            --output sql/redshift/database/create-integration-database-generated.sql; then
+            print_success "Generated: create-integration-database-generated.sql"
+        else
+            print_warning "Failed to generate database creation SQL"
+        fi
+    fi
+}
+
 # Step 1: Deploy Zero-ETL CDK infrastructure  
 step1_deploy_infrastructure() {
     local pattern_dir="$1"
     
     print_info "=== STEP 1: Deploying Zero-ETL CDK Infrastructure ==="
     
+    # Deploy Zero-ETL infrastructure
     deploy_zero_etl "$pattern_dir"
     
+    # Wait a bit for the integration to be created
+    print_info "Waiting for Zero-ETL integration to be available..."
+    sleep 30
+    
+    print_info "Zero-ETL integration created successfully"
+    print_info "Integration will be available shortly for database creation"
+    print_info ""
+    print_info "Next steps:"
+    print_info "  1. Wait for integration to become active"
+    print_info "  2. Retrieve integration ID: cd scripts && uv run retrieve-integration-id.py --config ../config.json"
+    print_info "  3. Generate SQL files: scripts/generate-integration-sql.sh --template sql/redshift/database/create-integration-database.template.sql --output sql/redshift/database/create-integration-database-generated.sql"
+    
     print_success "=== Step 1 completed successfully ==="
-    print_info "Next step: Run --step2 to get database creation instructions"
+    print_info "Next step: Run --step2 to configure Bastion Host and create database"
+    
+    if [[ -n "$integration_id" ]]; then
+        print_info "✅ Integration ID retrieved and .env updated"
+        print_info "✅ SQL files generated from templates"
+        print_info "Ready to proceed with step2"
+    else
+        print_warning "⚠️  Integration ID not yet available - may need manual retrieval"
+        print_info "Check integration status in AWS Console or retry step1 later"
+    fi
 }
 
-# Step 2: Configure Bastion Host and create database via psql
+# Step 2: Configure Bastion Host and create database via psql (simplified)
 step2_bastion_setup() {
-    local region=$(get_aws_region)
-    
     print_info "=== STEP 2: Bastion Host Configuration & Database Creation ==="
     
     if [[ "$DRY_RUN" == true ]]; then
-        print_info "DRY RUN: Would configure Bastion host for Redshift access"
+        print_info "DRY RUN: Would configure Bastion host and create database"
         return 0
     fi
     
     # Step 2a: Configure Bastion Security Groups
-    print_info "🔧 Configuring Bastion Host security groups for Redshift access..."
+    print_info "🔧 Configuring Bastion Host security groups..."
     
     if ! python3 scripts/configure-bastion-redshift-sg.py --config "$CONFIG_FILE"; then
         print_error "Failed to configure Bastion security groups"
         return 1
     fi
     
-    print_success "Bastion configuration completed"
+    # Step 2b: Generate SQL files from templates
+    print_info "📝 Generating SQL files..."
+    generate_sql_files
     
-    # Step 2b: Create database via Bastion psql connection
-    print_info "🗄️  Creating Zero-ETL database via Bastion host..."
+    # Step 2c: Show manual database creation guide
+    print_info "🗄️  Database creation guide..."
+    
+    # Check for generated SQL file first, then fallback to template
+    local sql_file=""
+    if [[ -f "sql/redshift/database/create-integration-database-generated.sql" ]]; then
+        sql_file="sql/redshift/database/create-integration-database-generated.sql"
+    elif [[ -f "sql/redshift/database/create-integration-database.sql" ]]; then
+        sql_file="sql/redshift/database/create-integration-database.sql"
+    else
+        print_error "No suitable SQL file found for database creation"
+        return 1
+    fi
+    
+    print_info "Using SQL file: $sql_file"
+    show_manual_bastion_guide "$sql_file"
+    
+    print_success "=== Step 2 completed successfully ==="
+    print_info "Next step: Run --step3 to verify data replication"
+}
+
+
+# Function to show manual Bastion connection and database creation guide
+show_manual_bastion_guide() {
+    local sql_file="${1:-}"
+    
+    echo ""
+    print_success "=== Manual Bastion Connection & Database Creation Guide ==="
+    echo ""
     
     if [[ -f "bastion-redshift-connection.json" ]]; then
         local bastion_id=$(jq -r '.bastion.instance_id' bastion-redshift-connection.json)
         local redshift_host=$(jq -r '.connection.host' bastion-redshift-connection.json)
         local redshift_port=$(jq -r '.connection.port' bastion-redshift-connection.json)
         local redshift_user=$(jq -r '.connection.username' bastion-redshift-connection.json)
-        local redshift_password=$(jq -r '.connection.password // ""' bastion-redshift-connection.json)
         
-        print_info "Using Bastion instance: $bastion_id"
-        print_info "Redshift endpoint: $redshift_host:$redshift_port"
+        print_info "📍 Connection Details:"
+        print_info "   Bastion Instance: $bastion_id"
+        print_info "   Redshift Host: $redshift_host:$redshift_port"
+        print_info "   Username: $redshift_user"
+        echo ""
         
-        # Get integration ID first
-        print_info "Getting Zero-ETL integration ID..."
-        local integration_id=""
-        local integration_info=$(aws rds describe-integrations \
-            --region "$region" \
-            --query 'Integrations[0].IntegrationArn' \
-            --output text 2>/dev/null || echo "")
+        print_info "📋 Step-by-step instructions:"
+        echo ""
+        print_info "1. Connect to Bastion Host:"
+        echo -e "${YELLOW}   aws ec2-instance-connect ssh --instance-id $bastion_id --os-user ec2-user${NC}"
+        echo ""
         
-        if [[ -n "$integration_info" && "$integration_info" != "None" ]]; then
-            integration_id=$(echo "$integration_info" | sed 's/.*://')
-            print_info "Integration ID: $integration_id"
+        if [[ -n "$sql_file" ]]; then
+            print_info "2. Transfer SQL file to Bastion (if needed):"
+            echo -e "${YELLOW}   scp $sql_file ec2-user@bastion:~/database-creation.sql${NC}"
+            echo ""
+            
+            print_info "3. Connect to Redshift and execute SQL:"
+            echo -e "${YELLOW}   psql -h $redshift_host -p $redshift_port -U $redshift_user -d dev -f ~/database-creation.sql${NC}"
         else
-            print_error "Could not retrieve integration ID"
-            print_warning "Manual database creation required via Bastion host"
-            show_manual_bastion_guide
-            return 0
-        fi
-        
-        # Create database via Bastion
-        create_database_via_bastion "$bastion_id" "$redshift_host" "$redshift_port" "$redshift_user" "$integration_id"
-        
-    else
-        print_warning "Connection configuration not found, showing manual guide"
-        show_manual_bastion_guide
-    fi
-    
-    print_success "=== Step 2 completed successfully ==="
-    print_info "Next step: Run --step3 to verify data replication"
-}
-
-# Function to create database via Bastion host
-create_database_via_bastion() {
-    local bastion_id="$1"
-    local host="$2"
-    local port="$3"
-    local user="$4"
-    local integration_id="$5"
-    
-    print_info "🔗 Connecting to Bastion host and creating database..."
-    
-    # Create SQL commands
-    local sql_commands=""
-    if [[ "$PATTERN" == "aurora-postgresql" ]]; then
-        sql_commands="CREATE DATABASE multitenant_analytics_zeroetl FROM INTEGRATION '$integration_id' DATABASE multitenant_analytics;"
-    else
-        sql_commands="CREATE DATABASE multitenant_analytics_zeroetl FROM INTEGRATION '$integration_id';"
-    fi
-    
-    # Try to execute via SSM (Session Manager) if available
-    if command -v aws >/dev/null 2>&1; then
-        print_info "Attempting to execute CREATE DATABASE via Bastion..."
-        
-        # Create a temporary script for the Bastion host
-        local temp_script=$(cat << EOF
-#!/bin/bash
-export PGPASSWORD="$redshift_password"
-echo "Connecting to Redshift..."
-psql -h "$host" -p "$port" -U "$user" -d dev -c "$sql_commands"
-if [ \$? -eq 0 ]; then
-    echo "✅ Database created successfully"
-    echo "Listing databases to verify:"
-    psql -h "$host" -p "$port" -U "$user" -d dev -c "\\l"
-else
-    echo "❌ Database creation failed"
-    exit 1
-fi
-EOF
-)
-        
-        # Try to execute via ec2-instance-connect
-        if aws ec2-instance-connect send-ssh-public-key \
-            --instance-id "$bastion_id" \
-            --instance-os-user ec2-user \
-            --ssh-public-key file://$HOME/.ssh/id_rsa.pub \
-            --region "$(get_aws_region)" >/dev/null 2>&1; then
+            print_info "2. Connect to Redshift:"
+            echo -e "${YELLOW}   psql -h $redshift_host -p $redshift_port -U $redshift_user -d dev -W${NC}"
+            echo ""
             
-            print_info "Executing database creation via EC2 Instance Connect..."
-            
-            # Note: This is a simplified approach - in practice, you'd need proper SSH key handling
-            print_warning "Automated execution requires SSH key setup"
-            print_info "Showing manual connection guide instead..."
+            print_info "3. Get integration ID and create database:"
+            echo -e "${YELLOW}   SELECT integration_id FROM svv_integration WHERE integration_name LIKE '%multitenant%';${NC}"
+            echo -e "${YELLOW}   CREATE DATABASE multitenant_analytics_zeroetl FROM INTEGRATION '<integration_id>' DATABASE multitenant_analytics;${NC}"
         fi
-    fi
-    
-    # Fallback to manual instructions
-    show_manual_database_creation "$bastion_id" "$host" "$port" "$user" "$integration_id"
-}
-
-# Function to show manual Bastion connection guide
-show_manual_bastion_guide() {
-    echo ""
-    print_success "=== Manual Bastion Connection Guide ==="
-    echo ""
-    
-    if [[ -f "bastion-redshift-connection.json" ]]; then
-        cat bastion-redshift-connection.json | jq -r '"
-🔗 Bastion Host Connection Guide
-" + "="*50 + "
-
-📍 Bastion Instance: " + .bastion.instance_id + "
-   Public IP: " + (.bastion.public_ip // "N/A") + "
-   Private IP: " + (.bastion.private_ip // "N/A") + "
-
-🎯 Redshift Connection Details:
-   Host: " + .connection.host + "
-   Port: " + (.connection.port | tostring) + "
-   Database: " + .connection.database + "
-   Username: " + .connection.username + "
-   Workgroup: " + .connection.workgroup + "
-
-📋 Connection Steps:
-
-1. Connect to Bastion Host:
-   aws ec2-instance-connect ssh --instance-id " + .bastion.instance_id + " --os-user ec2-user
-
-2. Connect to Redshift from Bastion:
-   psql -h " + .connection.host + " -p " + (.connection.port | tostring) + " -U " + .connection.username + " -d " + .connection.database + " -W
-
-3. Create Zero-ETL Database:
-   -- First, get integration ID
-   SELECT integration_id FROM svv_integration WHERE integration_name LIKE '\''%multitenant%'\'';
-   
-   -- Then create database (replace <integration_id> with result from above)
-   CREATE DATABASE multitenant_analytics_zeroetl FROM INTEGRATION '\''<integration_id>'\'' DATABASE multitenant_analytics;
-
-💡 Tips:
-   - You'\''ll be prompted for the password from Secrets Manager: " + (.connection.secret_name // "RedshiftAdminUserSecret-*") + "
-   - Use \\l to list databases, \\c database_name to switch databases
-   - Use \\dt to list tables in current database
-"'
+        echo ""
+        
+        print_info "💡 Tips:"
+        print_info "   - Password will be prompted from Secrets Manager"
+        print_info "   - Use \\l to list databases, \\c to switch databases"
+        print_info "   - Use \\dt to list tables in current database"
+        
     else
         print_warning "Connection configuration file not found"
-        print_info "Please run the configuration script manually:"
+        print_info "Please run the configuration script first:"
         print_info "   python3 scripts/configure-bastion-redshift-sg.py --config $CONFIG_FILE"
     fi
-    echo ""
-}
-
-# Function to show manual database creation steps
-show_manual_database_creation() {
-    local bastion_id="$1"
-    local host="$2"
-    local port="$3"
-    local user="$4"
-    local integration_id="$5"
     
     echo ""
-    print_success "=== Manual Database Creation Steps ==="
-    echo ""
-    
-    print_info "📋 Step-by-step instructions:"
-    echo ""
-    print_info "1. Connect to Bastion Host:"
-    echo -e "${YELLOW}   aws ec2-instance-connect ssh --instance-id $bastion_id --os-user ec2-user${NC}"
-    echo ""
-    
-    print_info "2. Connect to Redshift:"
-    echo -e "${YELLOW}   psql -h $host -p $port -U $user -d dev -W${NC}"
-    echo ""
-    
-    print_info "3. Create Zero-ETL Database:"
-    if [[ "$PATTERN" == "aurora-postgresql" ]]; then
-        echo -e "${YELLOW}   CREATE DATABASE multitenant_analytics_zeroetl FROM INTEGRATION '$integration_id' DATABASE multitenant_analytics;${NC}"
-    else
-        echo -e "${YELLOW}   CREATE DATABASE multitenant_analytics_zeroetl FROM INTEGRATION '$integration_id';${NC}"
-    fi
-    echo ""
-    
-    print_info "4. Verify database creation:"
-    echo -e "${YELLOW}   \\l${NC}"
-    echo ""
-    
-    print_success "After successful database creation, run --step3 to verify data replication"
+    print_success "After successful database creation, run --step3 to verify setup"
     echo ""
 }
 
@@ -837,263 +770,60 @@ get_bastion_instance_id() {
     echo "$bastion_instance_id"
 }
 
-# Function to read config and get directories to transfer (Phase3 specific)
-get_transfer_directories() {
-    local config_file="$1"
-    
-    if [[ ! -f "$config_file" ]]; then
-        print_error "Config file not found: $config_file" >&2
-        return 1
-    fi
-    
-    # Check if jq is available
-    if ! command -v jq >/dev/null 2>&1; then
-        print_warning "jq not found, skipping directory auto-transfer" >&2
-        return 1
-    fi
-    
-    # Extract Phase3 specific bastion configuration
-    local auto_transfer_enabled=$(jq -r '.bastion.phase3.autoTransfer.enabled // false' "$config_file" 2>/dev/null)
-    
-    if [[ "$auto_transfer_enabled" == "true" ]]; then
-        local directories=$(jq -r '.bastion.phase3.autoTransfer.directories[]? // empty' "$config_file" 2>/dev/null)
-        echo "$directories"
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Function to create directory archive for transfer (from Phase2, enhanced for Phase3)
+# Function to create simple file archive for Bastion transfer (simplified)
 create_directory_archive() {
     local config_file="$1"
     local archive_path="/tmp/workspace-$(date +%s).tar.gz"
     
-    print_info "Creating directory and file archive for transfer..." >&2
+    print_info "Creating file archive for transfer..."
     
-    # Get directories to transfer
-    local directories=$(get_transfer_directories "$config_file")
-    local has_directories=false
-    if [[ $? -eq 0 ]] && [[ -n "$directories" ]]; then
-        has_directories=true
+    # Essential files for Phase3
+    local files="config.json scripts/redshift-sql-execute.sh"
+    
+    # Add bastion connection file if exists
+    if [[ -f "bastion-redshift-connection.json" ]]; then
+        files="$files bastion-redshift-connection.json"
     fi
     
-    # Get individual files to transfer (Phase3 specific)
-    local files=""
-    if command -v jq >/dev/null 2>&1; then
-        files=$(jq -r '.bastion.phase3.autoTransfer.files[]? // empty' "$config_file" 2>/dev/null)
-    fi
-    
-    # If no phase3 specific files configured, fall back to phase3 files list
-    if [[ -z "$files" ]]; then
-        files="config.json scripts/3-sql-execute.sh bastion-redshift-connection.json"
-    fi
-    
-    # Check if we have anything to transfer
-    if [[ "$has_directories" == false ]] && [[ -z "$files" ]]; then
-        print_info "No directories or files configured for auto-transfer" >&2
-        return 1
-    fi
-    
-    # Get exclude patterns
-    local exclude_patterns=""
-    if command -v jq >/dev/null 2>&1; then
-        local patterns=$(jq -r '.bastion.autoTransfer.excludePatterns[]? // empty' "$config_file" 2>/dev/null)
-        for pattern in $patterns; do
-            exclude_patterns="$exclude_patterns --exclude='$pattern'"
-        done
-    fi
-    
-    # Build list of items to archive
-    local tar_items=""
-    
-    print_info "[DEBUG] Checking local files before archiving..." >&2
-    
-    # Add directories
-    if [[ "$has_directories" == true ]]; then
-        for dir in $directories; do
-            if [[ -d "$dir" ]]; then
-                local dir_size=$(du -sh "$dir" 2>/dev/null | cut -f1)
-                local file_count=$(find "$dir" -type f | wc -l)
-                tar_items="$tar_items $dir"
-                print_info "Including directory: $dir (size: $dir_size, files: $file_count)" >&2
-            else
-                print_warning "Directory not found, skipping: $dir" >&2
-            fi
-        done
-    fi
-    
-    # Add individual files
-    for file in $files; do
-        if [[ -f "$file" ]]; then
-            local file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
-            tar_items="$tar_items $file"
-            print_info "Including file: $file (size: $file_size)" >&2
-        else
-            print_warning "File not found, skipping: $file" >&2
-        fi
-    done
-    
-    if [[ -n "$tar_items" ]]; then
-        print_info "[DEBUG] Creating tar archive with items: $tar_items" >&2
-        
-        # Create archive with better error handling
-        local tar_output=""
-        if [[ -n "$exclude_patterns" ]]; then
-            tar_output=$(tar -czf "$archive_path" $exclude_patterns $tar_items 2>&1)
-        else
-            tar_output=$(tar -czf "$archive_path" $tar_items 2>&1)
-        fi
-        local tar_exit_code=$?
-        
-        # Show tar output if there were any messages
-        if [[ -n "$tar_output" ]]; then
-            print_info "[DEBUG] Tar output: $tar_output" >&2
-        fi
-        
-        # Verify archive was actually created and check its contents
-        if [[ -f "$archive_path" ]] && [[ $tar_exit_code -eq 0 ]]; then
-            local archive_size=$(ls -lh "$archive_path" 2>/dev/null | awk '{print $5}')
-            print_success "Archive created: $archive_path (size: $archive_size)" >&2
-            
-            # List archive contents for verification
-            print_info "[DEBUG] Archive contents:" >&2
-            tar -tzf "$archive_path" 2>/dev/null | head -20 | while read line; do
-                print_info "  $line" >&2
-            done
-            
-            # If there are more than 20 files, show count
-            local total_files=$(tar -tzf "$archive_path" 2>/dev/null | wc -l)
-            if [[ $total_files -gt 20 ]]; then
-                print_info "  ... and $((total_files - 20)) more files" >&2
-            fi
-            
-            # Only output the archive path to stdout
-            echo "$archive_path"
-            return 0
-        else
-            print_error "Failed to create archive (exit code: $tar_exit_code)" >&2
-            if [[ -n "$tar_output" ]]; then
-                print_error "Tar error: $tar_output" >&2
-            fi
-            return 1
-        fi
+    # Create simple archive
+    if tar -czf "$archive_path" $files 2>/dev/null; then
+        print_success "Archive created: $archive_path"
+        echo "$archive_path"
+        return 0
     else
-        print_warning "No valid directories or files to archive" >&2
+        print_error "Failed to create archive"
         return 1
     fi
 }
 
-# Function to transfer workspace to Bastion (from Phase2, with size checking)
+# Function to transfer workspace to Bastion (simplified)
 transfer_workspace_to_bastion() {
     local bastion_instance_id="$1"
     local archive_path="$2"
     local workspace_dir="$3"
     local region=$(get_aws_region)
     
-    print_info "Transferring workspace to Bastion Host..."
+    print_info "Transferring files to Bastion Host..."
     
-    # Check archive size before proceeding
-    local archive_size=$(stat -c%s "$archive_path" 2>/dev/null || echo "0")
-    print_info "[DEBUG] Archive size: $archive_size bytes"
-    
-    if [[ $archive_size -gt 1048576 ]]; then  # 1MB limit for base64 encoding
-        print_error "Archive too large for transfer ($archive_size bytes). Consider reducing files or using exclude patterns."
-        return 1
-    fi
-    
-    # Encode archive as base64
+    # Simple base64 transfer
     local archive_b64=$(base64 -w 0 < "$archive_path")
-    local b64_length=${#archive_b64}
-    print_info "[DEBUG] Base64 encoded size: $b64_length characters"
+    local setup_command="mkdir -p $workspace_dir && cd $workspace_dir && echo '$archive_b64' | base64 -d | tar -xzf - && chmod +x scripts/*.sh"
     
-    # Create setup command for directory transfer with better error handling
-    local setup_command="mkdir -p $workspace_dir && cd $workspace_dir && echo 'Starting base64 decode...' && echo '$archive_b64' | base64 -d > archive.tar.gz && echo 'Base64 decode completed, extracting...' && tar -xzf archive.tar.gz && rm -f archive.tar.gz && echo 'Setting execute permissions...' && chmod +x scripts/*.sh 2>/dev/null || true && echo 'Directory transfer completed successfully'"
-    
-    # Execute setup
-    local setup_command_id=$(aws ssm send-command \
+    # Execute transfer
+    local command_id=$(aws ssm send-command \
         --instance-ids "$bastion_instance_id" \
         --document-name "AWS-RunShellScript" \
         --parameters "{\"commands\":[\"$setup_command\"]}" \
-        --comment "Workspace Transfer" \
-        --timeout-seconds 300 \
+        --comment "File Transfer" \
         --region "$region" \
         --query 'Command.CommandId' --output text)
     
-    if [[ -n "$setup_command_id" ]]; then
-        print_info "Waiting for workspace transfer completion..."
-        aws ssm wait command-executed \
-            --command-id "$setup_command_id" \
-            --instance-id "$bastion_instance_id" \
-            --region "$region" || {
-            print_warning "Directory transfer may have timed out"
-        }
-        
-        # Get transfer results
-        local transfer_output=$(aws ssm get-command-invocation \
-            --command-id "$setup_command_id" \
-            --instance-id "$bastion_instance_id" \
-            --region "$region" \
-            --query 'StandardOutputContent' --output text 2>/dev/null)
-            
-        local transfer_error=$(aws ssm get-command-invocation \
-            --command-id "$setup_command_id" \
-            --instance-id "$bastion_instance_id" \
-            --region "$region" \
-            --query 'StandardErrorContent' --output text 2>/dev/null)
-            
-        local transfer_exit_code=$(aws ssm get-command-invocation \
-            --command-id "$setup_command_id" \
-            --instance-id "$bastion_instance_id" \
-            --region "$region" \
-            --query 'ResponseCode' --output text 2>/dev/null)
-        
-        print_info "[DEBUG] Transfer results:"
-        print_info "  Exit code: ${transfer_exit_code:-unknown}"
-        if [[ -n "$transfer_output" ]] && [[ "$transfer_output" != "None" ]]; then
-            print_info "  Output: $transfer_output"
-        fi
-        if [[ -n "$transfer_error" ]] && [[ "$transfer_error" != "None" ]]; then
-            print_warning "  Error: $transfer_error"
-        fi
-        
-        # Verify files were transferred successfully
-        print_info "Verifying transferred files on Bastion Host..."
-        local verify_command="cd $workspace_dir && echo 'VERIFY: Current directory:' && pwd && echo 'VERIFY: Directory contents:' && ls -la && echo 'VERIFY: Checking key files:' && if [ -f scripts/3-sql-execute.sh ]; then echo 'VERIFY: scripts/3-sql-execute.sh exists'; else echo 'VERIFY: scripts/3-sql-execute.sh MISSING'; fi && if [ -f config.json ]; then echo 'VERIFY: config.json exists'; else echo 'VERIFY: config.json MISSING'; fi && if [ -f bastion-redshift-connection.json ]; then echo 'VERIFY: bastion-redshift-connection.json exists'; else echo 'VERIFY: bastion-redshift-connection.json MISSING'; fi && echo 'VERIFY: Setting execute permissions on scripts...' && chmod +x scripts/*.sh 2>/dev/null || true && echo 'VERIFY: Verification completed'"
-        
-        local verify_command_id=$(aws ssm send-command \
-            --instance-ids "$bastion_instance_id" \
-            --document-name "AWS-RunShellScript" \
-            --parameters "{\"commands\":[\"$verify_command\"]}" \
-            --comment "File Verification" \
-            --timeout-seconds 60 \
-            --region "$region" \
-            --query 'Command.CommandId' --output text)
-            
-        if [[ -n "$verify_command_id" ]]; then
-            print_info "Waiting for file verification..."
-            aws ssm wait command-executed \
-                --command-id "$verify_command_id" \
-                --instance-id "$bastion_instance_id" \
-                --region "$region" 2>/dev/null || true
-                
-            local verify_output=$(aws ssm get-command-invocation \
-                --command-id "$verify_command_id" \
-                --instance-id "$bastion_instance_id" \
-                --region "$region" \
-                --query 'StandardOutputContent' --output text 2>/dev/null)
-                
-            if [[ -n "$verify_output" ]] && [[ "$verify_output" != "None" ]]; then
-                print_info "[DEBUG] Bastion Host file verification:"
-                echo "$verify_output" | while read line; do
-                    if [[ "$line" == *"VERIFY:"* ]]; then
-                        print_info "  $line"
-                    fi
-                done
-            fi
-        fi
-        
-        print_success "Workspace transfer completed"
+    if [[ -n "$command_id" ]]; then
+        aws ssm wait command-executed --command-id "$command_id" --instance-id "$bastion_instance_id" --region "$region" 2>/dev/null || true
+        print_success "Files transferred successfully"
+    else
+        print_error "Failed to transfer files"
+        return 1
     fi
 }
 

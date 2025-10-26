@@ -93,7 +93,7 @@
       "autoTransfer": {
         "enabled": true,
         "directories": ["sql/redshift"],
-        "files": ["config.json", "scripts/3-sql-execute.sh", "bastion-redshift-connection.json"],
+        "files": ["config.json", "scripts/redshift-sql-execute.sh", "bastion-redshift-connection.json"],
         "excludePatterns": ["*.log", "*.tmp", "target/", "*.pyc", "__pycache__/", ".venv/", "dbt_packages/", "logs/"],
         "compressionLevel": 6
       }

@@ -1,124 +1,95 @@
-# README-PHASE-3: Zero-ETL統合自動化システム
+# README-PHASE-3: Zero-ETL統合自動化システム（環境対応版）
 
 ## 概要
-Phase 3では、Aurora PostgreSQLからRedshift Serverlessへの完全自動Zero-ETL統合システムを構築します。Bastion HostとSecrets Managerを活用した安全なデータベース操作により、Aurora PostgreSQLのマルチテナントデータをRedshift Serverlessにリアルタイム同期します。
+Phase 3では、Aurora PostgreSQLからRedshift Serverlessへの完全自動Zero-ETL統合システムを構築します。
 
-**注記**: Bastion HostにRedshiftへのセキュリティグループを付与しますが、CDKで実施せずPythonスクリプトで行います。これは、git cloneしてきたAWSサンプルのCDKに手を入れたくないためです。
+### 🆕 新機能ハイライト
+- **環境自動検出**: ローカル vs リモート環境を自動判定
+- **Integration ID自動取得**: .envファイルへの自動書き込み
+- **SQLテンプレート生成**: 動的SQL生成システム
+- **ローカル開発対応**: Integration ID不要のサンプルデータ環境
 
 ## 🚀 実行方法
 
-### Phase 3: 3-step ワークフロー
+### Phase 3: 3-step ワークフロー（環境対応版）
 
-#### Step 1: Zero-ETL CDKインフラのデプロイ
+#### Step 1: Zero-ETL CDKインフラのデプロイ + Integration ID取得
 ```bash
-./3-etl-manager.sh -p aurora-postgresql -c config.json --step1
 ```
+**新機能**:
+- CDKデプロイ後、Integration IDを自動取得
+- .envファイルに自動書き込み
+- SQLテンプレートから実行用SQLファイルを生成
 
-#### Step 2: Bastion Host設定とデータベース作成
+#### Step 2: 環境対応データベース作成
 ```bash
 ./3-etl-manager.sh -p aurora-postgresql -c config.json --step2
 ```
+**環境別動作**:
+- **リモート環境**: Zero-ETL統合からデータベース作成
+- **ローカル環境**: サンプルデータ付きテナントスキーマ作成
 
 #### Step 3: データ複製検証と完了
 ```bash
 ./3-etl-manager.sh -p aurora-postgresql -c config.json --step3
 ```
 
-### 個別SQL実行（高度な使用方法）
+### 🔄 環境自動検出システム
 
-#### Zero-ETL統合データベースの作成
+システムは以下の条件で環境を自動判定します：
+
+#### ローカル環境として判定される条件
+1. AWS認証情報が利用できない
+2. .envファイルにZERO_ETL_INTEGRATION_IDが存在しない
+3. docker-compose環境で実行中
+
+#### リモート環境として判定される条件
+- 上記以外の場合（AWS認証あり、Integration ID利用可能）
+
+### 📁 SQLファイル構造（新システム）
+
+```
+sql/redshift/database/
+├── create-integration-database.sql          # ベースファイル
+├── create-integration-database.template.sql # テンプレート（{{INTEGRATION_ID}}含む）
+├── create-integration-database-generated.sql # リモート用（生成済み）
+└── create-integration-database-local.sql    # ローカル用（Integration ID不要）
+```
+
+#### ファイル選択ロジック
+- **ローカル環境**: `*-local.sql` を使用
+- **リモート環境**: `*-generated.sql` を使用（テンプレートから生成）
+
+## 🛠️ 新しいスクリプト・機能
+
+### Integration ID自動取得スクリプト
 ```bash
-./3-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/3-sql-execute.sh config.json sql/redshift/database/create-integration-database.sql"
+# 手動実行も可能
+python3 scripts/retrieve-integration-id.py --config config.json
 ```
 
-#### テナントデータ同期の検証
+**機能**:
+- AWS RDS API優先でIntegration ID取得
+- Redshift SVV_INTEGRATIONへのフォールバック
+- リトライロジック付き
+- .envファイル自動更新
+
+### SQLテンプレート生成スクリプト
 ```bash
-./3-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/3-sql-execute.sh config.json sql/redshift/verification/verify-tenant-data-sync.sql"
+# テンプレートからSQLファイル生成
+scripts/generate-integration-sql.sh --template sql/redshift/database/create-integration-database.template.sql --output sql/redshift/database/create-integration-database-generated.sql
 ```
 
-### ファイル転送オプション
-
-#### 通常実行（ファイル転送あり）
-```bash
-./3-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "command"
-```
-
-#### ファイル転送スキップ（既存ファイル使用）
-```bash
-./3-etl-manager.sh -p aurora-postgresql -c config.json --skip-copy --bastion-command "command"
-```
-**注意**: `--skip-copy`は開発・デバッグ時のみ使用し、通常は省略してください。
-
-## 📋 前提条件
-
-### 1. Phase 1とPhase 2の完了
-- Aurora PostgreSQLクラスターの構築とデータ投入
-- テナントマルチテナントデータの準備
-
-### 2. 必要なIAM権限
-以下の権限を持つIAMロール/ユーザーが必要：
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "rds:*",
-        "redshift:*",
-        "redshift-serverless:*",
-        "redshift-data:*",
-        "cloudformation:*",
-        "iam:*",
-        "ec2:*",
-        "secretsmanager:*"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
-
-**注意**: `AdministratorAccess` ポリシーがアタッチされていれば十分です。
-
-### 3. Redshift Serverless Zero-ETL統合データベース作成権限
-
-Zero-ETL統合からデータベースを作成するには、特別な権限設定が必要な場合があります：
-
-#### 権限エラーの解決方法
-
-**症状**: `ERROR: permission denied to create database` エラー
-
-**原因**: Redshift ServerlessでのZero-ETL統合データベース作成には、通常のAdmin権限に加えて特定の権限設定が必要
-
-**解決方法A**: IAM権限の確認・追加
-```bash
-# 現在の権限確認
-aws sts get-caller-identity
-aws iam list-attached-role-policies --role-name <your-role-name>
-
-# 必要に応じて権限追加
-# AdministratorAccessポリシーがアタッチされていることを確認
-```
-
-**解決方法B**: Redshift Serverlessワークグループの権限設定
-```bash
-# ワークグループの設定確認
-aws redshift-serverless get-workgroup --workgroup-name multitenant-analytics-wg
-
-# 必要に応じてワークグループの権限を更新
-```
-
-**解決方法C**: 手動データベース作成（緊急時）
-1. AWS Console → Amazon Redshift → Zero-ETL integrations
-2. `multitenant-analytics-integration` を選択
-3. "Create database from integration" をクリック
-4. Database名: `multitenant_analytics_zeroetl` で作成
+**機能**:
+- {{INTEGRATION_ID}}プレースホルダーを実際のIDに置換
+- {{TIMESTAMP}}, {{DATE}}の自動挿入
+- .envファイルからの設定読み込み
 
 ## 🏗️ アーキテクチャ
 
-### Zero-ETL統合フロー
+### 環境別データフロー
+
+#### リモート環境（本番）
 ```
 Aurora PostgreSQL → Zero-ETL Integration → Redshift Serverless
      ↓                      ↓                    ↓
@@ -128,85 +99,134 @@ Aurora PostgreSQL → Zero-ETL Integration → Redshift Serverless
                          (users テーブル)        分析・クエリ
 ```
 
-### 主要コンポーネント
-1. **Aurora PostgreSQL**: ソースデータベース
-2. **Zero-ETL統合**: `multitenant-analytics-integration`
-3. **Redshift Serverless**: ターゲットデータウェアハウス
-   - Namespace: `multitenant-analytics-ns`
-   - Workgroup: `multitenant-analytics-wg`
+#### ローカル環境（開発）
+```
+ローカルRedshift → サンプルデータ生成 → 開発用データベース
+     ↓                    ↓                ↓
+ 開発環境            テナントスキーマ    ローカル分析
+                   (tenant_a/b/c)    (multitenant_analytics_local)
+                        ↓                    ↓
+                   サンプルユーザー        dbt開発・テスト
+```
 
-## 📊 データ検証
+## 📊 環境別データ検証
 
-### テナントデータ確認
+### リモート環境でのデータ確認
 ```sql
--- Auroraでのデータ確認
+-- Zero-ETL統合後のデータ確認
+\c multitenant_analytics_zeroetl
 SELECT 'tenant_a' as tenant, COUNT(*) as user_count FROM tenant_a.users
 UNION ALL
 SELECT 'tenant_b' as tenant, COUNT(*) as user_count FROM tenant_b.users
-UNION ALL  
+UNION ALL
 SELECT 'tenant_c' as tenant, COUNT(*) as user_count FROM tenant_c.users;
 ```
 
-### Redshiftでのデータ確認
+### ローカル環境でのデータ確認
 ```sql
--- Zero-ETL統合後のデータ確認
+-- ローカル開発データの確認
+\c multitenant_analytics_local
 SELECT 'tenant_a' as tenant, COUNT(*) as user_count FROM tenant_a.users
 UNION ALL
 SELECT 'tenant_b' as tenant, COUNT(*) as user_count FROM tenant_b.users
 UNION ALL
 SELECT 'tenant_c' as tenant, COUNT(*) as user_count FROM tenant_c.users;
+
+-- サンプルデータの内容確認
+SELECT email, first_name, last_name, account_status 
+FROM tenant_a.users 
+LIMIT 3;
 ```
 
 ## 🔧 トラブルシューティング
 
-### よくある問題と解決方法
+### 環境検出関連の問題
 
-#### 1. Zero-ETL統合が作成されない
-- Aurora PostgreSQLのパラメータグループ設定を確認
-- Redshift Serverlessのケースセンシティビティ設定を確認
-- リソースポリシーの設定を確認
-
-#### 2. データベース作成権限エラー
-- IAM権限（AdministratorAccess）の確認
-- Redshift Serverlessワークグループ権限の確認
-- 統合IDの正確性を確認
-
-#### 3. データが複製されない
-- Zero-ETL統合がActiveステータスかどうか確認
-- データフィルター設定の確認
-- Aurora側のデータ存在確認
-
-### デバッグコマンド
+#### 1. 環境が正しく検出されない
 ```bash
-# Zero-ETL統合ステータス確認
-aws rds describe-integrations --region us-east-1
+# 環境検出状況の確認
+./3-etl-manager.sh -p aurora-postgresql -c config.json --step2 --dry-run | grep "Detected environment"
+```
 
-# Redshiftデータベース一覧確認
-./3-etl-manager.sh -p aurora-postgresql -c config.json --verify-data
+**対処法**:
+- AWS認証情報の確認: `aws sts get-caller-identity`
+- .envファイルの確認: `cat .env`
+- docker-compose環境の確認: `echo $COMPOSE_PROJECT_NAME`
 
-# Aurora側データ確認
-./2-etl-manager.sh -p aurora-postgresql -c config.json --verify-data
+#### 2. SQLファイルが見つからない
+```bash
+# 利用可能なSQLファイルの確認
+ls -la sql/redshift/database/create-integration-database*.sql
+```
+
+**対処法**:
+- ローカル用ファイルの存在確認
+- テンプレートからの生成実行: `scripts/generate-integration-sql.sh`
+
+### Integration ID関連の問題
+
+#### 3. Integration ID取得に失敗
+```bash
+# 手動でIntegration ID取得を試行
+python3 scripts/retrieve-integration-id.py --config config.json --dry-run
+```
+
+**対処法**:
+- AWS RDS権限の確認
+- Zero-ETL統合の作成状況確認
+- Redshift接続の確認
+
+#### 4. .envファイルが更新されない
+**症状**: Integration IDが.envに書き込まれない
+
+**対処法**:
+```bash
+# ファイル権限の確認
+ls -la .env
+
+# 手動での.env更新
+echo "ZERO_ETL_INTEGRATION_ID=your-integration-id" >> .env
+```
+
+### SQLテンプレート関連の問題
+
+#### 5. テンプレート生成に失敗
+**症状**: `*-generated.sql`ファイルが作成されない
+
+**対処法**:
+```bash
+# テンプレートファイルの存在確認
+ls -la sql/redshift/database/*.template.sql
+
+# 手動でのテンプレート処理
+scripts/generate-integration-sql.sh --template sql/redshift/database/create-integration-database.template.sql --output sql/redshift/database/create-integration-database-generated.sql
 ```
 
 ## 📈 期待される結果
 
-### Phase 3完了後の状態
+### リモート環境（Phase 3完了後）
 1. **Zero-ETL統合**: Active状態
 2. **統合データベース**: `multitenant_analytics_zeroetl` 作成済み
 3. **データ複製**: 各テナントのusersテーブルデータが同期
 4. **リアルタイム同期**: Aurora更新がRedshiftに自動反映
 
-### パフォーマンス指標
-- **同期遅延**: 通常数秒〜数分
-- **データ整合性**: 100%
-- **可用性**: 99.9%+
+### ローカル環境（Phase 3完了後）
+1. **開発データベース**: `multitenant_analytics_local` 作成済み
+2. **テナントスキーマ**: tenant_a, tenant_b, tenant_c 作成済み
+3. **サンプルデータ**: 各テナントに3名ずつのユーザーデータ
+4. **dbt開発準備**: ローカル分析・テスト環境完備
 
 ## 🔒 セキュリティ考慮事項
 
+### リモート環境
 1. **暗号化**: Zero-ETL統合は自動的にAWS KMSで暗号化
 2. **アクセス制御**: IAMロールベースのアクセス制御
 3. **ネットワークセキュリティ**: VPC内でのプライベート通信
-4. **監査**: CloudTrailによるAPI呼び出しログ記録
+
+### ローカル環境
+1. **データ分離**: 本番データとは完全に分離
+2. **サンプルデータ**: 個人情報を含まない架空データ
+3. **開発専用**: 本番環境への影響なし
 
 ## 📚 関連リソース
 
@@ -219,15 +239,31 @@ aws rds describe-integrations --region us-east-1
 
 ## 🏃‍♂️ クイックスタート
 
+### リモート環境での実行
 ```bash
-# Phase 3の完全実行
-./3-etl-manager.sh -p aurora-postgresql -c config.json --deploy
-./3-etl-manager.sh -p aurora-postgresql -c config.json --verify-data
+# Phase 3の完全実行（リモート）
+./3-etl-manager.sh -p aurora-postgresql -c config.json --step1
+./3-etl-manager.sh -p aurora-postgresql -c config.json --step2
+./3-etl-manager.sh -p aurora-postgresql -c config.json --step3
 
 # 成功時の出力例
+[INFO] Detected environment: remote
+[SUCCESS] Integration ID retrieved and .env updated
 [SUCCESS] Zero-ETL integration is active
 [SUCCESS] Database created: multitenant_analytics_zeroetl
-[SUCCESS] Data replication verified for all tenants
+```
+
+### ローカル環境での実行
+```bash
+# Phase 3の完全実行（ローカル）
+./3-etl-manager.sh -p aurora-postgresql -c config.json --step1
+./3-etl-manager.sh -p aurora-postgresql -c config.json --step2
+
+# 成功時の出力例
+[INFO] Detected environment: local
+[INFO] Local environment detected - using pre-built local SQL files
+[SUCCESS] Database created: multitenant_analytics_local
+[SUCCESS] Sample data inserted for local development
 ```
 
 ## 🐍 Redshift Data API Python スクリプト
@@ -360,3 +396,36 @@ Zero-ETL統合が完了すると、以下の高度な分析機能が利用可能
 - テナント横断分析
 - データ品質監視
 - リアルタイムレポート生成
+
+## 📋 前提条件
+
+### 1. Phase 1とPhase 2の完了
+- Aurora PostgreSQLクラスターの構築とデータ投入
+- テナントマルチテナントデータの準備
+
+### 2. 必要なIAM権限
+以下の権限を持つIAMロール/ユーザーが必要：
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "rds:*",
+        "redshift:*",
+        "redshift-serverless:*",
+        "redshift-data:*",
+        "cloudformation:*",
+        "iam:*",
+        "ec2:*",
+        "secretsmanager:*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+**注意**: `AdministratorAccess` ポリシーがアタッチされていれば十分です。

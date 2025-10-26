@@ -1,0 +1,12 @@
+
+    
+    
+    truncate table "multitenant_analytics"."public"."tenant_a_users";
+    -- dbt seed --
+    
+          insert into "multitenant_analytics"."public"."tenant_a_users" ("user_id", "email", "first_name", "last_name", "registration_date", "last_login_date", "account_status", "subscription_tier", "created_at", "updated_at") values
+          (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+      
+
+;
+  
