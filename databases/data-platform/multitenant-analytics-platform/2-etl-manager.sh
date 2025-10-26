@@ -57,10 +57,10 @@ EXAMPLES:
     $0 -p aurora-postgresql -c config.json --upload-script "test-script.sh"
 
     # Skip file transfer for faster execution (requires previous transfer)
-    $0 -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
+    $0 -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
 
     # Local execution with docker compose
-    $0 -p aurora-postgresql -c config.json --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql" --local
+    $0 -p aurora-postgresql -c config.json --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql" --local
 
     # Dry run mode
     $0 -p aurora-postgresql -c config.json --bastion-command "df -h" --dry-run
@@ -331,6 +331,122 @@ create_directory_archive() {
     fi
 }
 
+# Function to transfer files to Docker container based on config.json
+transfer_files_to_docker_container() {
+    local config_file="$1"
+    local container_name="multitenant-analytics-platform-dbt-local-1"
+    local container_path="/usr/app"
+    
+    print_info "=== DOCKER CONTAINER FILE TRANSFER ==="
+    print_info "Config file: $config_file"
+    print_info "Container: $container_name"
+    print_info "Target path: $container_path"
+    
+    # Check if jq is available
+    if ! command -v jq >/dev/null 2>&1; then
+        print_warning "jq not found, using default file transfer"
+        # Fallback: copy essential files
+        docker cp config.json "$container_name:$container_path/" 2>/dev/null || print_warning "Failed to copy config.json"
+        docker cp sql/ "$container_name:$container_path/" 2>/dev/null || print_warning "Failed to copy sql directory"
+        docker cp scripts/ "$container_name:$container_path/" 2>/dev/null || print_warning "Failed to copy scripts directory"
+        return 0
+    fi
+    
+    # Check if Phase 2 auto-transfer is enabled
+    local auto_transfer_enabled=$(jq -r '.bastion.phase2.autoTransfer.enabled // false' "$config_file" 2>/dev/null)
+    
+    if [[ "$auto_transfer_enabled" != "true" ]]; then
+        print_info "Auto-transfer not enabled in config, using default file transfer"
+        # Fallback: copy essential files
+        docker cp config.json "$container_name:$container_path/" 2>/dev/null || print_warning "Failed to copy config.json"
+        docker cp sql/ "$container_name:$container_path/" 2>/dev/null || print_warning "Failed to copy sql directory"
+        docker cp scripts/ "$container_name:$container_path/" 2>/dev/null || print_warning "Failed to copy scripts directory"
+        return 0
+    fi
+    
+    # Get directories to transfer (Phase 2 specific)
+    local directories=$(jq -r '.bastion.phase2.autoTransfer.directories[]? // empty' "$config_file" 2>/dev/null)
+    
+    # Get individual files to transfer (Phase 2 specific)
+    local files=$(jq -r '.bastion.phase2.autoTransfer.files[]? // empty' "$config_file" 2>/dev/null)
+    
+    # Get exclude patterns (Phase 2 specific)
+    local exclude_patterns=$(jq -r '.bastion.phase2.autoTransfer.excludePatterns[]? // empty' "$config_file" 2>/dev/null)
+    
+    print_info "Transfer configuration:"
+    print_info "  Directories: $(echo "$directories" | tr '\n' ' ')"
+    print_info "  Files: $(echo "$files" | tr '\n' ' ')"
+    print_info "  Exclude patterns: $(echo "$exclude_patterns" | tr '\n' ' ')"
+    
+    # Transfer directories
+    local transfer_count=0
+    for dir in $directories; do
+        if [[ -d "$dir" ]]; then
+            local dir_size=$(du -sh "$dir" 2>/dev/null | cut -f1)
+            local file_count=$(find "$dir" -type f | wc -l)
+            print_info "Copying directory: $dir (size: $dir_size, files: $file_count)"
+            
+            # Create parent directory structure in container if needed
+            local parent_dir=$(dirname "$dir")
+            if [[ "$parent_dir" != "." ]]; then
+                docker exec "$container_name" mkdir -p "$container_path/$parent_dir" 2>/dev/null || true
+            fi
+            
+            if docker cp "$dir" "$container_name:$container_path/$dir"; then
+                print_success "Successfully copied directory: $dir"
+                transfer_count=$((transfer_count + 1))
+            else
+                print_warning "Failed to copy directory: $dir"
+            fi
+        else
+            print_warning "Directory not found, skipping: $dir"
+        fi
+    done
+    
+    # Transfer individual files
+    for file in $files; do
+        if [[ -f "$file" ]]; then
+            local file_size=$(ls -lh "$file" 2>/dev/null | awk '{print $5}')
+            print_info "Copying file: $file (size: $file_size)"
+            
+            # Create directory structure in container if needed
+            local file_dir=$(dirname "$file")
+            if [[ "$file_dir" != "." ]]; then
+                docker exec "$container_name" mkdir -p "$container_path/$file_dir" 2>/dev/null || true
+            fi
+            
+            if docker cp "$file" "$container_name:$container_path/$file"; then
+                print_success "Successfully copied file: $file"
+                transfer_count=$((transfer_count + 1))
+            else
+                print_warning "Failed to copy file: $file"
+            fi
+        else
+            print_warning "File not found, skipping: $file"
+        fi
+    done
+    
+    # Set execute permissions on scripts
+    print_info "Setting execute permissions on scripts..."
+    docker exec "$container_name" bash -c "find $container_path/scripts -name '*.sh' -type f -exec chmod +x {} \; 2>/dev/null || true"
+    
+    # Verify transfer
+    print_info "Verifying transferred files in Docker container..."
+    local verify_output=$(docker exec "$container_name" bash -c "cd $container_path && echo 'VERIFY: Current directory:' && pwd && echo 'VERIFY: Directory contents:' && ls -la && echo 'VERIFY: Key files check:' && if [ -f config.json ]; then echo 'VERIFY: config.json exists'; else echo 'VERIFY: config.json MISSING'; fi && if [ -f scripts/aurora-sql-execute.sh ]; then echo 'VERIFY: scripts/aurora-sql-execute.sh exists'; else echo 'VERIFY: scripts/auora.sh MISSING'; fi && if [ -f sql/aurora/schema/create-tenant-schemas.sql ]; then echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql exists'; else echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql MISSING'; fi" 2>/dev/null)
+    
+    if [[ -n "$verify_output" ]]; then
+        print_info "Docker container file verification:"
+        echo "$verify_output" | while read line; do
+            if [[ "$line" == *"VERIFY:"* ]]; then
+                print_info "  $line"
+            fi
+        done
+    fi
+    
+    print_success "File transfer to Docker container completed"
+    print_info "Total items transferred: $transfer_count"
+}
+
 # Function to get Aurora connection information
 get_aurora_connection_info() {
     local is_local_execution="$1"  # true for local, false for bastion
@@ -586,7 +702,7 @@ execute_bastion_command() {
                 # Verify files were transferred successfully
                 print_info "Verifying transferred files on Bastion Host..."
                 # Use a simpler verification approach to avoid JSON escaping issues
-                local verify_command="cd $workspace_dir && echo 'VERIFY: Current directory:' && pwd && echo 'VERIFY: Directory contents:' && ls -la && echo 'VERIFY: Checking key files:' && if [ -f scripts/2-sql-execute.sh ]; then echo 'VERIFY: scripts/2-sql-execute.sh exists'; else echo 'VERIFY: scripts/2-sql-execute.sh MISSING'; fi && if [ -f config.json ]; then echo 'VERIFY: config.json exists'; else echo 'VERIFY: config.json MISSING'; fi && if [ -f sql/aurora/schema/create-tenant-schemas.sql ]; then echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql exists'; else echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql MISSING'; fi && echo 'VERIFY: Setting execute permissions on scripts...' && chmod +x scripts/*.sh 2>/dev/null || true && echo 'VERIFY: Verification completed'"
+                local verify_command="cd $workspace_dir && echo 'VERIFY: Current directory:' && pwd && echo 'VERIFY: Directory contents:' && ls -la && echo 'VERIFY: Checking key files:' && if [ -f scripts/aurora-sql-execute.sh ]; then echo 'VERIFY: scripts/aurora-sql-execute.sh exists'; else echo 'VERIFY: scripts/aurora-sql-execute.sh MISSING'; fi && if [ -f config.json ]; then echo 'VERIFY: config.json exists'; else echo 'VERIFY: config.json MISSING'; fi && if [ -f sql/aurora/schema/create-tenant-schemas.sql ]; then echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql exists'; else echo 'VERIFY: sql/aurora/schema/create-tenant-schemas.sql MISSING'; fi && echo 'VERIFY: Setting execute permissions on scripts...' && chmod +x scripts/*.sh 2>/dev/null || true && echo 'VERIFY: Verification completed'"
                 
                 local verify_command_id=$(aws ssm send-command \
                     --instance-ids "$bastion_instance_id" \
@@ -886,14 +1002,19 @@ main() {
                 sleep 2  # Give postgres time to start
             fi
             
-            # Set up local environment variables
-            get_aurora_connection_info "true" "$PATTERN"
+            # Handle file transfer to Docker container (similar to Bastion Host transfer)
+            if [[ "$SKIP_COPY" == true ]]; then
+                print_info "Skipping file transfer to Docker container (--skip-copy specified)"
+            else
+                # Transfer files to Docker container based on config.json
+                transfer_files_to_docker_container "$CONFIG_FILE"
+            fi
             
-            # Execute command locally
+            # Execute command locally with LOCAL_EXECUTION environment variable
             print_info "Executing command locally..."
             local start_time=$(date +%s)
             
-            if eval "$BASTION_COMMAND"; then
+            if LOCAL_EXECUTION=true eval "$BASTION_COMMAND"; then
                 local end_time=$(date +%s)
                 local duration=$((end_time - start_time))
                 print_success "Local command executed successfully!"

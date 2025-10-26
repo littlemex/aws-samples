@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    build-essential \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /usr/app/dbt
+
+# Install dbt with PostgreSQL and DuckDB adapters
+RUN pip install --no-cache-dir \
+    dbt-core==1.7.19 \
+    dbt-postgres==1.7.19 \
+    dbt-duckdb==1.7.4 \
+    boto3>=1.28.0 \
+    pandas>=2.0.0 \
+    pyarrow>=12.0.0
+
+# Copy dbt project files
+COPY . .
+
+# Create .dbt directory
+RUN mkdir -p /root/.dbt
+
+# Copy profiles to the dbt profiles directory
+RUN cp profiles.yml /root/.dbt/profiles.yml
+
+# Set default command
+CMD ["dbt", "--version"]
