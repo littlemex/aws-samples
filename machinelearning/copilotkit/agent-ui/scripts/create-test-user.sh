@@ -5,8 +5,11 @@ set -e
 # This script creates a test user in the Cognito User Pool
 
 # Configuration
-REGION=${AWS_REGION:-us-east-1}
-STACK_NAME="copilotkit-agentcore-cognito"
+STACK_NAME="CopilotKitCognitoStack"
+REGION=$(aws configure get region 2>/dev/null || echo "")
+if [ -z "$REGION" ]; then
+    REGION="us-east-1"
+fi
 
 # Colors for output
 GREEN='\033[0;32m'
