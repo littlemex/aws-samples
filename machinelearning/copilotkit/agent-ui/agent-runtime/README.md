@@ -140,3 +140,220 @@ echo "https://console.aws.amazon.com/cloudwatch/home?region=${REGION}#gen-ai-obs
 - CloudWatch Logsでエラーログを確認
 - Agent statusをboto3で確認
 - X-Rayトレースで実行フローを確認
+
+# 環境変数設定ガイド
+
+## 概要
+
+このプロジェクトでは、機密情報やアカウント固有の設定を環境変数で管理しています。本ドキュメントでは、各環境変数の説明と設定方法を記載します。
+
+## 必須環境変数
+
+### AWS設定
+
+#### AWS_REGION
+- **説明**: AWSリージョン
+- **デフォルト値**: `us-east-1`
+- **設定例**: `export AWS_REGION=us-east-1`
+- **使用箇所**: 全スクリプト、Dockerfile
+
+#### BEDROCK_MODEL_ID
+- **説明**: 使用するBedrock モデルのID
+- **デフォルト値**: `us.anthropic.claude-3-7-sonnet-20250219-v1:0`
+- **設定例**: `export BEDROCK_MODEL_ID=us.anthropic.claude-3-7-sonnet-20250219-v1:0`
+- **使用箇所**: runtime_agent.py, simple_agent.py, Dockerfile
+
+#### AGENT_NAME
+- **説明**: AgentCore Runtimeのエージェント名
+- **デフォルト値**: `simple_agent_copilotkit`
+- **設定例**: `export AGENT_NAME=my_custom_agent`
+- **使用箇所**: deploy_agentcore.py
+
+### Cognito設定（フロントエンド統合時に必要）
+
+#### COGNITO_USER_POOL_ID
+- **説明**: Cognito User Pool ID
+- **デフォルト値**: なし（必須）
+- **取得方法**: CloudFormationスタックの出力から取得
+- **設定例**: `export COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX`
+
+#### COGNITO_CLIENT_ID
+- **説明**: Cognito Client ID
+- **デフォルト値**: なし（必須）
+- **取得方法**: CloudFormationスタックの出力から取得
+- **設定例**: `export COGNITO_CLIENT_ID=XXXXXXXXXXXXXXXXXX`
+
+#### COGNITO_ISSUER
+- **説明**: Cognito Issuer URL
+- **デフォルト値**: なし（必須）
+- **取得方法**: CloudFormationスタックの出力から取得
+- **設定例**: `export COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXXXXXXX`
+
+## 設定方法
+
+### 方法1: .envファイル使用
+
+```bash
+# 1. .env.exampleをコピー
+cp .env.example .env
+
+# 2. .envファイルを編集
+vim .env
+
+# 3. 内容例
+AWS_REGION=us-east-1
+BEDROCK_MODEL_ID=us.anthropic.claude-3-7-sonnet-20250219-v1:0
+AGENT_NAME=my_agent
+COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+COGNITO_CLIENT_ID=XXXXXXXXXXXXXXXXXX
+```
+
+### 方法2: 環境変数を直接エクスポート
+
+```bash
+export AWS_REGION=us-east-1
+export BEDROCK_MODEL_ID=us.anthropic.claude-3-7-sonnet-20250219-v1:0
+export AGENT_NAME=my_agent
+export COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+export COGNITO_CLIENT_ID=XXXXXXXXXXXXXXXXXX
+```
+
+### 方法3: スクリプト実行時に設定
+
+```bash
+AWS_REGION=us-west-2 AGENT_NAME=west_agent python3 deploy_agentcore.py
+```
+
+## Cognito情報の取得方法
+
+### CloudFormationスタックから取得
+
+```bash
+# User Pool ID取得
+export COGNITO_USER_POOL_ID=$(aws cloudformation describe-stacks \
+  --stack-name copilotkit-agentcore-cognito \
+  --query 'Stacks[0].Outputs[?OutputKey==`UserPoolId`].OutputValue' \
+  --output text)
+
+# Client ID取得
+export COGNITO_CLIENT_ID=$(aws cloudformation describe-stacks \
+  --stack-name copilotkit-agentcore-cognito \
+  --query 'Stacks[0].Outputs[?OutputKey==`UserPoolClientId`].OutputValue' \
+  --output text)
+
+# Issuer URL取得
+export COGNITO_ISSUER=$(aws cloudformation describe-stacks \
+  --stack-name copilotkit-agentcore-cognito \
+  --query 'Stacks[0].Outputs[?OutputKey==`IssuerUrl`].OutputValue' \
+  --output text)
+```
+
+## Docker ビルド時の設定
+
+Dockerfileでビルド時引数を使用する場合：
+
+```bash
+docker build \
+  --build-arg AWS_REGION=us-west-2 \
+  --build-arg BEDROCK_MODEL_ID=us.anthropic.claude-3-7-sonnet-20250219-v1:0 \
+  -t my-agent:latest .
+```
+
+または実行時に環境変数を渡す：
+
+```bash
+docker run \
+  -e AWS_REGION=us-east-1 \
+  -e BEDROCK_MODEL_ID=us.anthropic.claude-3-7-sonnet-20250219-v1:0 \
+  my-agent:latest
+```
+
+## トラブルシューティング
+
+### 環境変数が設定されていない場合
+
+```bash
+# 設定済み環境変数を確認
+env | grep -E "(AWS_REGION|BEDROCK_MODEL_ID|AGENT_NAME|COGNITO)"
+
+# 特定の環境変数を確認
+echo $AWS_REGION
+echo $BEDROCK_MODEL_ID
+```
+
+### デフォルト値の確認
+
+各スクリプトはデフォルト値を持っているため、環境変数未設定でも動作します：
+
+- **AWS_REGION**: `us-east-1`
+- **BEDROCK_MODEL_ID**: `us.anthropic.claude-3-7-sonnet-20250219-v1:0`
+- **AGENT_NAME**: `simple_agent_copilotkit`
+
+## セキュリティ注意事項
+
+### ⚠️ 絶対にしてはいけないこと
+
+1. **固定値のハードコード**: コード内に機密情報を直接記述
+2. **.envファイルのコミット**: Gitに機密情報を含むファイルをコミット
+3. **公開リポジトリでの共有**: 機密情報を含むファイルの公開
+
+### ✅ 推奨事項
+
+1. **.env.exampleの活用**: サンプルファイルのみをコミット
+2. **.gitignoreの設定**: 機密情報ファイルを除外
+3. **環境ごとの管理**: dev/staging/prod用の設定を分離
+4. **Secrets Managerの活用**: 本番環境ではAWS Secrets Managerを検討
+
+## CI/CD環境での設定
+
+### GitHub Actions
+
+```yaml
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  BEDROCK_MODEL_ID: ${{ secrets.BEDROCK_MODEL_ID }}
+  COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+  COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+```
+
+### AWS CodeBuild
+
+buildspec.ymlで環境変数を設定：
+
+```yaml
+env:
+  variables:
+    AWS_REGION: us-east-1
+  parameter-store:
+    COGNITO_USER_POOL_ID: /copilotkit/cognito/pool-id
+    COGNITO_CLIENT_ID: /copilotkit/cognito/client-id
+```
+
+## 環境別設定例
+
+### 開発環境
+
+```bash
+# .env.development
+AWS_REGION=us-east-1
+BEDROCK_MODEL_ID=us.anthropic.claude-3-7-sonnet-20250219-v1:0
+AGENT_NAME=dev_agent
+```
+
+### 本番環境
+
+```bash
+# .env.production
+AWS_REGION=us-east-1
+BEDROCK_MODEL_ID=us.anthropic.claude-3-7-sonnet-20250219-v1:0
+AGENT_NAME=prod_agent
+# Cognito情報はSecrets Managerから取得
+```
+
+## まとめ
+
+環境変数を適切に設定することで：
+- ✅ セキュリティが向上
+- ✅ 複数環境での管理が容易
+- ✅ コードの再利用性が向上
+- ✅ デプロイの柔軟性が向上
