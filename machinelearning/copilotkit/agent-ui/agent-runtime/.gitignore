@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# 環境設定ファイル（機密情報を含む）
+.env
+.env.local
+*.env
+
+# AgentCore Runtime 設定（機密情報を含む）
+runtime_info.txt
+.bedrock_agentcore.yaml
+
+# Docker
+Dockerfile
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
