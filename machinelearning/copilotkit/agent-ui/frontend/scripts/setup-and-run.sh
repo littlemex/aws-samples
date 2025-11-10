@@ -5,8 +5,9 @@
 
 set -e
 
-STACK_NAME="CopilotKitCognitoStack"
-FRONTEND_DIR="/home/coder/aws-samples/machinelearning/copilotkit/agent-ui/frontend"
+# 環境変数から取得、デフォルトは CopilotKitCognitoStack
+STACK_NAME="${COGNITO_STACK_NAME:-CopilotKitCognitoStack}"
+FRONTEND_DIR="${FRONTEND_DIR:-/home/coder/aws-samples/machinelearning/copilotkit/agent-ui/frontend}"
 ENV_FILE="${FRONTEND_DIR}/.env.local"
 
 # デフォルト設定

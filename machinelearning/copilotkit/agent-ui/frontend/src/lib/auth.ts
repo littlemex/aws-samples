@@ -30,5 +30,5 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  debug: true, // Enable debug mode for development
+  debug: process.env.NODE_ENV === 'development', // 環境に応じてデバッグモードを制御
 };
