@@ -14,6 +14,7 @@ import * as path from 'path';
 
 export interface FrontendStackProps extends cdk.StackProps {
   config: AppConfig;
+  cognitoStack: CognitoStack;
 }
 
 export class FrontendStack extends cdk.Stack {
@@ -38,6 +39,21 @@ export class FrontendStack extends cdk.Stack {
 
     // Lambda Function for Next.js
     const nextjsAppPath = path.join(__dirname, props.config.frontend.nextjsAppPath);
+    
+    // Lambda環境変数を定義
+    const lambdaEnvironment = {
+      AWS_LAMBDA_EXEC_WRAPPER: '/opt/bootstrap',
+      PORT: '8080',
+      RUST_LOG: 'info',
+      // NextAuth.js設定 - 環境別に動的設定
+      NEXTAUTH_URL: props.config.nextAuth.url || '', // 本番では後でCloudFront URLに更新
+      NEXTAUTH_SECRET: props.config.nextAuth.secret,
+      // Cognito values - CognitoStackから取得
+      COGNITO_CLIENT_ID: props.cognitoStack.userPoolClient.userPoolClientId,
+      COGNITO_ISSUER: `https://cognito-idp.${cdk.Aws.REGION}.amazonaws.com/${props.cognitoStack.userPool.userPoolId}`,
+      // 環境別設定
+      NODE_ENV: props.config.env.environment === 'local' ? 'development' : 'production',
+    };
     
     this.lambdaFunction = new lambda.Function(this, 'NextjsFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -74,16 +90,7 @@ export class FrontendStack extends cdk.Stack {
       }),
       memorySize: props.config.lambda.memorySize,
       timeout: cdk.Duration.seconds(props.config.lambda.timeout),
-      environment: {
-        AWS_LAMBDA_EXEC_WRAPPER: '/opt/bootstrap',
-        PORT: '8080',
-        RUST_LOG: 'info',
-        NEXTAUTH_URL: '', // Will be updated after deployment
-        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'PLEASE_CHANGE_THIS_SECRET',
-        // Cognito values will be updated after Cognito stack deployment
-        COGNITO_CLIENT_ID: process.env.COGNITO_CLIENT_ID || '',
-        COGNITO_ISSUER: process.env.COGNITO_ISSUER || '',
-      },
+      environment: lambdaEnvironment,
       layers: [
         lambda.LayerVersion.fromLayerVersionArn(
           this,
@@ -245,9 +252,88 @@ export class FrontendStack extends cdk.Stack {
       console.warn(`Public assets directory not found: ${publicPath}`);
     }
 
+    // デプロイ後にNEXTAUTH_URLをCloudFront URLで更新
+    const cloudFrontUrl = `https://${this.distribution.distributionDomainName}`;
+    
+    // 本番環境でNEXTAUTH_URLが未設定の場合、Lambda環境変数を更新
+    if (!props.config.nextAuth.url && props.config.env.environment === 'production') {
+      // Lambda環境変数を更新するCustomリソース用のロール
+      const updateLambdaRole = new iam.Role(this, 'UpdateLambdaRole', {
+        assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+        ],
+        inlinePolicies: {
+          UpdateLambdaEnv: new iam.PolicyDocument({
+            statements: [
+              new iam.PolicyStatement({
+                actions: ['lambda:UpdateFunctionConfiguration'],
+                resources: [this.lambdaFunction.functionArn],
+              }),
+            ],
+          }),
+        },
+      });
+
+      // Lambda環境変数更新用のCustomリソース
+      const updateEnvLambda = new lambda.Function(this, 'UpdateEnvFunction', {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        role: updateLambdaRole,
+        code: lambda.Code.fromInline(`
+          const { LambdaClient, UpdateFunctionConfigurationCommand } = require('@aws-sdk/client-lambda');
+          const lambda = new LambdaClient({ region: process.env.AWS_REGION });
+
+          exports.handler = async (event) => {
+            console.log('Event:', JSON.stringify(event, null, 2));
+            
+            if (event.RequestType === 'Delete') {
+              return { PhysicalResourceId: 'update-env-resource' };
+            }
+
+            const functionName = event.ResourceProperties.FunctionName;
+            const cloudFrontUrl = event.ResourceProperties.CloudFrontUrl;
+
+            try {
+              const command = new UpdateFunctionConfigurationCommand({
+                FunctionName: functionName,
+                Environment: {
+                  Variables: {
+                    ...event.ResourceProperties.CurrentEnv,
+                    NEXTAUTH_URL: cloudFrontUrl,
+                  },
+                },
+              });
+
+              const result = await lambda.send(command);
+              console.log('Lambda environment updated:', result);
+              
+              return { 
+                PhysicalResourceId: 'update-env-resource',
+                Data: { CloudFrontUrl: cloudFrontUrl }
+              };
+            } catch (error) {
+              console.error('Error updating Lambda environment:', error);
+              throw error;
+            }
+          };
+        `),
+      });
+
+      // CustomResource
+      new cdk.CustomResource(this, 'UpdateNextAuthUrl', {
+        serviceToken: updateEnvLambda.functionArn,
+        properties: {
+          FunctionName: this.lambdaFunction.functionName,
+          CloudFrontUrl: cloudFrontUrl,
+          CurrentEnv: lambdaEnvironment,
+        },
+      });
+    }
+
     // Outputs
     new cdk.CfnOutput(this, 'CloudFrontURL', {
-      value: `https://${this.distribution.distributionDomainName}`,
+      value: cloudFrontUrl,
       description: 'CloudFront Distribution URL',
     });
 
@@ -267,7 +353,7 @@ export class FrontendStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'NextAuthCallbackUrl', {
-      value: `https://${this.distribution.distributionDomainName}/api/auth/callback/cognito`,
+      value: `${cloudFrontUrl}/api/auth/callback/cognito`,
       description: 'Cognito Callback URL to add to User Pool Client',
     });
   }

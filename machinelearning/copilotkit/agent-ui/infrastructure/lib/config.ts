@@ -1,8 +1,47 @@
+import * as path from 'path';
+import * as fs from 'fs';
+
+// 環境に応じて.envファイルを選択して読み込み
+const loadEnvironmentConfig = () => {
+  // ローカル開発かどうかの判定
+  const isLocal = process.env.NODE_ENV === 'development' || process.env.CDK_LOCAL === 'true';
+  
+  // 環境ファイルのパス
+  const envFile = isLocal ? '.env.local' : '.env';
+  const envPath = path.resolve(__dirname, '..', envFile);
+  
+  try {
+    if (fs.existsSync(envPath)) {
+      console.log(`Loading environment from: ${envFile}`);
+      const envContent = fs.readFileSync(envPath, 'utf-8');
+      
+      // 環境変数を解析して設定
+      envContent.split('\n').forEach(line => {
+        if (line.trim() && !line.startsWith('#')) {
+          const [key, ...valueParts] = line.split('=');
+          const value = valueParts.join('=').trim();
+          if (key && value && !process.env[key.trim()]) {
+            process.env[key.trim()] = value;
+          }
+        }
+      });
+    } else {
+      console.warn(`Environment file not found: ${envFile}`);
+    }
+  } catch (error) {
+    console.warn(`Failed to load environment file: ${envFile}`, error);
+  }
+};
+
+// 環境設定を読み込み
+loadEnvironmentConfig();
+
 export interface AppConfig {
   // 環境設定
   env: {
     account: string;
     region: string;
+    environment: 'local' | 'production';
   };
   
   // Cognito設定
@@ -26,12 +65,20 @@ export interface AppConfig {
     runtime: string;
     webAdapterLayerArn: string;
   };
+  
+  // NextAuth.js設定
+  nextAuth: {
+    url?: string;
+    secret: string;
+    debugMode: boolean;
+  };
 }
 
 export const config: AppConfig = {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT || '',
     region: process.env.CDK_DEFAULT_REGION || 'us-east-1',
+    environment: (process.env.ENVIRONMENT as 'local' | 'production') || 'production',
   },
   
   cognito: {
@@ -40,7 +87,7 @@ export const config: AppConfig = {
   },
   
   frontend: {
-    nextjsAppPath: '../../frontend',
+    nextjsAppPath: `../../${process.env.DEPLOY_FRONTEND_DIR || 'frontend'}`,
   },
   
   lambda: {
@@ -49,5 +96,11 @@ export const config: AppConfig = {
     runtime: 'nodejs20.x',
     // Lambda Web Adapter Layer ARN - 動的にリージョンを取得
     webAdapterLayerArn: `arn:aws:lambda:${process.env.CDK_DEFAULT_REGION || 'us-east-1'}:753240598075:layer:LambdaAdapterLayerX86:20`,
+  },
+  
+  nextAuth: {
+    url: process.env.NEXTAUTH_URL || undefined,
+    secret: process.env.NEXTAUTH_SECRET || 'PLEASE_CHANGE_THIS_SECRET',
+    debugMode: process.env.DEBUG_MODE === 'true',
   },
 };
