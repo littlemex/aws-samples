@@ -52,3 +52,5 @@ coverage/
 *.tmp
 tmp/
 temp/
+
+.bedrock_agentcore.yaml
