@@ -33,7 +33,7 @@ CloudFormationスタックから自動的に環境変数を取得して`.env.loc
 
 ```bash
 # セットアップスクリプトを実行
-./scripts/setup-and-run.sh
+./scripts/setup.sh
 ```
 
 このスクリプトは以下を自動実行します：
