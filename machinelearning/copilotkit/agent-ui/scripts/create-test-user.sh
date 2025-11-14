@@ -5,11 +5,20 @@ set -e
 # This script creates a test user in the Cognito User Pool
 
 # Configuration
-STACK_NAME="CopilotKitCognitoStack"
-REGION=$(aws configure get region 2>/dev/null || echo "")
-if [ -z "$REGION" ]; then
-    REGION="us-east-1"
+PROJECT_NAME="copilotkit-agentcore"
+
+# NODE_ENVに応じてCLIENT_SUFFIXを設定（環境変数で明示的に指定されていない場合）
+if [ -z "$CLIENT_SUFFIX" ]; then
+    if [ "$NODE_ENV" = "production" ] || [ "$NODE_ENV" = "prod" ]; then
+        CLIENT_SUFFIX="prod"
+    else
+        CLIENT_SUFFIX="copilotkit"
+    fi
 fi
+
+REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
+SSM_PREFIX="/${PROJECT_NAME}/${CLIENT_SUFFIX}"
+STACK_NAME="CopilotKitCognitoStack"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -28,17 +37,17 @@ if ! aws sts get-caller-identity &> /dev/null; then
     exit 1
 fi
 
-# Get User Pool ID from CloudFormation stack
-echo -e "${BLUE}Retrieving User Pool ID...${NC}"
-USER_POOL_ID=$(aws cloudformation describe-stacks \
-  --stack-name $STACK_NAME \
-  --region $REGION \
-  --query 'Stacks[0].Outputs[?OutputKey==`UserPoolId`].OutputValue' \
-  --output text 2>/dev/null)
+# Get User Pool ID from SSM Parameter Store
+echo -e "${BLUE}Retrieving User Pool ID from SSM Parameter Store...${NC}"
+USER_POOL_ID=$(aws ssm get-parameter \
+  --name "${SSM_PREFIX}/cognito/user-pool-id" \
+  --query 'Parameter.Value' \
+  --output text \
+  --region $REGION 2>/dev/null)
 
 if [ -z "$USER_POOL_ID" ]; then
-    echo -e "${RED}❌ Error: Could not find Cognito stack${NC}"
-    echo "Please run ./scripts/setup-cognito.sh first"
+    echo -e "${RED}❌ Error: Could not retrieve User Pool ID from SSM${NC}"
+    echo "Please ensure the Cognito stack is deployed and SSM parameters are created"
     exit 1
 fi
 
@@ -160,12 +169,29 @@ echo "  Password: $TEMP_PASSWORD"
 echo "  Status: CONFIRMED"
 echo ""
 
-# Get Hosted UI URL
+# Get Hosted UI URL from CloudFormation (this is a convenience URL, not stored in SSM)
 HOSTED_UI_URL=$(aws cloudformation describe-stacks \
   --stack-name $STACK_NAME \
   --region $REGION \
   --query 'Stacks[0].Outputs[?OutputKey==`HostedUIUrl`].OutputValue' \
   --output text 2>/dev/null)
+
+# If not available from CloudFormation, construct it from SSM parameters
+if [ -z "$HOSTED_UI_URL" ]; then
+    DOMAIN=$(aws ssm get-parameter \
+      --name "${SSM_PREFIX}/cognito/domain" \
+      --query 'Parameter.Value' \
+      --output text \
+      --region $REGION 2>/dev/null)
+    CLIENT_ID=$(aws ssm get-parameter \
+      --name "${SSM_PREFIX}/cognito/client-id" \
+      --query 'Parameter.Value' \
+      --output text \
+      --region $REGION 2>/dev/null)
+    if [ -n "$DOMAIN" ] && [ -n "$CLIENT_ID" ]; then
+        HOSTED_UI_URL="https://${DOMAIN}.auth.${REGION}.amazoncognito.com/login?client_id=${CLIENT_ID}&response_type=code&scope=openid+email+profile&redirect_uri=http://localhost:3000/api/auth/callback/cognito"
+    fi
+fi
 
 echo -e "${BLUE}📝 Next Steps:${NC}"
 echo "1. Test login via Cognito Hosted UI:"
