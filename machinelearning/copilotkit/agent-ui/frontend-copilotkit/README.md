@@ -27,27 +27,51 @@ Amazon Cognito Hosted UIを使用したNextAuth.js認証のテストアプリケ
 npm install
 ```
 
-### 2. 環境変数の自動セットアップ（推奨）
+### 2. 開発サーバー起動（推奨）
 
-CloudFormationスタックから自動的に環境変数を取得して`.env.local`ファイルを作成するスクリプトを使用します：
+SSM Parameter StoreからCognito情報を動的に取得して開発サーバーを起動するスクリプトを使用します：
 
 ```bash
-# セットアップスクリプトを実行
-./scripts/setup-and-run.sh
+# dev環境で起動（デフォルト）
+./scripts/dev.sh
+
+# prod環境で起動
+NODE_ENV=prod ./scripts/dev.sh
+
+# カスタム環境で起動
+CLIENT_SUFFIX=staging ./scripts/dev.sh
+
+# ポート番号を変更する場合
+PORT=3002 ./scripts/dev.sh
 ```
 
 このスクリプトは以下を自動実行します：
-- CloudFormationスタック `CopilotKitCognitoStack` から情報を取得
-- `NEXTAUTH_SECRET` の安全な生成（OpenSSL使用）
-- `.env.local` ファイルの作成
+- SSM Parameter StoreからCognito情報を取得（環境別）
+- 必要な環境変数を自動設定
+- 開発サーバーを起動（デフォルトポート: 3001）
 
-### 3. 開発サーバー起動
+**環境の切り替え：**
+- `NODE_ENV`環境変数で環境を指定できます
+- `prod` または `production` を指定すると、SSMの `/copilotkit-agentcore/prod/` パスから情報を取得
+- 指定なし、またはその他の値の場合は `/copilotkit-agentcore/dev/` パスから取得
+- `CLIENT_SUFFIX`環境変数で直接SSMパスの環境部分を指定することも可能
+
+ブラウザで http://localhost:3001 にアクセスします。
+
+### 3. 手動セットアップ（オプション）
+
+環境変数ファイルを使用する場合は、CloudFormationスタックから情報を取得して`.env.local`ファイルを作成できます：
+
+```bash
+# セットアップスクリプトを実行（非推奨 - dev.shの使用を推奨）
+./scripts/setup-and-run.sh
+```
+
+手動セットアップ後は通常のnpmコマンドで起動：
 
 ```bash
 npm run dev
 ```
-
-ブラウザで http://localhost:3000 にアクセスします。
 
 ## 🔧 設定
 

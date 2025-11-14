@@ -5,9 +5,12 @@
 
 set -e
 
-# 環境変数から取得、デフォルトは CopilotKitCognitoStack
+# 環境変数から取得
+PROJECT_NAME="copilotkit-agentcore"
+CLIENT_SUFFIX="${CLIENT_SUFFIX:-copilotkit}"
+SSM_PREFIX="/${PROJECT_NAME}/${CLIENT_SUFFIX}"
 STACK_NAME="${COGNITO_STACK_NAME:-CopilotKitCognitoStack}"
-FRONTEND_DIR="${FRONTEND_DIR:-/home/coder/aws-samples/machinelearning/copilotkit/agent-ui/frontend}"
+FRONTEND_DIR="${FRONTEND_DIR:-/home/coder/aws-samples/machinelearning/copilotkit/agent-ui/frontend-copilotkit}"
 ENV_FILE="${FRONTEND_DIR}/.env.local"
 
 # デフォルト設定
@@ -71,46 +74,39 @@ echo "Cognito環境変数セットアップスクリプト"
 echo "=========================================="
 echo ""
 
-# スタックの存在確認
-echo "CloudFormationスタックを確認中: ${STACK_NAME}"
-if ! aws cloudformation describe-stacks --stack-name ${STACK_NAME} &> /dev/null; then
-    echo "エラー: スタック '${STACK_NAME}' が見つかりません"
-    echo "スタックがデプロイされているか確認してください"
-    exit 1
-fi
+# AWS Regionの取得
+AWS_REGION=$(aws configure get region 2>/dev/null || echo "us-east-1")
 
-echo "✓ スタックが見つかりました"
-echo ""
+# SSM Parameter Storeから値を取得
+echo "SSM Parameter Storeから設定を取得中..."
+echo "  - SSM Prefix: ${SSM_PREFIX}"
 
-# スタック出力値を取得
-echo "スタック出力値を取得中..."
-STACK_OUTPUTS=$(aws cloudformation describe-stacks \
-    --stack-name ${STACK_NAME} \
-    --query 'Stacks[0].Outputs' \
-    --output json)
+USER_POOL_CLIENT_ID=$(aws ssm get-parameter \
+    --name "${SSM_PREFIX}/cognito/client-id" \
+    --query 'Parameter.Value' \
+    --output text \
+    --region ${AWS_REGION} 2>/dev/null)
 
-# 必要な値を抽出
-USER_POOL_CLIENT_ID=$(echo ${STACK_OUTPUTS} | jq -r '.[] | select(.OutputKey=="UserPoolClientId") | .OutputValue')
-ISSUER_URL=$(echo ${STACK_OUTPUTS} | jq -r '.[] | select(.OutputKey=="IssuerUrl") | .OutputValue')
-AWS_REGION=$(aws configure get region 2>/dev/null || echo "")
+ISSUER_URL=$(aws ssm get-parameter \
+    --name "${SSM_PREFIX}/cognito/issuer-url" \
+    --query 'Parameter.Value' \
+    --output text \
+    --region ${AWS_REGION} 2>/dev/null)
 
 # 値の確認
 if [ -z "$USER_POOL_CLIENT_ID" ] || [ "$USER_POOL_CLIENT_ID" == "null" ]; then
-    echo "エラー: UserPoolClientId が取得できませんでした"
+    echo "エラー: Client IDがSSMから取得できませんでした"
+    echo "SSMパラメータが存在するか確認してください: ${SSM_PREFIX}/cognito/client-id"
     exit 1
 fi
 
 if [ -z "$ISSUER_URL" ] || [ "$ISSUER_URL" == "null" ]; then
-    echo "エラー: IssuerUrl が取得できませんでした"
+    echo "エラー: Issuer URLがSSMから取得できませんでした"
+    echo "SSMパラメータが存在するか確認してください: ${SSM_PREFIX}/cognito/issuer-url"
     exit 1
 fi
 
-if [ -z "$AWS_REGION" ]; then
-    AWS_REGION="us-east-1"
-    echo "警告: AWS Regionが取得できなかったため、デフォルトの us-east-1 を使用します"
-fi
-
-echo "✓ スタック出力値を取得しました"
+echo "✓ SSM Parameter Storeから設定を取得しました"
 echo "  - Client ID: ${USER_POOL_CLIENT_ID}"
 echo "  - Issuer URL: ${ISSUER_URL}"
 echo "  - Region: ${AWS_REGION}"
