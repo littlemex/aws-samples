@@ -27,47 +27,34 @@ Amazon Cognito Hosted UIを使用したNextAuth.js認証のテストアプリケ
 npm install
 ```
 
-### 2. 環境変数の自動セットアップ（推奨）
+### 2. 開発サーバー起動（推奨）
 
-CloudFormationスタックから自動的に環境変数を取得して`.env.local`ファイルを作成するスクリプトを使用します：
+SSM Parameter StoreからCognito情報を動的に取得して開発サーバーを起動するスクリプトを使用します：
 
 ```bash
-# セットアップスクリプトを実行
-./scripts/setup.sh
+# dev環境で起動（デフォルト）
+./scripts/dev.sh
+
+# prod環境で起動
+NODE_ENV=prod ./scripts/dev.sh
+
+# カスタム環境で起動
+CLIENT_SUFFIX=staging ./scripts/dev.sh
 ```
 
 このスクリプトは以下を自動実行します：
-- CloudFormationスタック `CopilotKitCognitoStack` から情報を取得
-- `NEXTAUTH_SECRET` の安全な生成（OpenSSL使用）
-- `.env.local` ファイルの作成
+- SSM Parameter StoreからCognito情報を取得（環境別）
+- 必要な環境変数を自動設定
+- 開発サーバーを起動
 
-### 3. 開発サーバー起動
+**環境の切り替え：**
 
-```bash
-npm run dev
-```
+- `NODE_ENV`環境変数で環境を指定できます
+- `prod` を指定すると、SSMの `/copilotkit-agentcore/prod/` パスから情報を取得
+- 指定なしの場合は `/copilotkit-agentcore/dev/` パスから取得
+- `CLIENT_SUFFIX`環境変数で直接SSMパスの環境部分を指定することも可能
 
 ブラウザで http://localhost:3000 にアクセスします。
 
-## 🔧 設定
-
-### 環境変数（`.env.local`）
-
-`.env.local`ファイルは自動生成されます。手動で作成する場合は以下の形式で設定してください：
-
-```env
-# Cognito設定
-COGNITO_CLIENT_ID=your-client-id
-COGNITO_ISSUER=https://cognito-idp.us-east-1.amazonaws.com/your-pool-id
-
-# NextAuth.js設定
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key
-
-# AWS設定
-AWS_REGION=us-east-1
-```
-
 **重要な注意事項：**
 - `NEXTAUTH_SECRET` は本番環境では必ず安全なランダム文字列を使用してください
-- `.env.local` はGit管理対象外です（`.gitignore`に含まれています）
