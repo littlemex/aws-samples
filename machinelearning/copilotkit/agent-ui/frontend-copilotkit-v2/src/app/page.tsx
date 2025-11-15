@@ -14,19 +14,19 @@ export default function Home() {
   const { data: session, status } = useSession();
   const [themeColor, setThemeColor] = useState('#6366f1');
 
-  // Frontend Action for theme color change - 一時的に無効化
-  // useCopilotAction({
-  //   name: 'setThemeColor',
-  //   description: 'Set the theme color of the application UI',
-  //   parameters: [{
-  //     name: 'themeColor',
-  //     description: 'The theme color to set. Pick nice colors like blue, green, purple, etc.',
-  //     required: true,
-  //   }],
-  //   handler({ themeColor }) {
-  //     setThemeColor(themeColor);
-  //   },
-  // });
+  // Frontend Action for theme color change
+  useCopilotAction({
+    name: 'setThemeColor',
+    description: 'Set the theme color of the application UI',
+    parameters: [{
+      name: 'themeColor',
+      description: 'The theme color to set. Pick nice colors like blue, green, purple, etc.',
+      required: true,
+    }],
+    handler({ themeColor }) {
+      setThemeColor(themeColor);
+    },
+  });
 
   if (status === 'loading') {
     return (
@@ -84,35 +84,31 @@ function MainContent({
   session: any;
   onSignOut: () => void;
 }) {
-  // 一時的に全てのツール/アクションを無効化
-  // const { state, setState } = useCoAgent<AgentStateType>({
-  //   name: "weatherAgent",
-  //   initialState: {
-  //     proverbs: [
-  //       "CopilotKit may be new, but it's the best thing since sliced bread.",
-  //     ],
-  //   },
-  // });
+  const { state, setState } = useCoAgent<AgentStateType>({
+    name: "weatherAgent",
+    initialState: {
+      proverbs: [
+        "CopilotKit may be new, but it's the best thing since sliced bread.",
+      ],
+    },
+  });
 
-  const state = { proverbs: ["Test proverb"] };
-  const setState = () => {};
-
-  // useCopilotAction({
-  //   name: "weatherTool",
-  //   description: "Get the weather for a given location.",
-  //   available: "frontend",
-  //   parameters: [
-  //     { name: "location", type: "string", required: true },
-  //   ],
-  //   render: ({ args, result, status }) => {
-  //     return <WeatherCard 
-  //       location={args.location} 
-  //       themeColor={themeColor} 
-  //       result={result} 
-  //       status={status}
-  //     />
-  //   },
-  // });
+  useCopilotAction({
+    name: "weatherTool",
+    description: "Get the weather for a given location.",
+    available: "frontend",
+    parameters: [
+      { name: "location", type: "string", required: true },
+    ],
+    render: ({ args, result, status }) => {
+      return <WeatherCard 
+        location={args.location} 
+        themeColor={themeColor} 
+        result={result} 
+        status={status}
+      />
+    },
+  });
 
   return (
     <div

@@ -18,7 +18,7 @@ export const AgentState = z.object({
 
 export const weatherAgent = new Agent({
   name: "Weather Agent",
-  // tools: { weatherTool },  // 一時的に無効化
+  tools: { weatherTool },
   model: bedrock("us.anthropic.claude-sonnet-4-20250514-v1:0"),
   instructions: "You are a helpful assistant.",
 });
