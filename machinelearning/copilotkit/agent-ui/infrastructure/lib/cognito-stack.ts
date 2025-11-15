@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { AppConfig } from './config';
 
@@ -17,18 +18,14 @@ export class CognitoStack extends cdk.Stack {
 
     const projectName = props.config.cognito.projectName || 'copilotkit-agentcore';
 
-    // 新しいCognito User Poolを作成（参照リソースが存在しないため）
     this.userPool = new cognito.UserPool(this, 'UserPool', {
       userPoolName: `${projectName}-user-pool`,
-      // Email as username
       signInAliases: {
         email: true,
       },
-      // Auto-verify email
       autoVerify: {
         email: true,
       },
-      // User attributes schema
       standardAttributes: {
         email: {
           required: true,
@@ -39,7 +36,6 @@ export class CognitoStack extends cdk.Stack {
           mutable: true,
         },
       },
-      // Password policy
       passwordPolicy: {
         minLength: 8,
         requireUppercase: true,
@@ -47,9 +43,7 @@ export class CognitoStack extends cdk.Stack {
         requireDigits: true,
         requireSymbols: true,
       },
-      // Account recovery
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-      // Self sign-up
       selfSignUpEnabled: true,
       // MFA configuration (OFF for simplicity)
       mfa: cognito.Mfa.OFF,
@@ -57,7 +51,6 @@ export class CognitoStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // User Pool Domain for OAuth endpoints
     this.userPoolDomain = new cognito.UserPoolDomain(this, 'UserPoolDomain', {
       userPool: this.userPool,
       cognitoDomain: {
@@ -65,10 +58,10 @@ export class CognitoStack extends cdk.Stack {
       },
     });
 
-    // User Pool Client (SPA - Public Client)
+    const clientSuffix = props.config.cognito.clientSuffix;
     this.userPoolClient = new cognito.UserPoolClient(this, 'UserPoolClient', {
       userPool: this.userPool,
-      userPoolClientName: `${projectName}-app-client`,
+      userPoolClientName: `${projectName}-${clientSuffix}-client`,
       // Public client - no secret for SPA
       generateSecret: false,
       // OAuth flows for SPA
@@ -82,15 +75,8 @@ export class CognitoStack extends cdk.Stack {
           cognito.OAuthScope.EMAIL,
           cognito.OAuthScope.PROFILE,
         ],
-        callbackUrls: [
-          'http://localhost:3000/api/auth/callback/cognito',
-          'http://localhost:3000',
-          // CloudFront callback URL will be added manually after frontend deployment
-        ],
-        logoutUrls: [
-          'http://localhost:3000',
-          // CloudFront logout URL will be added manually after frontend deployment
-        ],
+        callbackUrls: props.config.cognito.callbackUrls,
+        logoutUrls: props.config.cognito.logoutUrls,
       },
       // Identity providers
       supportedIdentityProviders: [
@@ -110,6 +96,33 @@ export class CognitoStack extends cdk.Stack {
         custom: false,
         adminUserPassword: false,
       },
+    });
+
+    // SSM Parameter Store に Cognito 設定を保存
+    const ssmPrefix = `/${projectName}/${clientSuffix}`;
+    
+    new ssm.StringParameter(this, 'SsmUserPoolId', {
+      parameterName: `${ssmPrefix}/cognito/user-pool-id`,
+      stringValue: this.userPool.userPoolId,
+      description: 'Cognito User Pool ID',
+    });
+
+    new ssm.StringParameter(this, 'SsmUserPoolClientId', {
+      parameterName: `${ssmPrefix}/cognito/client-id`,
+      stringValue: this.userPoolClient.userPoolClientId,
+      description: 'Cognito User Pool Client ID',
+    });
+
+    new ssm.StringParameter(this, 'SsmIssuerUrl', {
+      parameterName: `${ssmPrefix}/cognito/issuer-url`,
+      stringValue: `https://cognito-idp.${cdk.Aws.REGION}.amazonaws.com/${this.userPool.userPoolId}`,
+      description: 'Cognito Issuer URL',
+    });
+
+    new ssm.StringParameter(this, 'SsmUserPoolDomain', {
+      parameterName: `${ssmPrefix}/cognito/domain`,
+      stringValue: this.userPoolDomain.domainName,
+      description: 'Cognito User Pool Domain',
     });
 
     // 新しいCognito Outputs（CloudFormation互換）

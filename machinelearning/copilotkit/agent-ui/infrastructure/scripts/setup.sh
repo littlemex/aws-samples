@@ -3,10 +3,10 @@
 # CopilotKit Agent UI - 初回セットアップスクリプト
 # 
 # このスクリプトは以下を行います：
-# 1. NEXTAUTH_SECRETの自動生成
-# 2. COGNITO_CLIENT_SECRETの入力
-# 3. .envファイルの作成
-# 4. AWS認証情報の確認
+# 1. .env.exampleをベースに.env.{環境名}ファイルを作成
+# 2. NEXTAUTH_SECRETの自動生成
+# 3. AWSアカウント/リージョンの自動検出
+# 4. 必要な設定の入力受付
 # 5. CDKブートストラップの実行
 
 set -e  # エラー時に停止
@@ -16,6 +16,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # ログ関数
@@ -35,6 +36,53 @@ log_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
+log_header() {
+    echo -e "${CYAN}$1${NC}"
+}
+
+# 使用方法表示
+usage() {
+    echo "使用方法: NODE_ENV=<環境名> $0"
+    echo ""
+    echo "環境変数:"
+    echo "  NODE_ENV    環境名を指定（オプション、デフォルト: production）"
+    echo "              a-zのみ、最大10文字"
+    echo ""
+    echo "例:"
+    echo "  NODE_ENV=local $0       # .env.local を生成"
+    echo "  NODE_ENV=production $0  # .env.production を生成"
+    echo "  NODE_ENV=dev $0         # .env.dev を生成"
+    echo "  $0                      # .env.production を生成（デフォルト）"
+    echo ""
+    exit 1
+}
+
+# 引数チェック（--helpのみ対応）
+for arg in "$@"; do
+    case $arg in
+        --help)
+            usage
+            ;;
+        *)
+            if [ -n "$1" ]; then
+                echo "不明な引数: $arg"
+                echo "環境名は NODE_ENV 環境変数で指定してください。"
+                usage
+            fi
+            ;;
+    esac
+done
+
+# NODE_ENVから環境名を取得（デフォルト: production）
+ENV_NAME="${NODE_ENV:-production}"
+
+# 環境名のバリデーション（a-zのみ、最大10文字）
+if ! [[ "$ENV_NAME" =~ ^[a-z]{1,10}$ ]]; then
+    log_error "環境名は小文字アルファベット(a-z)のみで、最大10文字である必要があります。"
+    log_error "指定された環境名: $ENV_NAME"
+    exit 1
+fi
+
 echo "======================================"
 echo "CopilotKit Agent UI - 初回セットアップ"
 echo "======================================"
@@ -45,10 +93,20 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
 log_info "プロジェクトディレクトリ: $PROJECT_DIR"
+log_info "環境名: $ENV_NAME"
+
+ENV_FILE=".env.${ENV_NAME}"
+log_info "作成するファイル: $ENV_FILE"
+
+# .env.exampleの存在確認
+if [ ! -f ".env.example" ]; then
+    log_error ".env.exampleファイルが見つかりません。"
+    exit 1
+fi
 
 # .envファイルが既に存在するかチェック
-if [ -f ".env" ]; then
-    log_warn ".envファイルが既に存在します。"
+if [ -f "$ENV_FILE" ]; then
+    log_warn "$ENV_FILE ファイルが既に存在します。"
     read -p "上書きしますか？ (y/N): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -60,7 +118,7 @@ fi
 log_info "必要なコマンドをチェックしています..."
 
 # 必要なコマンドの存在確認
-for cmd in openssl aws node npm; do
+for cmd in openssl node npm; do
     if ! command -v "$cmd" &> /dev/null; then
         log_error "$cmd コマンドが見つかりません。インストールしてください。"
         exit 1
@@ -84,36 +142,67 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 CURRENT_REGION=$(aws configure get region || echo "us-east-1")
 log_success "AWS認証成功 - Account: $ACCOUNT_ID, Region: $CURRENT_REGION"
 
+echo ""
+log_header "===== 環境設定 ====="
+
 # NEXTAUTH_SECRETの生成
 log_info "NEXTAUTH_SECRETを生成しています..."
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
 log_success "NEXTAUTH_SECRETを生成しました。"
 
-# Public Client設定のため、COGNITO_CLIENT_SECRETは不要
-log_info "Cognito設定の確認..."
-log_success "Public Client設定のため、Client Secretは不要です。"
+# ユーザー入力：COGNITO_CLIENT_SUFFIX
+echo ""
+log_info "Cognito Client Suffix を指定してください。"
+echo "  - これはSSMパラメータのパスと環境識別に使用されます"
+echo "  - 例: 'copilotkit', 'frontend', 'production' など"
+read -p "COGNITO_CLIENT_SUFFIX [${ENV_NAME}]: " INPUT_CLIENT_SUFFIX
+COGNITO_CLIENT_SUFFIX="${INPUT_CLIENT_SUFFIX:-${ENV_NAME}}"
 
-# .envファイルの作成
-log_info ".envファイルを作成しています..."
-cat > .env << EOF
-# CopilotKit Agent UI - 環境変数設定
-# $(date)に自動生成
+# ユーザー入力：DEPLOY_FRONTEND_DIR
+echo ""
+log_info "デプロイするフロントエンドディレクトリを指定してください。"
+echo "  - frontend: 基本フロントエンド"
+echo "  - frontend-copilotkit: CopilotKit統合版"
+read -p "DEPLOY_FRONTEND_DIR [frontend-copilotkit]: " INPUT_FRONTEND_DIR
+DEPLOY_FRONTEND_DIR="${INPUT_FRONTEND_DIR:-frontend-copilotkit}"
 
-# NextAuth.js Secret (自動生成)
-NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+# ユーザー入力：DEBUG_MODE
+echo ""
+log_info "デバッグモードを有効にしますか？"
+read -p "DEBUG_MODE [false]: " INPUT_DEBUG
+DEBUG_MODE="${INPUT_DEBUG:-false}"
 
-# AWS Settings
-AWS_REGION=${CURRENT_REGION}
-CDK_DEFAULT_REGION=${CURRENT_REGION}
-CDK_DEFAULT_ACCOUNT=${ACCOUNT_ID}
+echo ""
+log_header "===== 設定内容の確認 ====="
+echo "  環境ファイル: $ENV_FILE"
+echo "  AWS Account: $ACCOUNT_ID"
+echo "  AWS Region: $CURRENT_REGION"
+echo "  ENVIRONMENT: $ENV_NAME"
+echo "  COGNITO_CLIENT_SUFFIX: $COGNITO_CLIENT_SUFFIX"
+echo "  DEPLOY_FRONTEND_DIR: $DEPLOY_FRONTEND_DIR"
+echo "  DEBUG_MODE: $DEBUG_MODE"
+echo ""
 
-# Optional: AWS Profile
-# AWS_PROFILE=default
+# .env.exampleをベースに環境ファイルを作成
+log_info ".env.exampleから${ENV_FILE}ファイルを作成しています..."
+cp .env.example "$ENV_FILE"
 
-# Note: COGNITO_CLIENT_SECRET は不要（Public Client設定のため）
-EOF
+# 値を置換（sedの区切り文字を|に変更して特殊文字に対応）
+sed -i "s|^NEXTAUTH_SECRET=.*|NEXTAUTH_SECRET=${NEXTAUTH_SECRET}|" "$ENV_FILE"
+sed -i "s|^AWS_REGION=.*|AWS_REGION=${CURRENT_REGION}|" "$ENV_FILE"
+sed -i "s|^CDK_DEFAULT_REGION=.*|CDK_DEFAULT_REGION=${CURRENT_REGION}|" "$ENV_FILE"
+sed -i "s|^COGNITO_CLIENT_SUFFIX=.*|COGNITO_CLIENT_SUFFIX=${COGNITO_CLIENT_SUFFIX}|" "$ENV_FILE"
+sed -i "s|^DEPLOY_FRONTEND_DIR=.*|DEPLOY_FRONTEND_DIR=${DEPLOY_FRONTEND_DIR}|" "$ENV_FILE"
+sed -i "s|^ENVIRONMENT=.*|ENVIRONMENT=${ENV_NAME}|" "$ENV_FILE"
+sed -i "s|^NODE_ENV=.*|NODE_ENV=${ENV_NAME}|" "$ENV_FILE"
+sed -i "s|^DEBUG_MODE=.*|DEBUG_MODE=${DEBUG_MODE}|" "$ENV_FILE"
 
-log_success ".envファイルを作成しました。"
+# CDK_DEFAULT_ACCOUNTを追加（.env.exampleにはないため）
+echo "" >> "$ENV_FILE"
+echo "# AWS Account (auto-detected)" >> "$ENV_FILE"
+echo "CDK_DEFAULT_ACCOUNT=${ACCOUNT_ID}" >> "$ENV_FILE"
+
+log_success "${ENV_FILE}ファイルを作成しました。"
 
 # 依存関係のインストール
 log_info "npm依存関係をインストールしています..."
@@ -137,32 +226,42 @@ else
 fi
 
 # フロントエンド依存関係のチェック
-FRONTEND_DIR="../frontend"
-if [ -d "$FRONTEND_DIR" ]; then
-    log_info "フロントエンド（$FRONTEND_DIR）の依存関係をチェックしています..."
-    if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
+FRONTEND_PATH="../${DEPLOY_FRONTEND_DIR}"
+if [ -d "$FRONTEND_PATH" ]; then
+    log_info "フロントエンド（$FRONTEND_PATH）の依存関係をチェックしています..."
+    if [ ! -d "$FRONTEND_PATH/node_modules" ]; then
         log_info "フロントエンドの依存関係をインストールしています..."
-        (cd "$FRONTEND_DIR" && npm install)
+        (cd "$FRONTEND_PATH" && npm install)
         log_success "フロントエンドの依存関係をインストールしました。"
     else
         log_success "フロントエンドの依存関係は既にインストール済みです。"
     fi
+else
+    log_warn "フロントエンドディレクトリが見つかりません: $FRONTEND_PATH"
 fi
 
-echo
+echo ""
 log_success "============================================"
 log_success "セットアップが完了しました！"
 log_success "============================================"
-echo
-log_info "次のステップ："
-echo "  1. デプロイを実行: ./scripts/deploy.sh"
-echo "  2. または手動デプロイ: npm run deploy"
-echo
-log_info "重要な情報："
-echo "  - .envファイルが作成されました（Gitにはコミットされません）"
-echo "  - NEXTAUTH_SECRET: 自動生成済み"
-echo "  - COGNITO_CLIENT_SECRET: 入力済み"
-echo "  - Account ID: $ACCOUNT_ID"
-echo "  - Region: $CURRENT_REGION"
-echo
-log_warn "注意: デプロイ後にCognito User Pool ClientのCallback URLsの更新が必要です。"
+echo ""
+log_header "次のステップ："
+echo "  1. デプロイを実行:"
+echo "     NODE_ENV=${ENV_NAME} ./scripts/deploy-frontend.sh"
+echo "  2. または手動デプロイ:"
+echo "     NODE_ENV=${ENV_NAME} npm run deploy"
+echo ""
+log_header "作成されたファイル："
+echo "  - ${ENV_FILE} (Gitにコミットしないでください)"
+echo ""
+log_header "設定値："
+echo "  - ENVIRONMENT: $ENV_NAME"
+echo "  - COGNITO_CLIENT_SUFFIX: $COGNITO_CLIENT_SUFFIX"
+echo "  - DEPLOY_FRONTEND_DIR: $DEPLOY_FRONTEND_DIR"
+echo "  - SSM Parameter Prefix: /copilotkit-agentcore/${COGNITO_CLIENT_SUFFIX}"
+echo ""
+log_info "ヒント："
+echo "  - config.tsは環境に応じて.env.${ENV_NAME}を自動で読み込みます"
+echo "  - 別の環境を作成する場合:"
+echo "    NODE_ENV=staging ./scripts/setup.sh"
+echo ""

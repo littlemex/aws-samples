@@ -3,14 +3,19 @@ import * as fs from 'fs';
 
 // 環境に応じて.envファイルを選択して読み込み
 const loadEnvironmentConfig = () => {
-  // ローカル開発かどうかの判定
-  const isLocal = process.env.NODE_ENV === 'development' || process.env.CDK_LOCAL === 'true';
+  // NODE_ENVから環境名を取得（デフォルトは'production'）
+  const envName = process.env.NODE_ENV || 'production';
   
-  // 環境ファイルのパス
-  const envFile = isLocal ? '.env.local' : '.env';
+  // 環境ファイルのパス: .env.{環境名}
+  const envFile = `.env.${envName}`;
   const envPath = path.resolve(__dirname, '..', envFile);
   
+  // フォールバック: .envファイル（後方互換性のため）
+  const fallbackEnvFile = '.env';
+  const fallbackEnvPath = path.resolve(__dirname, '..', fallbackEnvFile);
+  
   try {
+    // まず.env.{環境名}を試す
     if (fs.existsSync(envPath)) {
       console.log(`Loading environment from: ${envFile}`);
       const envContent = fs.readFileSync(envPath, 'utf-8');
@@ -25,8 +30,23 @@ const loadEnvironmentConfig = () => {
           }
         }
       });
+    } else if (fs.existsSync(fallbackEnvPath)) {
+      // フォールバック: .envを読み込む
+      console.log(`Loading environment from: ${fallbackEnvFile} (fallback)`);
+      const envContent = fs.readFileSync(fallbackEnvPath, 'utf-8');
+      
+      // 環境変数を解析して設定
+      envContent.split('\n').forEach(line => {
+        if (line.trim() && !line.startsWith('#')) {
+          const [key, ...valueParts] = line.split('=');
+          const value = valueParts.join('=').trim();
+          if (key && value && !process.env[key.trim()]) {
+            process.env[key.trim()] = value;
+          }
+        }
+      });
     } else {
-      console.warn(`Environment file not found: ${envFile}`);
+      console.warn(`Environment file not found: ${envFile} or ${fallbackEnvFile}`);
     }
   } catch (error) {
     console.warn(`Failed to load environment file: ${envFile}`, error);
@@ -47,6 +67,10 @@ export interface AppConfig {
   // Cognito設定
   cognito: {
     projectName: string;
+    clientSuffix: string;       // Client名のサフィックス
+    appName: string;           // アプリケーション名
+    callbackUrls: string[];    // コールバックURL一覧
+    logoutUrls: string[];      // ログアウトURL一覧
     userPoolId?: string;        // CDK移行後は不要
     userPoolClientId?: string;  // CDK移行後は不要
     userPoolDomain?: string;    // CDK移行後は不要
@@ -83,7 +107,24 @@ export const config: AppConfig = {
   
   cognito: {
     projectName: 'copilotkit-agentcore',
-    // 固定値削除 - 新しいCognitoリソースを作成するため不要
+    clientSuffix: process.env.COGNITO_CLIENT_SUFFIX || 'default',
+    appName: process.env.APP_NAME || 'Default',
+    // コールバックURLとログアウトURLを環境変数から読み込み（カンマ区切り）
+    callbackUrls: process.env.COGNITO_CALLBACK_URLS 
+      ? process.env.COGNITO_CALLBACK_URLS.split(',').map(url => url.trim())
+      : [
+          'http://localhost:3000/api/auth/callback/cognito',
+          'http://localhost:3000',
+          'http://localhost:3001/api/auth/callback/cognito',
+          'http://localhost:13001/api/auth/callback/cognito', // SSM Port Forwarding
+        ],
+    logoutUrls: process.env.COGNITO_LOGOUT_URLS
+      ? process.env.COGNITO_LOGOUT_URLS.split(',').map(url => url.trim())
+      : [
+          'http://localhost:3000',
+          'http://localhost:3001',
+          'http://localhost:13001',
+        ],
   },
   
   frontend: {

@@ -32,6 +32,162 @@ export class NextjsStack extends cdk.Stack {
       // これにより、CloudFrontを通じてのみアクセス可能になり、World Accessible問題を回避
     });
 
+    // Custom Resource to update Cognito callback URLs
+    const updateCognitoRole = new cdk.aws_iam.Role(this, 'UpdateCognitoRole', {
+      assumedBy: new cdk.aws_iam.ServicePrincipal('lambda.amazonaws.com'),
+      managedPolicies: [
+        cdk.aws_iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
+      ],
+      inlinePolicies: {
+        UpdateCognitoPolicy: new cdk.aws_iam.PolicyDocument({
+          statements: [
+            new cdk.aws_iam.PolicyStatement({
+              actions: [
+                'cognito-idp:DescribeUserPoolClient',
+                'cognito-idp:UpdateUserPoolClient'
+              ],
+              resources: ['*'],
+            }),
+          ],
+        }),
+      },
+    });
+
+    const updateCognitoFunction = new cdk.aws_lambda.Function(this, 'UpdateCognitoFunction', {
+      runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      role: updateCognitoRole,
+      code: cdk.aws_lambda.Code.fromInline(`
+        const { CognitoIdentityProviderClient, DescribeUserPoolClientCommand, UpdateUserPoolClientCommand } = require('@aws-sdk/client-cognito-identity-provider');
+        
+        async function sendResponse(event, context, responseStatus, responseData, physicalResourceId) {
+          const responseBody = JSON.stringify({
+            Status: responseStatus,
+            Reason: 'See the details in CloudWatch Log Stream: ' + context.logStreamName,
+            PhysicalResourceId: physicalResourceId || context.logStreamName,
+            StackId: event.StackId,
+            RequestId: event.RequestId,
+            LogicalResourceId: event.LogicalResourceId,
+            Data: responseData
+          });
+          
+          console.log('Response body:', responseBody);
+          
+          try {
+            const response = await fetch(event.ResponseURL, {
+              method: 'PUT',
+              headers: {
+                'content-type': '',
+                'content-length': responseBody.length.toString()
+              },
+              body: responseBody
+            });
+            console.log('CloudFormation response sent:', response.status);
+          } catch (error) {
+            console.error('Failed to send response to CloudFormation:', error);
+            throw error;
+          }
+        }
+        
+        exports.handler = async (event, context) => {
+          console.log('Event:', JSON.stringify(event, null, 2));
+          
+          const cognito = new CognitoIdentityProviderClient({ region: process.env.AWS_REGION });
+          
+          if (event.RequestType === 'Delete') {
+            await sendResponse(event, context, 'SUCCESS', {}, event.PhysicalResourceId || 'update-cognito');
+            return;
+          }
+          
+          try {
+            const userPoolId = event.ResourceProperties.UserPoolId;
+            const clientId = event.ResourceProperties.ClientId;
+            const cloudfrontUrl = event.ResourceProperties.CloudFrontUrl;
+            const additionalCallbackUrls = event.ResourceProperties.AdditionalCallbackUrls || [];
+            const additionalLogoutUrls = event.ResourceProperties.AdditionalLogoutUrls || [];
+            
+            // 現在の設定を取得
+            const describeResult = await cognito.send(new DescribeUserPoolClientCommand({
+              UserPoolId: userPoolId,
+              ClientId: clientId
+            }));
+            
+            const currentConfig = describeResult.UserPoolClient;
+            console.log('Current Cognito configuration:', JSON.stringify(currentConfig, null, 2));
+            
+            // CloudFrontのURLを追加
+            const newCallbackUrls = [
+              ...additionalCallbackUrls,
+              cloudfrontUrl,
+              \`\${cloudfrontUrl}/api/auth/callback/cognito\`
+            ];
+            
+            const newLogoutUrls = [
+              ...additionalLogoutUrls,
+              cloudfrontUrl
+            ];
+            
+            // 重複を除去
+            const uniqueCallbackUrls = [...new Set(newCallbackUrls)];
+            const uniqueLogoutUrls = [...new Set(newLogoutUrls)];
+            
+            console.log('New callback URLs:', uniqueCallbackUrls);
+            console.log('New logout URLs:', uniqueLogoutUrls);
+            
+            // Cognito設定を更新
+            await cognito.send(new UpdateUserPoolClientCommand({
+              UserPoolId: userPoolId,
+              ClientId: clientId,
+              CallbackURLs: uniqueCallbackUrls,
+              LogoutURLs: uniqueLogoutUrls,
+              AllowedOAuthFlows: currentConfig.AllowedOAuthFlows,
+              AllowedOAuthScopes: currentConfig.AllowedOAuthScopes,
+              AllowedOAuthFlowsUserPoolClient: currentConfig.AllowedOAuthFlowsUserPoolClient,
+              SupportedIdentityProviders: currentConfig.SupportedIdentityProviders,
+            }));
+            
+            console.log('Cognito callback URLs updated successfully');
+            
+            await sendResponse(
+              event,
+              context,
+              'SUCCESS',
+              { 
+                CallbackURLs: uniqueCallbackUrls,
+                LogoutURLs: uniqueLogoutUrls
+              },
+              'update-cognito'
+            );
+            
+          } catch (error) {
+            console.error('Error:', error);
+            await sendResponse(
+              event,
+              context,
+              'FAILED',
+              { Error: error.message },
+              event.PhysicalResourceId || 'update-cognito'
+            );
+          }
+        };
+      `),
+      timeout: cdk.Duration.minutes(2),
+    });
+
+    // Custom Resource to update Cognito callback URLs with CloudFront URL
+    new cdk.CustomResource(this, 'UpdateCognitoCallbacks', {
+      serviceToken: updateCognitoFunction.functionArn,
+      properties: {
+        UserPoolId: props.cognitoUserPoolId || '',
+        ClientId: props.cognitoUserPoolClientId || '',
+        CloudFrontUrl: this.nextjsApp.url,
+        AdditionalCallbackUrls: props.config.cognito.callbackUrls,
+        AdditionalLogoutUrls: props.config.cognito.logoutUrls,
+        // デプロイ時刻をプロパティに含めて毎回更新を実行
+        DeployTimestamp: Date.now(),
+      },
+    });
+
     // Custom Resource to update Lambda environment variables
     const updateEnvRole = new cdk.aws_iam.Role(this, 'UpdateEnvRole', {
       assumedBy: new cdk.aws_iam.ServicePrincipal('lambda.amazonaws.com'),
