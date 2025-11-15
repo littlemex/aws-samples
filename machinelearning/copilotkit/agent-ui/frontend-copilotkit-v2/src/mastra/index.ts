@@ -1,5 +1,4 @@
 import { Mastra } from "@mastra/core/mastra";
-import { LibSQLStore } from "@mastra/libsql";
 import { weatherAgent } from "./agents";
 import { ConsoleLogger, LogLevel } from "@mastra/core/logger";
 
@@ -9,9 +8,8 @@ export const mastra = new Mastra({
   agents: { 
     weatherAgent
   },
-  storage: new LibSQLStore({
-    url: ":memory:"
-  }),
+  // storage: LibSQLStore removed - Lambda環境でネイティブバイナリ問題を回避
+  // Mastraはデフォルトでインメモリストレージを使用
   logger: new ConsoleLogger({
     level: LOG_LEVEL,
   }),

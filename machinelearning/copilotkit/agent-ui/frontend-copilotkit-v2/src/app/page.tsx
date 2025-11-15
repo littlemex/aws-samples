@@ -156,11 +156,7 @@ function MainContent({
           No proverbs yet. Ask the assistant to add some!
         </p>}
         
-        <div className="mt-6 text-center">
-          <p className="text-white/80 text-sm">
-            👤 User: {session.user?.email}
-          </p>
-        </div>
+        <AuthInfoTable session={session} />
       </div>
     </div>
   );
@@ -292,5 +288,123 @@ function CloudIcon() {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-14 h-14 text-gray-200">
       <path d="M7 15a4 4 0 0 1 0-8 5 5 0 0 1 10 0 4 4 0 0 1 0 8H7z" fill="currentColor"/>
     </svg>
+  );
+}
+
+// JWT Decode Helper
+function decodeJWT(token: string) {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    return null;
+  }
+}
+
+// Truncate Token Helper
+function truncateToken(token: string, startChars = 20, endChars = 20): string {
+  if (!token || token.length <= startChars + endChars) return token;
+  return `${token.substring(0, startChars)}...${token.substring(token.length - endChars)}`;
+}
+
+// Auth Info Table Component
+function AuthInfoTable({ session }: { session: any }) {
+  const idTokenDecoded = session.idToken ? decodeJWT(session.idToken) : null;
+  const accessTokenDecoded = session.accessToken ? decodeJWT(session.accessToken) : null;
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleString('ja-JP');
+  };
+
+  const getTimeRemaining = (exp: number) => {
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = exp - now;
+    if (remaining <= 0) return '期限切れ';
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    return `${minutes}分${seconds}秒`;
+  };
+
+  const TableRow = ({ label, value, mono = false }: { label: string; value: string | React.ReactNode; mono?: boolean }) => (
+    <tr className="border-b border-white/10 last:border-0">
+      <td className="py-2 pr-4 text-white/70 font-medium whitespace-nowrap">{label}</td>
+      <td className={`py-2 text-white/90 break-all ${mono ? 'font-mono text-xs' : ''}`}>{value}</td>
+    </tr>
+  );
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-white/90 text-sm font-semibold mb-3">
+        🔐 認証情報（AgentCore Runtime送信用）
+      </h3>
+      <div className="bg-white/10 rounded-lg p-4 space-y-4 max-h-64 overflow-y-auto">
+        {/* User Information */}
+        <div>
+          <h4 className="text-white/80 text-xs font-semibold mb-2 uppercase">👤 User Info</h4>
+          <table className="w-full text-sm">
+            <tbody>
+              <TableRow label="User ID (sub)" value={idTokenDecoded?.sub || 'N/A'} mono />
+              <TableRow label="Email" value={idTokenDecoded?.email || session.user?.email || 'N/A'} />
+              <TableRow label="Email Verified" value={idTokenDecoded?.email_verified ? '✅' : '❌'} />
+              <TableRow label="Cognito Username" value={idTokenDecoded?.['cognito:username'] || 'N/A'} mono />
+            </tbody>
+          </table>
+        </div>
+
+        {/* Token Information */}
+        <div>
+          <h4 className="text-white/80 text-xs font-semibold mb-2 uppercase">🎫 Token Info</h4>
+          <table className="w-full text-sm">
+            <tbody>
+              <TableRow label="ID Token" value={session.idToken ? truncateToken(session.idToken) : 'N/A'} mono />
+              <TableRow label="Access Token" value={session.accessToken ? truncateToken(session.accessToken) : 'N/A'} mono />
+              <TableRow 
+                label="発行日時 (iat)" 
+                value={idTokenDecoded?.iat ? formatDate(idTokenDecoded.iat) : 'N/A'} 
+              />
+              <TableRow 
+                label="有効期限 (exp)" 
+                value={idTokenDecoded?.exp ? formatDate(idTokenDecoded.exp) : 'N/A'} 
+              />
+              <TableRow 
+                label="残り有効時間" 
+                value={idTokenDecoded?.exp ? getTimeRemaining(idTokenDecoded.exp) : 'N/A'} 
+              />
+            </tbody>
+          </table>
+        </div>
+
+        {/* Authorization Information */}
+        <div>
+          <h4 className="text-white/80 text-xs font-semibold mb-2 uppercase">🔒 Authorization Info</h4>
+          <table className="w-full text-sm">
+            <tbody>
+              <TableRow label="Issuer (iss)" value={idTokenDecoded?.iss || 'N/A'} mono />
+              <TableRow label="Audience (aud)" value={idTokenDecoded?.aud || 'N/A'} mono />
+              <TableRow label="Token Use" value={idTokenDecoded?.token_use || accessTokenDecoded?.token_use || 'N/A'} />
+              <TableRow 
+                label="Auth Time" 
+                value={idTokenDecoded?.auth_time ? formatDate(idTokenDecoded.auth_time) : 'N/A'} 
+              />
+              {idTokenDecoded?.['cognito:groups'] && (
+                <TableRow 
+                  label="Cognito Groups" 
+                  value={Array.isArray(idTokenDecoded['cognito:groups']) 
+                    ? idTokenDecoded['cognito:groups'].join(', ') 
+                    : idTokenDecoded['cognito:groups']} 
+                />
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 }
