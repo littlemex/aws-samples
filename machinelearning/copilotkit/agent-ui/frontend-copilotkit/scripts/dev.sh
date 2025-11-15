@@ -80,16 +80,18 @@ if [ -z "$COGNITO_ISSUER" ]; then
     exit 1
 fi
 
-# NEXTAUTH設定
-export NEXTAUTH_URL="http://localhost:${PORT}"
-export NEXTAUTH_SECRET=$(openssl rand -base64 32)
+# NextAuth v5設定
+export AUTH_COGNITO_ID=$COGNITO_CLIENT_ID
+export AUTH_COGNITO_ISSUER=$COGNITO_ISSUER
+export AUTH_SECRET=$(openssl rand -base64 32)
 export AWS_REGION=$REGION
+# ローカル開発ではAUTH_URLは不要（自動検出される）
 
-log_success "環境変数を設定しました"
-echo "  COGNITO_CLIENT_ID: $COGNITO_CLIENT_ID"
-echo "  COGNITO_ISSUER: $COGNITO_ISSUER"
-echo "  NEXTAUTH_URL: $NEXTAUTH_URL"
+log_success "環境変数を設定しました（NextAuth v5）"
+echo "  AUTH_COGNITO_ID: $AUTH_COGNITO_ID"
+echo "  AUTH_COGNITO_ISSUER: $AUTH_COGNITO_ISSUER"
 echo "  AWS_REGION: $AWS_REGION"
+echo "  Port: $PORT"
 echo ""
 
 # 開発サーバー起動
