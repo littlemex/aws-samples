@@ -1,34 +1,45 @@
 import { NextRequest } from 'next/server';
-import NextAuth from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { handlers } from '@/auth';
 
 /**
- * リクエストヘッダーからホスト情報を取得し、動的にNEXTAUTH_URLを設定
- * これにより、ポートフォワーディング経由でもEC2 IP直接アクセスでも
- * 正しいコールバックURLが使用されます
+ * NextAuth v5のtrustHostバグ回避策
+ * 
+ * GitHub Issue: https://github.com/nextauthjs/next-auth/issues/12176
+ * 
+ * NextAuth v5 beta版では、trustHost: trueを設定してもredirect_uriが正しく設定されず、
+ * 内部ホスト（Lambda URLやlocalhostなど）がそのまま使用されてしまう問題があります。
+ * 
+ * この関数は、X-Forwarded-HostとX-Forwarded-Protoヘッダーを使用して
+ * NextRequestオブジェクトのURLを書き換えることで、この問題を回避します。
  */
-function setDynamicNextAuthUrl(req: NextRequest) {
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-  const host = req.headers.get('host');
-  
-  if (!host) {
-    throw new Error('Request has no host header');
+const reqWithTrustedOrigin = (req: NextRequest): NextRequest => {
+  // AUTH_TRUST_HOSTが明示的にtrueに設定されている場合のみ有効
+  if (process.env.AUTH_TRUST_HOST !== 'true') {
+    return req;
   }
-  
-  const dynamicUrl = `${protocol}://${host}`;
-  process.env.NEXTAUTH_URL = dynamicUrl;
-  
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[NextAuth] Dynamic NEXTAUTH_URL set to:', dynamicUrl);
+
+  const proto = req.headers.get('x-forwarded-proto');
+  const host = req.headers.get('x-forwarded-host');
+
+  // ヘッダーが存在しない場合は元のリクエストを返す
+  if (!proto || !host) {
+    return req;
   }
-}
 
-async function handler(req: NextRequest, context: any) {
-  // リクエストごとに動的にNEXTAUTH_URLを設定
-  setDynamicNextAuthUrl(req);
-  
-  // NextAuthハンドラーを呼び出し
-  return await NextAuth(req, context, authOptions);
-}
+  // 信頼できるオリジンを構築
+  const trustedOrigin = `${proto}://${host}`;
 
-export { handler as GET, handler as POST };
+  // 元のURLを取得
+  const { href, origin } = req.nextUrl;
+
+  // オリジンを書き換えた新しいURLを作成
+  const newUrl = href.replace(origin, trustedOrigin);
+
+  // 新しいNextRequestオブジェクトを作成して返す
+  return new NextRequest(newUrl, req);
+};
+
+// NextAuth v5のハンドラーをエクスポート
+// リクエストを事前処理してからハンドラーに渡す
+export const GET = (req: NextRequest) => handlers.GET(reqWithTrustedOrigin(req));
+export const POST = (req: NextRequest) => handlers.POST(reqWithTrustedOrigin(req));

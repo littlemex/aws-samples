@@ -57,13 +57,13 @@ fi
 # SSMからCognito情報を取得
 log_info "SSM Parameter StoreからCognito情報を取得しています..."
 
-export COGNITO_CLIENT_ID=$(aws ssm get-parameter \
+COGNITO_CLIENT_ID=$(aws ssm get-parameter \
     --name "${SSM_PREFIX}/cognito/client-id" \
     --query 'Parameter.Value' \
     --output text \
     --region $REGION 2>/dev/null)
 
-export COGNITO_ISSUER=$(aws ssm get-parameter \
+COGNITO_ISSUER=$(aws ssm get-parameter \
     --name "${SSM_PREFIX}/cognito/issuer-url" \
     --query 'Parameter.Value' \
     --output text \
@@ -80,15 +80,17 @@ if [ -z "$COGNITO_ISSUER" ]; then
     exit 1
 fi
 
-# NEXTAUTH設定
-export NEXTAUTH_URL="http://localhost:${PORT}"
-export NEXTAUTH_SECRET=$(openssl rand -base64 32)
+# NextAuth v5環境変数設定
+export AUTH_COGNITO_ID="$COGNITO_CLIENT_ID"
+export AUTH_COGNITO_ISSUER="$COGNITO_ISSUER"
+export AUTH_SECRET=$(openssl rand -base64 32)
+export AUTH_TRUST_HOST=true
 export AWS_REGION=$REGION
 
 log_success "環境変数を設定しました"
-echo "  COGNITO_CLIENT_ID: $COGNITO_CLIENT_ID"
-echo "  COGNITO_ISSUER: $COGNITO_ISSUER"
-echo "  NEXTAUTH_URL: $NEXTAUTH_URL"
+echo "  AUTH_COGNITO_ID: $AUTH_COGNITO_ID"
+echo "  AUTH_COGNITO_ISSUER: $AUTH_COGNITO_ISSUER"
+echo "  AUTH_TRUST_HOST: $AUTH_TRUST_HOST"
 echo "  AWS_REGION: $AWS_REGION"
 echo ""
 
