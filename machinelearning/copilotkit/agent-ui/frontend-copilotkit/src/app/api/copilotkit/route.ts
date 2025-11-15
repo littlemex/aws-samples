@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/auth';
 import {
   CopilotRuntime,
   ExperimentalEmptyAdapter,
@@ -14,8 +13,8 @@ const handleCopilotRequest = async (req: NextRequest) => {
   try {
     console.log('CopilotKit API called');
     
-    // Cognito認証確認
-    const session = await getServerSession(authOptions);
+    // Cognito認証確認 (NextAuth v5)
+    const session = await auth();
     console.log('Session status:', !!session);
     
     if (!session?.idToken) {
