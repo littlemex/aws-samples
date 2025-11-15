@@ -202,8 +202,9 @@ infrastructure/
 `./scripts/setup.sh --env={環境名}`を実行すると`.env.example`をベースに`.env.{環境名}`が自動生成されます：
 
 ```bash
-# NextAuth.js Secret (自動生成)
-NEXTAUTH_SECRET=xxx
+# NextAuth.js v5 Secret (自動生成)
+# v5では AUTH_SECRET を使用します
+AUTH_SECRET=xxx
 
 # AWS Settings (自動検出)
 AWS_REGION=us-east-1
@@ -224,6 +225,11 @@ DEBUG_MODE=false
 # COGNITO_CALLBACK_URLS=url1,url2,url3
 # COGNITO_LOGOUT_URLS=url1,url2,url3
 ```
+
+**注意**: NextAuth v5では環境変数の命名規則が変更されています：
+- `NEXTAUTH_SECRET` → `AUTH_SECRET`
+- フロントエンド側では `COGNITO_CLIENT_ID` → `AUTH_COGNITO_ID`, `COGNITO_ISSUER` → `AUTH_COGNITO_ISSUER`
+- スクリプトは後方互換性のため、両方の命名をサポートしています
 
 **複数環境のセットアップとデプロイ**:
 

@@ -75,8 +75,11 @@ fi
 
 # 必須環境変数のチェック
 log_info "環境変数を確認しています..."
-if [ -z "$NEXTAUTH_SECRET" ]; then
-    log_error "NEXTAUTH_SECRETが設定されていません。"
+# v5環境変数を優先、v4もサポート（後方互換性）
+AUTH_SECRET="${AUTH_SECRET:-$NEXTAUTH_SECRET}"
+if [ -z "$AUTH_SECRET" ]; then
+    log_error "AUTH_SECRETが設定されていません。"
+    log_info "setup.shを実行して環境設定ファイルを生成してください。"
     exit 1
 fi
 

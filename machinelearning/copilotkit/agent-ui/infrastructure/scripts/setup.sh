@@ -145,10 +145,10 @@ log_success "AWS認証成功 - Account: $ACCOUNT_ID, Region: $CURRENT_REGION"
 echo ""
 log_header "===== 環境設定 ====="
 
-# NEXTAUTH_SECRETの生成
-log_info "NEXTAUTH_SECRETを生成しています..."
-NEXTAUTH_SECRET=$(openssl rand -base64 32)
-log_success "NEXTAUTH_SECRETを生成しました。"
+# AUTH_SECRETの生成（NextAuth v5）
+log_info "AUTH_SECRETを生成しています..."
+AUTH_SECRET=$(openssl rand -base64 32)
+log_success "AUTH_SECRETを生成しました。"
 
 # ユーザー入力：COGNITO_CLIENT_SUFFIX
 echo ""
@@ -188,7 +188,7 @@ log_info ".env.exampleから${ENV_FILE}ファイルを作成しています..."
 cp .env.example "$ENV_FILE"
 
 # 値を置換（sedの区切り文字を|に変更して特殊文字に対応）
-sed -i "s|^NEXTAUTH_SECRET=.*|NEXTAUTH_SECRET=${NEXTAUTH_SECRET}|" "$ENV_FILE"
+sed -i "s|^AUTH_SECRET=.*|AUTH_SECRET=${AUTH_SECRET}|" "$ENV_FILE"
 sed -i "s|^AWS_REGION=.*|AWS_REGION=${CURRENT_REGION}|" "$ENV_FILE"
 sed -i "s|^CDK_DEFAULT_REGION=.*|CDK_DEFAULT_REGION=${CURRENT_REGION}|" "$ENV_FILE"
 sed -i "s|^COGNITO_CLIENT_SUFFIX=.*|COGNITO_CLIENT_SUFFIX=${COGNITO_CLIENT_SUFFIX}|" "$ENV_FILE"
