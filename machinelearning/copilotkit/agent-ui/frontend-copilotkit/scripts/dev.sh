@@ -84,6 +84,7 @@ fi
 export AUTH_COGNITO_ID=$COGNITO_CLIENT_ID
 export AUTH_COGNITO_ISSUER=$COGNITO_ISSUER
 export AUTH_SECRET=$(openssl rand -base64 32)
+export AUTH_TRUST_HOST=true
 export AWS_REGION=$REGION
 # ローカル開発ではAUTH_URLは不要（自動検出される）
 

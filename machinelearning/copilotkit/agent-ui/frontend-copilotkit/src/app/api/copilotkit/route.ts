@@ -5,8 +5,10 @@ import {
   ExperimentalEmptyAdapter,
   copilotRuntimeNextJSAppRouterEndpoint,
 } from '@copilotkit/runtime';
+import { MastraAgent } from '@ag-ui/mastra';
+import { mastra } from '@/mastra';
 
-// 空のアダプターを使用（基本的なチャット機能用）
+// 空のアダプターを使用
 const serviceAdapter = new ExperimentalEmptyAdapter();
 
 const handleCopilotRequest = async (req: NextRequest) => {
@@ -24,9 +26,13 @@ const handleCopilotRequest = async (req: NextRequest) => {
 
     console.log('User authenticated:', session.user?.email);
 
-    // CopilotRuntimeインスタンス作成
+    // CopilotRuntimeインスタンス作成 with Mastraエージェント
+    const agents = MastraAgent.getLocalAgents({ mastra });
+    console.log('🔍 DEBUG: Number of agents loaded:', agents.length);
+    console.log('🔍 DEBUG: Agents:', JSON.stringify(agents, null, 2));
+    
     const runtime = new CopilotRuntime({
-      // 基本的なランタイム設定
+      agents,
     });
 
     const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({

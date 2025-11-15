@@ -9,9 +9,11 @@ Amazon CognitoとCopilotKitを統合したNext.jsアプリケーションです�
 1. ✅ **NextAuth.js v5** - Cognito OAuth 2.0認証
 2. ✅ **CloudFront + Lambda Function URL** - グローバル配信
 3. ✅ **trustHostバグ回避策** - プロキシ環境での認証フロー
-4. ✅ **CopilotKit** - AIアシスタント統合
-5. ✅ **JWT管理** - ID Token、Access Token、Refresh Token
-6. ✅ **SSM Parameter Store** - 環境変数管理
+4. ✅ **CopilotKit + Mastra** - AIエージェント統合
+5. ✅ **Amazon Bedrock** - Claude Sonnet 4モデル
+6. ✅ **Generative UI** - 動的コンポーネントレンダリング
+7. ✅ **JWT管理** - ID Token、Access Token、Refresh Token
+8. ✅ **SSM Parameter Store** - 環境変数管理
 
 ## 📋 前提条件
 
@@ -80,20 +82,16 @@ cd ../frontend-copilotkit
 ./scripts/dev.sh  # デフォルトでCLIENT_SUFFIX=dev
 ```
 
-### 3. 手動起動（非推奨）
+### 3. 環境変数について
 
-環境変数を手動で設定する場合：
+**全ての環境変数は`scripts/dev.sh`で自動的に設定されます。**
 
-```bash
-# NextAuth v5環境変数を設定
-export AUTH_COGNITO_ID="your-client-id"
-export AUTH_COGNITO_ISSUER="https://cognito-idp.region.amazonaws.com/pool-id"
-export AUTH_SECRET="your-secret"
-export AUTH_TRUST_HOST=true
+- `AUTH_COGNITO_ID`, `AUTH_COGNITO_ISSUER` - SSM Parameter Storeから動的取得
+- `AUTH_SECRET` - 起動時に自動生成
+- `AUTH_TRUST_HOST` - 自動設定（CloudFront対応）
+- `AWS_REGION` - デフォルト: us-east-1
 
-# 開発サーバー起動
-npm run dev
-```
+手動で環境変数を設定する必要はありません。
 
 ## 🏗️ アーキテクチャ
 
@@ -222,23 +220,146 @@ AUTH_TRUST_HOST=true             # プロキシ対応
 - v4: `NEXTAUTH_SECRET` → v5: `AUTH_SECRET`
 - v4: `NEXTAUTH_URL`（不要） → v5: `AUTH_TRUST_HOST=true`
 
+## 🪁 Mastra AIエージェント統合
+
+### 主要機能
+
+#### 1. **Weather Agent** - 天気情報エージェント
+- Amazon Bedrock Claude Sonnet 4を使用
+- Open-Meteo APIから天気データを取得
+- Generative UIで天気情報を動的表示
+
+#### 2. **Shared State** - アプリとエージェント間の状態共有
+- `useCoAgent`フックでproverbs（ことわざ）を共有
+- エージェントが状態を更新し、UIにリアルタイム反映
+
+#### 3. **Generative UI** - 動的コンポーネントレンダリング
+- 天気カード: 温度、湿度、風速などを視覚的に表示
+- メモリ更新の可視化
+
+#### 4. **Frontend Actions**
+- テーマカラー変更: UIのテーマをリアルタイムで変更
+
+### Mastraエージェント構成
+
+```typescript
+// src/mastra/agents/index.ts
+export const weatherAgent = new Agent({
+  name: "Weather Agent",
+  tools: { weatherTool },
+  model: bedrock("us.anthropic.claude-sonnet-4-20250514-v1:0"),
+  instructions: "You are a helpful assistant.",
+  memory: new Memory({
+    storage: new LibSQLStore({ url: "file::memory:" }),
+    options: {
+      workingMemory: {
+        enabled: true,
+        schema: AgentState,
+      },
+    },
+  }),
+});
+```
+
+### AWS認証: Credential Provider Chain
+
+**ローカルと本番で統一されたAWS認証方式を採用しています。**
+
+#### 実装
+```typescript
+// src/mastra/agents/index.ts
+import { createAmazonBedrock } from "@ai-sdk/amazon-bedrock";
+import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
+
+const bedrock = createAmazonBedrock({
+  region: process.env.AWS_REGION || 'us-east-1',
+  credentialProvider: fromNodeProviderChain(),
+});
+```
+
+#### 認証の仕組み
+
+**Credential Provider Chain**は以下の順序で認証情報を自動検索します：
+
+1. **環境変数** - `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`
+2. **Lambda実行ロール** - 本番環境（CloudFront + Lambda）
+3. **ECS/EKSロール** - コンテナ環境
+4. **EC2インスタンスプロファイル** - EC2環境
+5. **AWS CLI設定** - `~/.aws/credentials` (ローカル開発)
+
+#### 環境別の動作
+
+**ローカル開発:**
+```bash
+# AWS CLIが設定済みであれば自動的に認証情報を取得
+aws configure list  # 確認
+
+# dev.shでは環境変数設定不要
+./scripts/dev.sh
+```
+
+**本番環境（Lambda）:**
+- Lambda実行ロールに自動的にアタッチされたIAM権限を使用
+- アクセスキー不要（セキュア）
+
+#### IAM権限要件
+
+**ローカル開発:**
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "bedrock:InvokeModel",
+    "bedrock:InvokeModelWithResponseStream"
+  ],
+  "Resource": "arn:aws:bedrock:*:*:inference-profile/*"
+}
+```
+
+**本番環境（Lambda実行ロール）:**
+```yaml
+# infrastructure/lambda-role.yml
+Policies:
+  - PolicyName: BedrockAccess
+    PolicyDocument:
+      Version: '2012-10-17'
+      Statement:
+        - Effect: Allow
+          Action:
+            - bedrock:InvokeModel
+            - bedrock:InvokeModelWithResponseStream
+          Resource: !Sub 'arn:aws:bedrock:${AWS::Region}::foundation-model/anthropic.claude-*'
+```
+
+#### メリット
+
+1. ✅ **セキュア** - 本番環境でアクセスキーを管理不要
+2. ✅ **統一** - ローカルと本番で同じコード
+3. ✅ **自動** - 環境に応じて最適な認証方法を選択
+4. ✅ **ベストプラクティス** - AWSの推奨パターン
+
 ## 📁 プロジェクト構造
 
 ```
-frontend-copilotkit/
+frontend-copilotkit-v2/
 ├── src/
 │   ├── auth.ts                           # NextAuth v5設定
+│   ├── mastra/                           # Mastraエージェント実装
+│   │   ├── index.ts                      # Mastraインスタンス
+│   │   ├── agents/
+│   │   │   └── index.ts                  # weatherAgent定義
+│   │   └── tools/
+│   │       └── index.ts                  # weatherTool実装
 │   ├── app/
-│   │   ├── layout.tsx                    # ルートレイアウト
-│   │   ├── page.tsx                      # メインページ（CopilotKit UI）
+│   │   ├── layout.tsx                    # ルートレイアウト（agent指定）
+│   │   ├── page.tsx                      # メインページ（Generative UI）
 │   │   ├── providers.tsx                 # SessionProvider
 │   │   └── api/
 │   │       ├── auth/[...nextauth]/
 │   │       │   └── route.ts              # NextAuth Route Handler（バグ回避策含む）
 │   │       └── copilotkit/
-│   │           └── route.ts              # CopilotKit API
+│   │           └── route.ts              # CopilotKit + Mastra統合
 │   ├── components/
-│   │   └── CopilotKitWrapper.tsx         # CopilotKitプロバイダー
 │   └── types/
 │       └── next-auth.d.ts                # NextAuth型定義拡張
 ├── scripts/
