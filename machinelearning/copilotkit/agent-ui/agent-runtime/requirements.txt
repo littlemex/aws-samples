@@ -1,4 +1,2 @@
-bedrock-agentcore
-bedrock-agentcore-starter-toolkit
-strands-agents
-boto3
+boto3>=1.35.0
+python-dotenv>=1.0.0

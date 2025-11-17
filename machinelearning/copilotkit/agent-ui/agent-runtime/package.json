@@ -1,0 +1,44 @@
+{
+  "name": "agent-runtime-mastra",
+  "version": "1.0.0",
+  "description": "Mastra Agent for AgentCore Runtime with JWT Propagation",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "mastra dev",
+    "dev:tsx": "tsx watch src/index.ts",
+    "build": "mastra build",
+    "start": "mastra start",
+    "serve": "node dist/index.js",
+    "type-check": "tsc --noEmit",
+    "docker:build": "docker build -t agent-runtime-mastra .",
+    "docker:run": "docker run -p 8080:8080 agent-runtime-mastra"
+  },
+  "keywords": [
+    "mastra",
+    "ai",
+    "agent",
+    "agentcore",
+    "typescript",
+    "aws",
+    "bedrock"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^3.0.54",
+    "@aws-sdk/client-bedrock-agentcore": "^3.0.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.0.0",
+    "@aws-sdk/credential-providers": "^3.0.0",
+    "@mastra/core": "^0.24.1",
+    "@mastra/memory": "^0.15.6",
+    "dotenv": "^16.0.0",
+    "hono": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "mastra": "^0.18.1",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}

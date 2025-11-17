@@ -1,46 +1,37 @@
-FROM ghcr.io/astral-sh/uv:python3.10-bookworm-slim
+FROM public.ecr.aws/docker/library/node:20-alpine
+
+# Set working directory
 WORKDIR /app
 
-# ビルド時引数（デフォルト値を設定）
-ARG AWS_REGION=us-east-1
-ARG BEDROCK_MODEL_ID=us.anthropic.claude-3-7-sonnet-20250219-v1:0
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
 
-# All environment variables in one layer
-ENV UV_SYSTEM_PYTHON=1 \
-    UV_COMPILE_BYTECODE=1 \
-    UV_NO_PROGRESS=1 \
-    PYTHONUNBUFFERED=1 \
-    DOCKER_CONTAINER=1 \
-    AWS_REGION=${AWS_REGION} \
-    AWS_DEFAULT_REGION=${AWS_REGION} \
-    BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID}
+# Copy package files
+COPY --chown=nextjs:nodejs package*.json ./
 
+# Install dependencies (including devDependencies for tsx)
+RUN npm ci && \
+    npm cache clean --force
 
+# Copy source code and configuration
+COPY --chown=nextjs:nodejs tsconfig.json ./
+COPY --chown=nextjs:nodejs src ./src
+COPY --chown=nextjs:nodejs .env.example ./.env
 
-COPY requirements.txt requirements.txt
-# Install from requirements file
-RUN uv pip install -r requirements.txt
+USER nextjs
 
-
-
-
-RUN uv pip install aws-opentelemetry-distro>=0.10.1
-
-
-# Signal that this is running in Docker for host binding logic
-ENV DOCKER_CONTAINER=1
-
-# Create non-root user
-RUN useradd -m -u 1000 bedrock_agentcore
-USER bedrock_agentcore
-
-EXPOSE 9000
-EXPOSE 8000
+# Expose port 8080 as required by AgentCore Runtime
 EXPOSE 8080
 
-# Copy entire project (respecting .dockerignore)
-COPY . .
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=8080
+ENV HOST=0.0.0.0
 
-# Use the full module path
+# Health check for AgentCore Runtime
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "const http = require('http'); http.get('http://localhost:8080/ping', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-CMD ["opentelemetry-instrument", "python", "-m", "runtime_agent"]
+# Start the application with tsx
+CMD ["npx", "tsx", "src/index.ts"]
