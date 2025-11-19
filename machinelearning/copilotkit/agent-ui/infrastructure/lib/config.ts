@@ -90,7 +90,7 @@ export interface AppConfig {
     webAdapterLayerArn: string;
   };
   
-  // NextAuth.js設定
+  // NextAuth v5設定
   nextAuth: {
     url?: string;
     secret: string;
@@ -140,8 +140,8 @@ export const config: AppConfig = {
   },
   
   nextAuth: {
-    url: process.env.NEXTAUTH_URL || undefined,
-    secret: process.env.NEXTAUTH_SECRET || 'PLEASE_CHANGE_THIS_SECRET',
+    url: process.env.AUTH_URL || undefined,
+    secret: process.env.AUTH_SECRET || 'PLEASE_CHANGE_THIS_SECRET',
     debugMode: process.env.DEBUG_MODE === 'true',
   },
 };

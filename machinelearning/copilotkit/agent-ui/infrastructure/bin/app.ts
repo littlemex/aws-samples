@@ -3,6 +3,8 @@ import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { CognitoStack } from '../lib/cognito-stack';
 import { NextjsStack } from '../lib/nextjs-stack';
+import { AgentsDynamoDBStack } from '../lib/agents-dynamodb-stack';
+import { RuntimesDynamoDBStack } from '../lib/runtimes-dynamodb-stack';
 import { config } from '../lib/config';
 
 const app = new cdk.App();
@@ -32,6 +34,20 @@ if (deployFrontend) {
   // 依存関係設定：Next.jsスタックはCognitoスタック後にデプロイ
   nextjsStack.addDependency(cognitoStack);
 }
+
+// DynamoDB Stack for Agents (independent, can be deployed separately)
+const agentsDynamoDBStack = new AgentsDynamoDBStack(app, 'CopilotKitAgentsDynamoDBStack', {
+  config: config,
+  env: config.env,
+  description: 'DynamoDB table for storing user agent configurations',
+});
+
+// DynamoDB Stack for Runtimes (independent, can be deployed separately)
+const runtimesDynamoDBStack = new RuntimesDynamoDBStack(app, 'CopilotKitRuntimesDynamoDBStack', {
+  config: config,
+  env: config.env,
+  description: 'DynamoDB table for storing AgentCore Runtime configurations',
+});
 
 // Tags
 cdk.Tags.of(app).add('Project', 'CopilotKit');

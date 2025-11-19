@@ -45,12 +45,13 @@ export class FrontendStack extends cdk.Stack {
       AWS_LAMBDA_EXEC_WRAPPER: '/opt/bootstrap',
       PORT: '8080',
       RUST_LOG: 'info',
-      // NextAuth.js設定 - 環境別に動的設定
-      NEXTAUTH_URL: props.config.nextAuth.url || '', // 本番では後でCloudFront URLに更新
-      NEXTAUTH_SECRET: props.config.nextAuth.secret,
-      // Cognito values - CognitoStackから取得
-      COGNITO_CLIENT_ID: props.cognitoStack.userPoolClient.userPoolClientId,
-      COGNITO_ISSUER: `https://cognito-idp.${cdk.Aws.REGION}.amazonaws.com/${props.cognitoStack.userPool.userPoolId}`,
+      // NextAuth v5設定 - 環境別に動的設定
+      AUTH_URL: props.config.nextAuth.url || '', // 本番では後でCloudFront URLに更新
+      AUTH_SECRET: props.config.nextAuth.secret,
+      AUTH_TRUST_HOST: 'true',
+      // Cognito values - CognitoStackから取得（NextAuth v5命名規則）
+      AUTH_COGNITO_ID: props.cognitoStack.userPoolClient.userPoolClientId,
+      AUTH_COGNITO_ISSUER: `https://cognito-idp.${cdk.Aws.REGION}.amazonaws.com/${props.cognitoStack.userPool.userPoolId}`,
       // 環境別設定
       NODE_ENV: props.config.env.environment === 'local' ? 'development' : 'production',
     };
@@ -252,10 +253,10 @@ export class FrontendStack extends cdk.Stack {
       console.warn(`Public assets directory not found: ${publicPath}`);
     }
 
-    // デプロイ後にNEXTAUTH_URLをCloudFront URLで更新
+    // デプロイ後にAUTH_URLをCloudFront URLで更新
     const cloudFrontUrl = `https://${this.distribution.distributionDomainName}`;
     
-    // 本番環境でNEXTAUTH_URLが未設定の場合、Lambda環境変数を更新
+    // 本番環境でAUTH_URLが未設定の場合、Lambda環境変数を更新
     if (!props.config.nextAuth.url && props.config.env.environment === 'production') {
       // Lambda環境変数を更新するCustomリソース用のロール
       const updateLambdaRole = new iam.Role(this, 'UpdateLambdaRole', {
@@ -300,7 +301,7 @@ export class FrontendStack extends cdk.Stack {
                 Environment: {
                   Variables: {
                     ...event.ResourceProperties.CurrentEnv,
-                    NEXTAUTH_URL: cloudFrontUrl,
+                    AUTH_URL: cloudFrontUrl,
                   },
                 },
               });

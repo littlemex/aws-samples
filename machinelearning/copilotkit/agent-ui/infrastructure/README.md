@@ -36,7 +36,7 @@ NODE_ENV=dev ./scripts/setup.sh
 
 ### 2. デプロイ実行
 
-デプロイは2段階で行います：
+デプロイは複数段階で行います：
 
 #### Step 1: Cognitoスタックのデプロイ
 
@@ -49,7 +49,47 @@ NODE_ENV=production ./scripts/deploy-cognito.sh
 - CognitoStackのデプロイ
 - SSM Parameter StoreへのCognito情報保存
 
-#### Step 2: フロントエンドのデプロイ
+#### Step 2: DynamoDBスタックのデプロイ（オプション）
+
+エージェント管理機能を使用する場合は、DynamoDBテーブルをデプロイします：
+
+```bash
+# User Agents設定テーブル（Phase 2）
+NODE_ENV=production ./scripts/deploy-agents-dynamodb.sh
+
+# Runtimes情報テーブル（Phase 3A）
+NODE_ENV=production ./scripts/deploy-runtimes-dynamodb.sh
+```
+
+**Runtimesテーブルデプロイ後の初期設定:**
+
+```bash
+# ローカル開発環境用Runtime登録
+./scripts/register-runtime.sh \
+  --runtime-id runtime-local \
+  --name "ローカル開発環境" \
+  --url http://localhost:8081 \
+  --auth-type none
+
+# 本番環境用Runtime登録（OAuth認証）
+./scripts/register-runtime.sh \
+  --runtime-id runtime-prod-1 \
+  --name "本番AgentCore Runtime #1" \
+  --url https://xxx.runtime.bedrock-agentcore.us-east-1.amazonaws.com \
+  --auth-type oauth \
+  --cognito-issuer https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ZfOBZ4LXd \
+  --cognito-client-id 3t8emfum8htsiuka5ab5assi9 \
+  --deployed-by admin@example.com \
+  --description "本番環境のAgentCore Runtime"
+```
+
+**Runtime登録スクリプトの主な機能:**
+- 3つの認証方式対応（none / oauth / sigv4）
+- OAuth設定の完全サポート（Issuer、Client ID、Audience、Scopes）
+- DynamoDB直接書き込み
+- 登録内容の検証機能
+
+#### Step 3: フロントエンドのデプロイ
 
 ```bash
 # フロントエンドをビルドしてデプロイ
@@ -64,9 +104,10 @@ NODE_ENV=production ./scripts/deploy-frontend.sh
 - **CustomResourceによるCognito CallbackURLsの自動更新**
 
 **重要**: 
-- 初回デプロイ時は必ず**Cognito → フロントエンド**の順で実行
+- 初回デプロイ時は必ず**Cognito → DynamoDB → フロントエンド**の順で実行
 - フロントエンドのみ更新する場合は`deploy-frontend.sh`のみ実行可能
 - Cognito設定変更時は`deploy-cognito.sh`を再実行
+- DynamoDBスタックは独立しており、個別にデプロイ・更新可能
 
 **注意**: CustomResourceによりCloudFront URLが自動的にCognitoのCallback URLsに追加されるため、手動での設定更新は不要です。
 
@@ -401,6 +442,21 @@ CLIENT_SUFFIX=prod ./scripts/dev.sh
   - CloudFront Distribution
   - S3 Bucket（静的アセット用）
 - **Custom Resources**: Cognitoコールバック URL自動更新
+
+### CopilotKitAgentsDynamoDBStack
+
+- **DynamoDB Table**: ユーザーごとのエージェント有効化設定を保存
+  - テーブル名: `copilotkit-user-agents-{env}`
+  - スキーマ: `userId` (PK) + `agentId` (SK)
+- **SSM Parameters**: テーブル名とARNを保存
+
+### CopilotKitRuntimesDynamoDBStack
+
+- **DynamoDB Table**: AgentCore Runtime接続情報を保存
+  - テーブル名: `copilotkit-runtimes-{env}`
+  - スキーマ: `runtimeId` (PK)
+  - 認証方式: none / oauth / sigv4
+- **SSM Parameters**: テーブル名を保存
 
 ## 🔧 手動操作コマンド
 

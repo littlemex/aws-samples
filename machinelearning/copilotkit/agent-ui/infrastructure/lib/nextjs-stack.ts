@@ -460,12 +460,13 @@ export class NextjsStack extends cdk.Stack {
       properties: {
         StackName: this.stackName,
         Environment: {
-          // NextAuth.js設定 - 環境別に動的設定
-          NEXTAUTH_URL: props.config.nextAuth?.url || this.nextjsApp.url,
-          NEXTAUTH_SECRET: props.config.nextAuth?.secret || 'PLEASE_CHANGE_THIS_SECRET',
-          // Cognito values - 渡されたプロパティから設定
-          COGNITO_CLIENT_ID: props.cognitoUserPoolClientId || '',
-          COGNITO_ISSUER: props.cognitoIssuerUrl || '',
+          // NextAuth v5設定 - 環境別に動的設定
+          AUTH_URL: props.config.nextAuth?.url || this.nextjsApp.url,
+          AUTH_SECRET: props.config.nextAuth?.secret || 'PLEASE_CHANGE_THIS_SECRET',
+          AUTH_TRUST_HOST: 'true',
+          // Cognito values - 渡されたプロパティから設定（NextAuth v5命名規則）
+          AUTH_COGNITO_ID: props.cognitoUserPoolClientId || '',
+          AUTH_COGNITO_ISSUER: props.cognitoIssuerUrl || '',
           // 環境別設定
           NODE_ENV: props.config.env?.environment === 'local' ? 'development' : 'production',
         },
