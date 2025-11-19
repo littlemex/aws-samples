@@ -93,7 +93,474 @@ cd ../frontend-copilotkit
 
 手動で環境変数を設定する必要はありません。
 
-## 🏗️ アーキテクチャ
+## 🎨 UI/UXデザイン
+
+### デザインシステム：紫ベースの統一
+
+プロジェクト全体で**紫色（Purple）**をメインカラーとした統一されたデザインシステムを採用しています。
+
+#### カラーパレット
+
+```css
+/* プライマリーカラー */
+--copilot-kit-primary-color: #9333ea;  /* purple-600 */
+
+/* アクセントカラー */
+purple-100: #f3e8ff  /* 背景色 */
+purple-400: #c084fc  /* 枠線 */
+purple-600: #9333ea  /* ボタン */
+purple-700: #7e22ce  /* テキスト */
+purple-900: #581c87  /* 濃いテキスト */
+
+/* セカンダリーカラー */
+rose-600/40: #fb7185  /* シャドウ */
+```
+
+#### 適用箇所
+
+1. **LandingScreen（ログイン前）**
+   - プロジェクト名：紫の波線付き下線
+   - グラフノード：薄い紫の円形
+   - Sign Inボタン：紫の背景
+
+2. **LoginScreen（認証画面）**
+   - カード枠線：紫のring
+   - ボタン：紫の背景
+   - フォーカス：紫のring
+
+3. **Homeページ（ログイン後）**
+   - ヘッダータイトル：紫のテキスト
+   - サインアウトボタン：紫の枠線
+   - AgentListCard：紫のバッジと枠線
+   - AuthInfo：紫のアクセント
+
+4. **CopilotKit チャット**
+   - アシスタントメッセージ：薄い紫の背景
+   - ユーザーメッセージ：紫の背景
+   - プライマリーカラー：紫
+
+### ui-libs コンポーネントカタログ
+
+#### 認証（Auth）
+
+**LoginScreen**
+- ログインフォーム（Email/Password）
+- 制御されたコンポーネント
+- Larainfo.comのデザインを採用
+```tsx
+<LoginScreen
+  email={email}
+  password={password}
+  onEmailChange={setEmail}
+  onPasswordChange={setPassword}
+  onSubmit={handleSubmit}
+/>
+```
+
+**LandingScreen**
+- ログイン前のホーム画面
+- SVGグラフアニメーション（10個のノード、🪁アイコン）
+- Sign In/Sign Upボタン
+```tsx
+<LandingScreen
+  appName="My App"
+  tagline="Welcome message"
+  onSignInClick={() => signIn('cognito')}
+  onKiteClick={() => signIn('cognito')}
+/>
+```
+
+#### ダッシュボード（Dashboard）
+
+**AgentListCard**
+- AI Agent/MCPサーバーのリスト表示
+- グリッドレイアウト（2列）
+- ステータスバッジ（利用可能/利用不可）
+- ルーティング対応（href属性）
+```tsx
+<AgentListCard
+  agents={[
+    {
+      id: 'weather',
+      name: '天気予報エージェント',
+      description: '指定した場所の天気情報を取得',
+      icon: '🌤️',
+      type: 'agent',
+      status: 'available',
+      href: '/agents/weather'  // オプション
+    }
+  ]}
+/>
+```
+
+#### 基本UI（UI）
+
+**Button**
+- 再利用可能なボタンコンポーネント
+- バリアント：default, outline, ghost等
+
+**Card**
+- コンテンツカード
+- CardHeader, CardContent等のサブコンポーネント
+
+### 認証情報の拡張表示
+
+**AuthInfo**コンポーネントは以下の情報を表示します：
+
+- **ユーザー情報**
+  - Email、Username、Sub（ユーザーID）
+
+- **ID Token**
+  - トークン文字列（truncated表示）
+  - 発行者（iss）、対象（aud）
+  - 発行時刻（iat）、有効期限（exp）
+
+- **Access Token**
+  - トークン文字列（truncated表示）
+  - 発行時刻、有効期限
+  - Scope情報
+
+- **Refresh Token**（存在する場合）
+  - トークン文字列（truncated表示）
+
+- **セッション情報**
+  - Provider、Session Expires
+
+## 🏗️ アーキテクチャ設計とui-libs
+
+### 設計原則：3層アーキテクチャ
+
+本プロジェクトは、**疎結合な設計**を採用し、3つの明確なレイヤーに分離されています。
+
+```mermaid
+graph TB
+    subgraph "レイヤー1: ui-libs（プレゼンテーション層）"
+        UIL[src/ui-libs/<br/>疎結合UIライブラリ]
+        UIL1[LoginScreen<br/>制御されたコンポーネント<br/>❌ ロジックなし]
+        UIL2[Button, Card<br/>基本UIコンポーネント<br/>❌ 状態なし]
+        UIL --> UIL1
+        UIL --> UIL2
+    end
+    
+    subgraph "レイヤー2: Application（ビジネスロジック層）"
+        APP[src/app/page.tsx<br/>アプリケーションロジック]
+        COMP[src/components/<br/>機能コンポーネント]
+        STATE[状態管理<br/>useState, useSession]
+        AUTH[認証ロジック<br/>NextAuth, Cognito]
+        
+        APP --> STATE
+        APP --> AUTH
+        APP --> COMP
+    end
+    
+    subgraph "レイヤー3: CopilotKit（AIフレームワーク層）"
+        CPK[CopilotKit Provider<br/>Context管理]
+        CSIDE[CopilotSidebar<br/>⚠️ UIとロジック統合]
+        HOOKS[useCopilotAction<br/>useCopilotReadable<br/>⚠️ フック＝ロジック]
+        
+        CPK --> CSIDE
+        CPK --> HOOKS
+    end
+    
+    APP -->|props渡し<br/>email, password, onChange| UIL1
+    UIL1 -->|イベントコールバック<br/>onSubmit, onEmailChange| APP
+    APP -->|children| CPK
+    CPK -->|Context提供| APP
+    COMP --> UIL2
+    
+    style UIL fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
+    style UIL1 fill:#e1f5ff
+    style UIL2 fill:#e1f5ff
+    style CPK fill:#fff0f5,stroke:#cc0066,stroke-width:3px
+    style CSIDE fill:#fff0f5
+    style HOOKS fill:#fff0f5
+    style APP fill:#fff4e6,stroke:#cc6600,stroke-width:3px
+```
+
+### なぜこの設計？
+
+#### 問題：CopilotKitをui-libsに含めるべきか？
+
+**答え：NO**
+
+**理由:**
+1. **CopilotKitはフレームワーク**
+   - `<CopilotKit>`はContextプロバイダー
+   - `useCopilotAction`等のhooksは状態管理とロジックを含む
+   - **UIとロジックが密結合**している
+
+2. **ui-libsは疎結合UIライブラリ**
+   - ロジックを持たない
+   - プロジェクト固有の依存を持たない
+   - 制御されたコンポーネント（Controlled Components）
+
+3. **役割が根本的に異なる**
+   - CopilotKit = AIフレームワーク（状態 + UI + ロジック）
+   - ui-libs = プレゼンテーションライブラリ（UIのみ）
+
+### 実装パターン比較
+
+#### ❌ 悪い例：ui-libsにロジックを含める
+
+```tsx
+// ui-libs/components/auth/LoginScreen.tsx（NG例）
+export function LoginScreen() {
+  const [email, setEmail] = useState('')  // ← ロジック！
+  const [password, setPassword] = useState('')  // ← 状態管理！
+  
+  const handleSubmit = () => {
+    signIn('cognito', { email, password })  // ← 外部依存！
+  }
+  
+  return <form onSubmit={handleSubmit}>...</form>
+}
+```
+
+**問題点:**
+- `useState`（状態管理）を含む
+- 外部API（`signIn`）への依存
+- 他のプロジェクトで再利用不可
+
+#### ✅ 良い例：制御されたコンポーネント
+
+```tsx
+// ui-libs/components/auth/LoginScreen.tsx（OK例）
+export interface LoginScreenProps {
+  email: string                          // ← propsで受け取る
+  password: string
+  onEmailChange: (value: string) => void // ← イベントハンドラ
+  onPasswordChange: (value: string) => void
+  onSubmit: (e: React.FormEvent) => void
+}
+
+export function LoginScreen({ 
+  email, 
+  password, 
+  onEmailChange, 
+  onPasswordChange, 
+  onSubmit 
+}: LoginScreenProps) {
+  return (
+    <form onSubmit={onSubmit}>
+      <input 
+        value={email} 
+        onChange={(e) => onEmailChange(e.target.value)} 
+      />
+      <input 
+        value={password} 
+        onChange={(e) => onPasswordChange(e.target.value)} 
+      />
+      <button type="submit">Login</button>
+    </form>
+  )
+}
+```
+
+**利点:**
+- ロジックなし（純粋な表示）
+- 状態は親から受け取る
+- どんなプロジェクトでも再利用可能
+
+#### ✅ アプリケーション側の実装
+
+```tsx
+// src/app/page.tsx
+export default function Home() {
+  const { data: session } = useSession()
+  
+  // ← アプリケーション層が状態を管理
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  
+  // ← アプリケーション層がロジックを実装
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault()
+    signIn('cognito', { email, password })
+  }
+  
+  if (!session) {
+    return (
+      <LoginScreen
+        email={email}
+        password={password}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onSubmit={handleLogin}
+      />
+    )
+  }
+  
+  // ← CopilotKitは独立したレイヤー
+  return (
+    <CopilotKit runtimeUrl="/api/copilotkit" agent="weatherAgent">
+      <CopilotSidebar labels={{...}}>
+        <AuthenticatedView />
+      </CopilotSidebar>
+    </CopilotKit>
+  )
+}
+```
+
+### データフロー図
+
+```mermaid
+sequenceDiagram
+    participant User as ユーザー
+    participant UIL as ui-libs/LoginScreen<br/>(プレゼンテーション)
+    participant App as src/app/page.tsx<br/>(ロジック)
+    participant Auth as NextAuth/Cognito<br/>(認証)
+    participant CPK as CopilotKit<br/>(AI)
+    
+    User->>UIL: メールアドレス入力
+    UIL->>App: onEmailChange(email)
+    App->>App: setEmail(email)
+    
+    User->>UIL: パスワード入力
+    UIL->>App: onPasswordChange(password)
+    App->>App: setPassword(password)
+    
+    User->>UIL: ログインボタンクリック
+    UIL->>App: onSubmit(event)
+    App->>Auth: signIn('cognito', { email, password })
+    Auth->>Auth: Cognito認証処理
+    Auth->>App: セッション確立
+    App->>CPK: CopilotKit初期化
+    CPK->>User: AI機能利用可能
+```
+
+### ディレクトリ構造とレイヤー
+
+```
+frontend-copilotkit-v2/
+├── src/
+│   ├── ui-libs/                    # レイヤー1: 疎結合UIライブラリ
+│   │   ├── components/
+│   │   │   ├── ui/                 # ✅ ロジックなし
+│   │   │   │   ├── button.tsx     # - propsのみ
+│   │   │   │   └── card.tsx       # - イベントハンドラは親から
+│   │   │   └── auth/               # ✅ 制御されたコンポーネント
+│   │   │       └── LoginScreen.tsx # - useState禁止
+│   │   └── lib/
+│   │       └── utils.ts            # ✅ 純粋関数のみ
+│   │
+│   ├── app/                        # レイヤー2: アプリケーション層
+│   │   ├── page.tsx                # ✅ ビジネスロジック
+│   │   │                           # - useState使用OK
+│   │   │                           # - NextAuth使用OK
+│   │   │                           # - ui-libsを使用
+│   │   │                           # - CopilotKitをラップ
+│   │   └── api/
+│   │       ├── auth/               # ✅ 認証ロジック
+│   │       └── copilotkit/         # ✅ CopilotKit統合
+│   │
+│   ├── components/                 # レイヤー2: 機能コンポーネント
+│   │   ├── auth/
+│   │   │   └── AuthInfo.tsx        # ✅ セッション情報表示
+│   │   └── features/
+│   │       ├── ProverbsSection.tsx # ✅ ことわざ機能
+│   │       └── WeatherCard.tsx     # ✅ Generative UI
+│   │
+│   └── mastra/                     # レイヤー3: AIエージェント
+│       └── agents/
+│           └── weatherAgent.ts     # ✅ CopilotKit統合
+│
+└── tailwind.config.js              # Tailwind設定
+    # 重要：ui-libsをcontentに含める！
+```
+
+### 重要なルール
+
+#### ui-libsで禁止されていること
+
+```tsx
+// ❌ useState, useReducer などのhooks
+const [state, setState] = useState()
+
+// ❌ useEffect（副作用）
+useEffect(() => { fetch(...) })
+
+// ❌ 外部API呼び出し
+signIn('cognito')
+fetch('/api/users')
+
+// ❌ Context（状態共有）
+const value = useContext(SomeContext)
+
+// ❌ プロジェクト固有の依存
+import { signIn } from 'next-auth'
+import { useCopilotAction } from '@copilotkit/react-core'
+```
+
+#### ui-libsで許可されていること
+
+```tsx
+// ✅ propsでデータを受け取る
+function LoginScreen({ email, onEmailChange }: Props) {
+
+// ✅ イベントハンドラを親に委譲
+<input onChange={(e) => onEmailChange(e.target.value)} />
+
+// ✅ 純粋なユーティリティ関数
+cn('class1', 'class2')
+
+// ✅ 基本的なReact標準機能
+<button type="submit">...</button>
+```
+
+### CopilotKitとui-libsの共存
+
+```tsx
+// src/app/page.tsx
+export default function Home() {
+  // アプリケーション層で状態管理
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  
+  if (!session) {
+    // ui-libsの制御されたコンポーネント
+    return (
+      <LoginScreen
+        email={email}
+        password={password}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onSubmit={(e) => {
+          e.preventDefault()
+          signIn('cognito', { email, password })
+        }}
+      />
+    )
+  }
+  
+  // CopilotKitは独立したレイヤー
+  // ui-libsとは直接関係なし
+  return (
+    <CopilotKit runtimeUrl="/api/copilotkit" agent="weatherAgent">
+      <CopilotSidebar>
+        {/* この中でui-libsのButtonやCardを使用可能 */}
+        <AuthenticatedView />
+      </CopilotSidebar>
+    </CopilotKit>
+  )
+}
+```
+
+### まとめ
+
+| レイヤー | 役割 | 状態管理 | 外部依存 | 例 |
+|---------|------|---------|---------|-----|
+| **ui-libs** | プレゼンテーション | ❌ 禁止 | ❌ 禁止 | LoginScreen, Button, Card |
+| **Application** | ビジネスロジック | ✅ OK | ✅ OK | page.tsx, NextAuth, useState |
+| **CopilotKit** | AIフレームワーク | ✅ 内包 | ✅ 内包 | CopilotSidebar, useCopilotAction |
+
+**キーポイント:**
+- ✅ ui-libsは**どんなプロジェクトでも使える**汎用UIライブラリ
+- ✅ CopilotKitは**このプロジェクト専用の**AIフレームワーク
+- ✅ この2つは**別々のレイヤー**として共存する
+
+---
+
+## 🏗️ 認証アーキテクチャ
 
 ### 認証フロー
 
