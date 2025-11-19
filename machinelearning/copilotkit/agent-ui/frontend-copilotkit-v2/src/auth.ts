@@ -12,12 +12,13 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, user }) {
       // Save Cognito tokens to JWT token
       if (account) {
         token.idToken = account.id_token;
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
+        token.sub = user?.id || account.providerAccountId;
       }
       return token;
     },
@@ -26,6 +27,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       session.idToken = token.idToken as string;
       session.accessToken = token.accessToken as string;
       session.refreshToken = token.refreshToken as string;
+      
+      // Add user sub to session
+      if (session.user) {
+        session.user.sub = token.sub as string;
+      }
+      
       return session;
     },
   },

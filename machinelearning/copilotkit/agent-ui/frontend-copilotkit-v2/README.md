@@ -902,11 +902,322 @@ aws ssm get-parameter \
 - `scripts/dev.sh`を使用（推奨）
 - または環境変数を明示的にエクスポート
 
+## 🤖 エージェント権限管理（Agent Management）
+
+### 概要
+
+ユーザーごとにMastraエージェントの利用権限を管理する機能です。管理者がデプロイしたMastraエージェントを、ユーザーが個別に有効化/無効化できます。
+
+### アーキテクチャ
+
+```
+┌─────────────────────────────────────┐
+│ Mastra API (http://localhost:8081) │
+│ - weatherAgent                      │
+│ - supportAgent (将来)               │
+│ - codeAgent (将来)                  │
+└─────────────────────────────────────┘
+         ↓ GET /api/agents
+┌─────────────────────────────────────┐
+│ Next.js API Layer                   │
+│ GET /api/agents                     │
+│ ├─ [1] Mastra APIから全エージェント │
+│ ├─ [2] DynamoDBからユーザー設定    │
+│ └─ [3] マージ＋フィルタリング       │
+└─────────────────────────────────────┘
+         ↓
+┌─────────────────────────────────────┐
+│ DynamoDB: user-agents-{env}         │
+│ - userId: Cognito Sub               │
+│ - agentId: weatherAgent             │
+│ - enabled: true/false               │
+│ - usageCount, lastUsedAt, etc.      │
+└─────────────────────────────────────┘
+```
+
+### DynamoDBスキーマ
+
+**テーブル名**: `copilotkit-user-agents-prod`
+
+```typescript
+{
+  userId: string,        // PK: Cognito Sub
+  agentId: string,       // SK: Mastraエージェント名
+  enabled: boolean,      // ユーザーが有効化したか
+  enabledAt?: string,    // 有効化日時
+  lastUsedAt?: string,   // 最終使用日時
+  usageCount: number,    // 使用回数
+  createdAt: string,
+  updatedAt: string,
+}
+```
+
+### API Endpoints
+
+#### 1. GET /api/agents - エージェント一覧取得
+
+Mastra APIから利用可能なエージェント一覧を取得し、ユーザーの有効化設定とマージして返します。
+
+**レスポンス例:**
+```json
+{
+  "agents": [
+    {
+      "id": "weatherAgent",
+      "name": "weatherAgent",
+      "description": "",
+      "icon": "🌤️",
+      "type": "system",
+      "runtimeUrl": "http://localhost:8081",
+      "agentName": "weatherAgent",
+      "enabled": false,
+      "status": "available",
+      "provider": "amazon-bedrock",
+      "modelId": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+      "usageCount": 0
+    }
+  ],
+  "count": 1
+}
+```
+
+#### 2. POST /api/agents/[agentId]/toggle - エージェント有効化/無効化
+
+ユーザーのエージェント有効化状態をDynamoDBに保存します。
+
+**リクエスト:**
+```json
+{
+  "enabled": true
+}
+```
+
+**レスポンス:**
+```json
+{
+  "success": true,
+  "agent": {
+    "userId": "e047179b-9ac3-46d0-b509-447fb31a1962",
+    "agentId": "weatherAgent",
+    "enabled": true,
+    "enabledAt": "2025-11-19T09:42:11.226Z",
+    "usageCount": 0,
+    "createdAt": "2025-11-19T09:36:12.091Z",
+    "updatedAt": "2025-11-19T09:42:11.226Z"
+  }
+}
+```
+
+### テスト方法
+
+#### 前提条件
+
+1. **Mastra Agent Runtimeが起動している**
+   ```bash
+   cd /home/coder/aws-samples/machinelearning/copilotkit/agent-ui/agent-runtime
+   npm run dev
+   # → http://0.0.0.0:8081 で起動
+   ```
+
+2. **フロントエンド開発サーバーが起動している**
+   ```bash
+   cd /home/coder/aws-samples/machinelearning/copilotkit/agent-ui/frontend-copilotkit-v2
+   ./scripts/dev.sh
+   # → http://localhost:3001 で起動
+   ```
+
+3. **Cognito認証でログイン済み**
+
+#### ブラウザベーステスト（推奨）
+
+**手順:**
+
+1. ブラウザで `http://localhost:3001/test-api` にアクセス
+
+2. ページに以下が表示されることを確認：
+   - ログイン中のメールアドレス
+   - ユーザーID（Cognito Sub）
+   - テストボタン群
+
+3. **「全テスト実行」ボタンをクリック**
+
+4. テスト結果画面に以下が順次表示される：
+
+   ```
+   🧪 Starting API Tests...
+
+   === Test 1: GET /api/agents ===
+   Status: 200
+   Response: {
+     "agents": [
+       {
+         "id": "weatherAgent",
+         "name": "weatherAgent",
+         "enabled": false,  ← 初期状態
+         "provider": "amazon-bedrock",
+         ...
+       }
+     ],
+     "count": 1
+   }
+   ✅ Test 1 PASSED
+
+   === Test: POST /api/agents/weatherAgent/toggle (enable) ===
+   Status: 200
+   Response: {
+     "success": true,
+     "agent": {
+       "userId": "e047179b-9ac3-46d0-b509-447fb31a1962",
+       "agentId": "weatherAgent",
+       "enabled": true,  ← 有効化成功
+       "enabledAt": "2025-11-19T09:42:11.226Z",
+       ...
+     }
+   }
+   ✅ Test PASSED
+
+   === Test 1: GET /api/agents ===
+   Status: 200
+   Response: {
+     "agents": [
+       {
+         "id": "weatherAgent",
+         "enabled": true,  ← 有効化されている
+         ...
+       }
+     ]
+   }
+   ✅ Test 1 PASSED
+
+   === Test: POST /api/agents/weatherAgent/toggle (disable) ===
+   Status: 200
+   ✅ Test PASSED
+
+   === Test 1: GET /api/agents ===
+   Status: 200
+   Response: {
+     "agents": [
+       {
+         "id": "weatherAgent",
+         "enabled": false,  ← 無効化されている
+         ...
+       }
+     ]
+   }
+   ✅ Test 1 PASSED
+
+   🎉 All tests completed!
+   ```
+
+5. **個別テストボタンも利用可能:**
+   - 「GET /api/agents」: エージェント一覧取得のみテスト
+   - 「Enable weatherAgent」: 有効化のみテスト
+   - 「Disable weatherAgent」: 無効化のみテスト
+
+#### DynamoDB確認
+
+テスト実行後、ターミナルで実際にデータが保存されているか確認：
+
+```bash
+# 方法1: テーブル全体をスキャン
+aws dynamodb scan \
+  --table-name copilotkit-user-agents-prod \
+  --max-items 10
+
+# 方法2: 特定ユーザーの設定を取得（推奨）
+aws dynamodb query \
+  --table-name copilotkit-user-agents-prod \
+  --key-condition-expression "userId = :uid" \
+  --expression-attribute-values '{":uid":{"S":"YOUR_USER_ID"}}'
+```
+
+**期待される出力:**
+```json
+{
+  "Items": [
+    {
+      "userId": { "S": "e047179b-9ac3-46d0-b509-447fb31a1962" },
+      "agentId": { "S": "weatherAgent" },
+      "enabled": { "BOOL": true },
+      "enabledAt": { "S": "2025-11-19T09:42:11.226Z" },
+      "usageCount": { "N": "0" },
+      "createdAt": { "S": "2025-11-19T09:36:12.091Z" },
+      "updatedAt": { "S": "2025-11-19T09:42:11.226Z" }
+    }
+  ],
+  "Count": 1,
+  "ScannedCount": 1
+}
+```
+
+#### CLIベーステスト（オプション）
+
+**注意**: NextAuth v5のセッションCookie認証のため、CLIテストは複雑です。ブラウザテストを推奨します。
+
+```bash
+# テストスクリプト実行（トークンなし）
+./scripts/test-agents-api.sh
+# → JWT_TOKEN未提供の警告が表示され、テストはスキップされる
+```
+
+#### トラブルシューティング
+
+**401 Unauthorized エラー**
+- ログアウト後、再ログインしてセッションを更新
+- `session.user.sub`が含まれているか確認
+
+**空の配列が返る（agents: []）**
+- Mastra Agent Runtimeが起動しているか確認
+- `AGENT_RUNTIME_URL`が正しいか確認（`http://localhost:8081`）
+- ターミナルで直接確認: `curl http://localhost:8081/api/agents`
+
+**500 Internal Server Error**
+- DynamoDB権限を確認
+- ローカル環境: AWS CLIの認証情報を確認
+- 本番環境: Lambda実行ロールにDynamoDB権限が必要
+
+#### テストの意味
+
+| テスト | 確認内容 |
+|--------|---------|
+| Test 1 (初回) | Mastra APIからエージェント取得＋初期状態（enabled=false） |
+| Test 2 | DynamoDBへの書き込み＋有効化処理 |
+| Test 3 | DynamoDBから読み込み＋マージ（enabled=true） |
+| Test 4 | 無効化処理 |
+| Test 5 | 無効化後の状態確認（enabled=false） |
+
+### 環境変数
+
+```bash
+# .env.local
+AGENT_RUNTIME_URL=http://localhost:8081
+USER_AGENTS_TABLE_NAME=copilotkit-user-agents-prod
+AWS_REGION=us-east-1
+```
+
+### デプロイ
+
+```bash
+# DynamoDBスタックのデプロイ
+cd ../infrastructure
+NODE_ENV=prod ./scripts/deploy-agents-dynamodb.sh
+```
+
+### 将来の拡張
+
+- [ ] ユーザーグループ別の権限管理
+- [ ] エージェントのヘルスチェック機能
+- [ ] エージェント使用統計の可視化
+- [ ] 複数環境（dev/prod）の切り替え
+
+---
+
 ## 📚 関連ドキュメント
 
 - **[NextAuth.js v5 Documentation](https://authjs.dev/)** - NextAuth.js公式ドキュメント
 - **[GitHub Issue #12176](https://github.com/nextauthjs/next-auth/issues/12176)** - trustHostバグと回避策
 - **[CopilotKit Documentation](https://docs.copilotkit.ai/)** - CopilotKit統合ガイド
+- **[Mastra Framework](https://mastra.ai/)** - Mastra公式ドキュメント
 - **infrastructure/TROUBLESHOOTING_COGNITO_AUTH.md** - 詳細なトラブルシューティング記録
 
 ## 🔒 セキュリティ上の注意
