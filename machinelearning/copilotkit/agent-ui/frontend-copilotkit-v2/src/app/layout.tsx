@@ -18,9 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <SessionProvider>
-          <CopilotKit runtimeUrl="/api/copilotkit" agent="weatherAgent">
-            {children}
-          </CopilotKit>
+          {children}
         </SessionProvider>
       </body>
     </html>

@@ -18,11 +18,17 @@
     "@mastra/client-js": "0.15.2",
     "@mastra/core": "0.20.2",
     "@mastra/memory": "0.15.6",
+    "@radix-ui/react-slot": "^1.2.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.554.0",
     "mastra": "0.15.1",
     "next": "^15.0.0",
     "next-auth": "^5.0.0-beta.30",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
     "zod": "^3.25.0"
   },
   "devDependencies": {
