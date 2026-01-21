@@ -1,0 +1,8 @@
+photorealistic, 3d render, photograph, realistic,
+blurry, low quality, pixelated, jpeg artifacts,
+watermark, signature, text watermark, logo,
+cluttered, messy, disorganized, dark background,
+oversaturated colors, neon colors, distorted,
+noisy, grainy, low resolution, compressed,
+sketch, draft, unfinished, hand-drawn style,
+anime, cartoon style, comic book style

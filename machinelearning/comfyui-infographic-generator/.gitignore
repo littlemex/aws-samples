@@ -1,0 +1,96 @@
+# ComfyUI Infographic Generator - Git Ignore
+
+# ComfyUI Models (Large files - do not commit)
+models/
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.bin
+
+# ComfyUI Outputs
+output/
+outputs/
+temp/
+
+# ComfyUI Input files (user-specific)
+input/
+inputs/
+
+# Virtual Environment
+comfyui-env/
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+install.log
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+
+# Environment files
+.env
+.env.local
+
+# Large archives
+*.zip
+*.tar.gz
+*.tar.bz2
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Examples - Keep structure, ignore actual files
+examples/input/*.png
+examples/input/*.jpg
+examples/output/*.png
+examples/output/*.jpg
+examples/sketches/*.png
+examples/sketches/*.jpg
+
+# But keep README files
+!examples/input/README.md
+!examples/output/README.md
+!examples/sketches/README.md
+
+# Workflow JSON files are OK to commit (small text files)
+!workflows/*.json
