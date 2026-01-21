@@ -104,11 +104,11 @@ echo "Virtual environment activated: ${VIRTUAL_ENV}"
 print_step "Step 4: Installing PyTorch with CUDA 12.1 support"
 if check_gpu; then
     echo "Installing PyTorch with CUDA support..."
-    pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 \
+    pip install torch torchvision torchaudio \
         --index-url https://download.pytorch.org/whl/cu121 --quiet
 else
     echo "Installing PyTorch CPU-only version..."
-    pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 \
+    pip install torch torchvision torchaudio \
         --index-url https://download.pytorch.org/whl/cpu --quiet
 fi
 check_status
