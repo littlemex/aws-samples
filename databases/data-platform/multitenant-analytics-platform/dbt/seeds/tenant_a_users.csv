@@ -1,0 +1,11 @@
+user_id,email,first_name,last_name,registration_date,last_login_date,account_status,subscription_tier,created_at,updated_at
+1,john.doe@example.com,John,Doe,2024-01-15,2024-12-08 09:30:00,ACTIVE,premium,2024-01-15 10:00:00,2024-12-08 09:30:00
+2,jane.smith@example.com,Jane,Smith,2024-02-20,2024-12-07 14:15:00,ACTIVE,free,2024-02-20 11:00:00,2024-12-07 14:15:00
+3,bob.wilson@example.com,Bob,Wilson,2024-03-10,2024-11-28 16:45:00,INACTIVE,free,2024-03-10 09:30:00,2024-11-28 16:45:00
+4,alice.johnson@example.com,Alice,Johnson,2024-01-05,2024-12-08 08:20:00,ACTIVE,enterprise,2024-01-05 14:00:00,2024-12-08 08:20:00
+5,charlie.brown@example.com,Charlie,Brown,2024-04-12,2024-10-15 12:10:00,SUSPENDED,premium,2024-04-12 16:30:00,2024-10-15 12:10:00
+6,diana.prince@example.com,Diana,Prince,2024-05-08,2024-12-08 11:45:00,ACTIVE,premium,2024-05-08 10:15:00,2024-12-08 11:45:00
+7,edward.norton@example.com,Edward,Norton,2024-06-22,2024-12-05 19:30:00,ACTIVE,free,2024-06-22 13:20:00,2024-12-05 19:30:00
+8,fiona.green@example.com,Fiona,Green,2024-02-14,2024-09-30 15:25:00,INACTIVE,free,2024-02-14 12:00:00,2024-09-30 15:25:00
+9,george.miller@example.com,George,Miller,2024-07-03,2024-12-08 07:50:00,ACTIVE,enterprise,2024-07-03 11:40:00,2024-12-08 07:50:00
+10,helen.davis@example.com,Helen,Davis,2024-08-19,2024-12-06 20:10:00,ACTIVE,premium,2024-08-19 15:45:00,2024-12-06 20:10:00

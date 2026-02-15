@@ -7,19 +7,92 @@ AWS CDKを使用してZero-ETL統合に必要なインフラストラクチャ�
 - Redshift Serverless ワークグループ
 - Bastion Host（セキュアアクセス用）
 
-## 🚀 実行コマンド
+## 🚀 実行手順
 
-### ドライラン（推奨）
+AWSクラウド環境とローカルのDocker環境のどちらでもインフラストラクチャをセットアップすることが可能です。
+
+### 事前準備
+
+```bash
+cd scripts && uv venv && source .venv/bin/activate && cd -
+```
+
+### リモート実行（AWS CloudFormation）
+
+#### ドライラン（推奨）
 ```bash
 ./1-etl-manager.sh -p aurora-postgresql -c config.json --dry-run
 ```
 
-### 実際のデプロイ
+#### 実際のデプロイ
 ```bash
 ./1-etl-manager.sh -p aurora-postgresql -c config.json
 ```
 
+#### クリーンアップ
+```bash
+./1-etl-manager.sh -p aurora-postgresql -c config.json --cleanup
+```
+
+### ローカル実行（Docker Compose）
+
+#### 開発・テスト用ローカル実行
+
+```bash
+# ローカルDocker環境のセットアップ
+./1-etl-manager.sh -p aurora-postgresql -c config.json --local
+
+# ローカル環境のクリーンアップ
+./1-etl-manager.sh -p aurora-postgresql -c config.json --local --cleanup
+```
+
+#### ローカル実行の特徴
+- **Docker Compose**: PostgreSQLコンテナを自動起動
+- **高速セットアップ**: AWSリソース作成不要で数秒で完了
+- **開発効率**: ローカル開発・テスト用の軽量環境
+- **コスト削減**: AWS料金不要でテスト実行が可能
+
+## 🏗️ システム構成図
+
+### リモート実行（AWS CloudFormation）
+```mermaid
+graph TB
+    A[1-etl-manager.sh] --> B[前提条件チェック]
+    B --> C[AWS samples clone]
+    C --> D[CDK context生成]
+    D --> E[Python環境セットアップ]
+    E --> F[CDK bootstrap]
+    F --> G[インフラデプロイ]
+    G --> H[VPC Stack]
+    G --> I[Aurora Stack]
+    G --> J[Bastion Host Stack]
+    G --> K[Redshift Serverless Stack]
+    H --> L[デプロイ完了]
+    I --> L
+    J --> L
+    K --> L
+    
+    style A fill:#e1f5fe
+    style L fill:#e8f5e8
+```
+
+### ローカル実行（Docker Compose）
+```mermaid
+graph TB
+    A[1-etl-manager.sh --local] --> B[Docker環境チェック]
+    B --> C[docker-compose.yml確認]
+    C --> D[docker compose up -d]
+    D --> E[PostgreSQLコンテナ起動]
+    E --> F[サービス状態確認]
+    F --> G[ローカル環境準備完了]
+    
+    style A fill:#e8f5e8
+    style G fill:#e8f5e8
+```
+
 ## 📦 デプロイされるリソース
+
+### リモート実行（AWS CloudFormation）
 
 ### 1. VPC Stack
 - VPC with public/private subnets

@@ -35,19 +35,6 @@ services:
       - multitenant_network
     command: tail -f /dev/null  # Keep container running
 
-  # pgAdmin for database management (optional)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "8080:80"
-    depends_on:
-      - postgres
-    networks:
-      - multitenant_network
-
 volumes:
   postgres_data:
   dbt_profiles:

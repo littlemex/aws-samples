@@ -2,3 +2,5 @@ aws-samples-zero-etl
 ./data/
 node_modules/
 bastion-redshift-connection.json
+init-db
+.env

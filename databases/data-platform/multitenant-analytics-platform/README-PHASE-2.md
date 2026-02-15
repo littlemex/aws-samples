@@ -6,21 +6,56 @@ Bastion Host経由でAurora PostgreSQLにマルチテナント分析プラット
 
 ## 🚀 実行手順
 
-### 基本的な4ステップ実行
+Aurora PostgreSQLとローカルのDocker上のPostgresのどちらに対してもクエリを実行することが可能です。
+
+### リモート実行（Aurora PostgreSQL）
+
+#### 基本的な4ステップ実行
 
 ```bash
 # 1. データベース作成（postgresデータベースに接続してmultitenant_analyticsを作成）
-./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/database/create-multitenant-database.sql"
+./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/database/create-multitenant-database.sql"
 
 # 2. スキーマ・テーブル作成（multitenant_analyticsデータベースに接続）
-./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/schema/create-tenant-schemas.sql"
+./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/schema/create-tenant-schemas.sql"
 
 # 3. サンプルデータ投入
-./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/data/insert-sample-data.sql"
+./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/data/insert-sample-data.sql"
 
 # 4. セットアップ検証
-./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
+./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
+
+---
+./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/database/drop-multitenant-database.sql"
 ```
+
+### ローカル実行（Docker PostgreSQL）
+
+#### 開発・テスト用ローカル実行
+
+```bash
+# 1. データベース作成（postgresデータベースに接続してmultitenant_analyticsを作成）
+./2-etl-manager.sh -p aurora-postgresql -c config.json --local --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/database/create-multitenant-database.sql"
+
+# 2. スキーマ・テーブル作成（multitenant_analyticsデータベースに接続）
+./2-etl-manager.sh -p aurora-postgresql -c config.json --local --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/schema/create-tenant-schemas.sql"
+
+# 3. サンプルデータ投入
+./2-etl-manager.sh -p aurora-postgresql -c config.json --local --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/data/insert-sample-data.sql"
+
+# 4. セットアップ検証
+./2-etl-manager.sh -p aurora-postgresql -c config.json --local --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
+
+---
+# データベース削除
+./2-etl-manager.sh -p aurora-postgresql -c config.json --local --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/database/drop-multitenant-database.sql"
+```
+
+#### ローカル実行の特徴
+- **Docker Compose**: PostgreSQLコンテナを自動起動
+- **自動ファイル転送**: config.jsonの設定に基づいてDockerコンテナにファイルをコピー
+- **dbt統合**: 動的テナント処理マクロのテスト実行が可能
+- **開発効率**: AWSリソース不要で高速な開発・テストサイクル
 
 ### ⚡ 高速実行（--skip-copyオプション）
 
@@ -28,36 +63,77 @@ Bastion Host経由でAurora PostgreSQLにマルチテナント分析プラット
 
 ```bash
 # ファイル転送をスキップして検証のみ実行（約10-15秒短縮）
-./2-etl-manager.sh -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
+./2-etl-manager.sh -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
 ```
 
 **注意**: `--skip-copy`は既にファイルがBastion Hostに転送済みの場合のみ使用してください。
 
 ## 🏗️ システム構成図
 
+### リモート実行（Aurora PostgreSQL）
 ```mermaid
 graph TB
     A[2-etl-manager.sh] --> B{--skip-copy?}
     B -->|No| C[config.json読込]
-    B -->|Yes| H[既存workspace使用]
-    C --> D[ファイルアーカイブ作成]
-    D --> E[Bastion Hostに転送]
-    E --> F[Bationの/tmp/workspace/に展開]
-    F --> G[SSM経由コマンド実行]
-    H --> G
-    G --> I[scripts/2-sql-execute.sh]
-    I --> J[SQLファイルパス解析]
-    J --> K[フェーズ検出]
-    K --> L{接続先データベース決定}
-    L -->|database| M[postgres DB]
-    L -->|schema/data/verification| N[multitenant_analytics DB]
-    M --> O[psql実行]
-    N --> O
-    O --> P[sql/aurora/xxx/*.sql]
+    B -->|Yes| H[既存/tmp/workspace使用]
+    C --> D[bastion.phase2.autoTransfer設定確認]
+    D --> E[sql/aurora + scripts/aurora-sql-execute.sh]
+    E --> F[tar.gz圧縮 + Base64エンコード]
+    F --> G[SSM経由でBastion Hostに転送]
+    G --> I[ディレクトリ/tmp/workspace/に展開]
+    I --> J[Aurora接続情報取得]
+    J --> K[CloudFormation + Secrets Manager]
+    K --> L[環境変数設定]
+    L --> M[SSM経由コマンド実行]
+    H --> N[workspace存在確認]
+    N --> L
+    M --> O[scripts/aurora-sql-execute.sh]
+    O --> P[SQLファイルパス解析]
+    P --> Q[フェーズ自動検出]
+    Q --> R{接続先データベース決定}
+    R -->|database| S[postgres DB接続]
+    R -->|schema/data/verification| T[multitenant_analytics DB接続]
+    S --> U[psql実行]
+    T --> U
+    U --> V[SQL実行結果]
     
     style A fill:#e1f5fe
-    style I fill:#f3e5f5
-    style P fill:#e8f5e8
+    style O fill:#f3e5f5
+    style V fill:#e8f5e8
+    style D fill:#fff3e0
+    style K fill:#f1f8e9
+```
+
+### ローカル実行（Docker PostgreSQL）
+```mermaid
+graph TB
+    A[2-etl-manager.sh --local] --> B{--skip-copy?}
+    B -->|No| C[config.json読込]
+    B -->|Yes| H[既存ファイル使用]
+    C --> D[Docker Compose PostgreSQL起動]
+    D --> E[bastion.phase2.autoTransfer設定確認]
+    E --> F[multitenant-analytics-platform-dbt-local-1コンテナ]
+    F --> G[ディレクトリ/usr/appにファイルコピー]
+    G --> I[LOCAL_EXECUTION=true設定]
+    I --> J[ローカルコマンド実行]
+    H --> J
+    J --> K[scripts/aurora-sql-execute.sh]
+    K --> L[LOCAL_EXECUTION検出]
+    L --> M[ローカル設定読込]
+    M --> N[localhost:5432 + dbt_user認証]
+    N --> O[フェーズ自動検出]
+    O --> P{接続先データベース決定}
+    P -->|database| Q[postgres DB接続]
+    P -->|schema/data/verification| R[multitenant_analytics DB接続]
+    Q --> S[psql実行]
+    R --> S
+    S --> T[SQL実行結果]
+    
+    style A fill:#e8f5e8
+    style K fill:#f3e5f5
+    style T fill:#e8f5e8
+    style E fill:#fff3e0
+    style M fill:#f1f8e9
 ```
 
 ## 📁 ディレクトリ構造
@@ -67,7 +143,7 @@ multitenant-analytics-platform/
 ├── 2-etl-manager.sh              # メインオーケストレーションスクリプト
 ├── config.json                   # 統合設定ファイル
 ├── scripts/
-│   └── 2-sql-execute.sh         # SQL実行エンジン（フェーズ対応）
+│   └── aurora-sql-execute.sh         # SQL実行エンジン（フェーズ対応）
 └── sql/
     ├── aurora/                   # Aurora PostgreSQL用SQL
     │   ├── database/
@@ -84,12 +160,12 @@ multitenant-analytics-platform/
 ## ⚙️ コンポーネントの役割
 
 ### 1. `2-etl-manager.sh` - オーケストレーション層
-- **ファイル転送管理**: `config.json`の`bastion.autoTransfer`設定に基づく自動転送
+- **ファイル転送管理**: `config.json`の`bastion.phase2.autoTransfer`設定に基づく自動転送
 - **SSM実行制御**: Session Managerを通じたセキュアなコマンド実行
 - **Aurora接続情報取得**: CloudFormationとSecrets Managerからの動的取得
 - **エラーハンドリング**: 実行結果の監視と適切なエラー報告
 
-### 2. `scripts/2-sql-execute.sh` - SQL実行エンジン
+### 2. `scripts/aurora-sql-execute.sh` - SQL実行エンジン
 - **フェーズ自動検出**: SQLファイルパスから実行フェーズを判定
 - **接続先DB切替**: フェーズに応じた適切なデータベース選択
 - **環境変数管理**: Aurora接続情報の安全な受け渡し
@@ -107,14 +183,26 @@ multitenant-analytics-platform/
       "schema": {
         "connection_db": "multitenant_analytics", 
         "description": "Schema creation phase"
+      },
+      "data": {
+        "connection_db": "multitenant_analytics",
+        "description": "Data insertion phase"
+      },
+      "verification": {
+        "connection_db": "multitenant_analytics",
+        "description": "Verification phase"
       }
     }
   },
   "bastion": {
-    "autoTransfer": {
-      "enabled": true,
-      "directories": ["sql", "scripts"],
-      "files": ["config.json"]
+    "phase2": {
+      "autoTransfer": {
+        "enabled": true,
+        "directories": ["sql/aurora"],
+        "files": ["config.json", "scripts/aurora-sql-execute.sh"],
+        "excludePatterns": ["*.log", "*.tmp", "target/", "*.pyc", "__pycache__/", ".venv/", "dbt_packages/", "logs/"],
+        "compressionLevel": 6
+      }
     }
   }
 }
@@ -128,17 +216,18 @@ multitenant-analytics-platform/
 ## 🔄 ファイル転送メカニズム
 
 ### 自動転送プロセス
-1. **アーカイブ作成**: `sql/`, `scripts/`, `config.json`をtar.gz形式で圧縮
-2. **Base64エンコード**: SSM経由での安全な転送のため
+1. **アーカイブ作成**: `sql/aurora/`, `scripts/aurora-sql-execute.sh`, `config.json`をtar.gz形式で圧縮
+2. **Base64エンコード**: SSM経由での安全な転送のため（1MB制限対応）
 3. **Bastion Host展開**: `/tmp/workspace/`ディレクトリに展開
 4. **実行権限付与**: スクリプトファイルに自動で実行権限設定
+5. **除外パターン適用**: ログファイル、一時ファイル、キャッシュディレクトリを除外
 
 ### 相対パス使用が可能な理由
 ```bash
 # Bastion Host上での実行例
 cd /tmp/workspace
 export AURORA_ENDPOINT='...' AURORA_USER='...' AURORA_PASSWORD='...'
-scripts/2-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql
+scripts/aurora-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql
 ```
 ワーキングディレクトリを`/tmp/workspace`に変更するため、相対パスでファイル参照が可能です。
 
@@ -168,7 +257,7 @@ sql/aurora/verification/verify-setup.sql             → verification フェー�
 ### 🤖 自動化実行
 ```bash
 # ワンコマンドでセキュアな実行
-./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
+./2-etl-manager.sh -p aurora-postgresql -c config.json --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
 ```
 
 **メリット:**
@@ -193,7 +282,7 @@ psql -h aurora-endpoint -U postgres -d multitenant_analytics -f verify-setup.sql
 
 ### データベース構造確認
 ```bash
-./2-etl-manager.sh -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/2-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
+./2-etl-manager.sh -p aurora-postgresql -c config.json --skip-copy --bastion-command "scripts/aurora-sql-execute.sh config.json sql/aurora/verification/verify-setup.sql"
 ```
 
 **期待される出力例:**
@@ -219,23 +308,6 @@ psql -h aurora-endpoint -U postgres -d multitenant_analytics -f verify-setup.sql
  tenant_c |          5
 (3 rows)
 ```
-
-## 🔍 トラブルシューティング
-
-### よくある問題と解決策
-
-#### 1. `--skip-copy`でworkspaceが存在しない
-```
-[WARNING] Workspace directory /tmp/workspace does not exist on Bastion Host
-[WARNING] You may need to run without --skip-copy first to transfer files
-```
-**解決策**: 初回は`--skip-copy`なしで実行してファイル転送を完了させる
-
-#### 2. 接続エラー
-```
-[ERROR] Could not retrieve Aurora endpoint from CloudFormation
-```
-**解決策**: Phase 1が正常完了し、Aurora クラスターが稼働中であることを確認
 
 ## 🎯 次フェーズ準備
 

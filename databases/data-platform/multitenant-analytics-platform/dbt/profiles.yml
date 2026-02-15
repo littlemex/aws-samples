@@ -1,0 +1,65 @@
+multitenant_analytics:
+  target: "{{ env_var('DBT_TARGET', 'local') }}"
+  outputs:
+    # AWS Redshift Serverless environments (動的設定 - SSM から取得)
+    dev:
+      type: redshift
+      host: "{{ env_var('DBT_REDSHIFT_HOST') }}"
+      user: "{{ env_var('DBT_REDSHIFT_USER') }}"
+      password: "{{ env_var('DBT_REDSHIFT_PASSWORD') }}"
+      port: 5439
+      dbname: "{{ env_var('DBT_DATABASE') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'public') }}"
+      threads: 4
+      keepalives_idle: 240
+      connect_timeout: 10
+      sslmode: require
+      ra3_node: true  # Redshift Serverless 対応
+      
+    prod:
+      type: redshift
+      host: "{{ env_var('DBT_REDSHIFT_HOST') }}"
+      user: "{{ env_var('DBT_REDSHIFT_USER') }}"
+      password: "{{ env_var('DBT_REDSHIFT_PASSWORD') }}"
+      port: 5439
+      dbname: "{{ env_var('DBT_DATABASE') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'public') }}"
+      threads: 8
+      keepalives_idle: 240
+      connect_timeout: 10
+      sslmode: require
+      ra3_node: true
+
+    test:
+      type: redshift  
+      host: "{{ env_var('DBT_REDSHIFT_HOST') }}"
+      user: "{{ env_var('DBT_REDSHIFT_USER') }}"
+      password: "{{ env_var('DBT_REDSHIFT_PASSWORD') }}"
+      port: 5439
+      dbname: "{{ env_var('DBT_DATABASE') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'public') }}"
+      threads: 4
+      keepalives_idle: 240
+      connect_timeout: 10
+      sslmode: require
+      ra3_node: true
+
+    # ローカル開発環境 (PostgreSQL)
+    local:
+      type: postgres
+      host: "{{ env_var('DBT_LOCAL_HOST', 'localhost') }}"
+      user: "{{ env_var('DBT_LOCAL_USER', 'dbt_user') }}"
+      password: "{{ env_var('DBT_LOCAL_PASSWORD', 'dbt_password') }}"
+      port: "{{ env_var('DBT_LOCAL_PORT', 5432) | as_number }}"
+      dbname: "{{ env_var('DBT_LOCAL_DATABASE', 'multitenant_analytics') }}"
+      schema: "{{ env_var('DBT_LOCAL_SCHEMA', 'public') }}"
+      threads: 4
+      keepalives_idle: 0
+      search_path: "public"
+
+    # ローカル開発環境 (DuckDB)
+    local_duckdb:
+      type: duckdb
+      path: "{{ env_var('DBT_DUCKDB_PATH', './local_test.duckdb') }}"
+      schema: "{{ env_var('DBT_DUCKDB_SCHEMA', 'main') }}"
+      threads: 4

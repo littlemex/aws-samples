@@ -1,0 +1,97 @@
+name: 'multitenant_analytics'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'multitenant_analytics'
+
+# These configurations specify where dbt should look for different types of files.
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"  # directory which will store compiled SQL files
+clean-targets:         # directories to be removed by `dbt clean`
+  - "target"
+  - "dbt_packages"
+
+# Configuring models
+models:
+  multitenant_analytics:
+    # Config indicated by + and applies to all files under models/...
+    +materialized: table
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+      +tags: ["marts"]
+
+# dbt-glue specific configurations
+vars:
+  # Glue Interactive Sessions settings
+  glue_session_role: "dbt-glue-interactive-session-role"
+  glue_region: "us-east-1"
+  
+  # Multi-tenant configuration - 1000+テナント対応
+  tenant_schemas:
+    - "tenant_a"
+    - "tenant_b"
+  
+  # Zero-ETL configuration
+  zeroetl_database: "multitenant_analytics_zeroetl"
+  
+  # 大量テナント処理設定
+  tenant_processing:
+    # バッチサイズ（SQL UNIONの最適化用）
+    batch_size: 50
+    # 並列処理用のテナントグループサイズ
+    parallel_group_size: 100
+    # テナント検出の最大数制限（安全装置）
+    max_tenant_limit: 2000
+    # テナントフィルタリング（開発時用）
+    enable_tenant_filter: false
+    # フィルタ対象テナント（開発時のサブセット処理用）
+    filtered_tenants: []
+  
+  # パフォーマンス最適化
+  performance:
+    # インクリメンタル処理の有効化
+    enable_incremental: true
+    # クエリタイムアウト（秒）
+    query_timeout_seconds: 3600
+    # メモリ最適化の有効化
+    enable_memory_optimization: true
+  
+  # Data quality checks
+  enable_data_quality: true
+  data_freshness_threshold_hours: 24
+  
+  # ログと監視
+  logging:
+    # 詳細ログの有効化
+    enable_verbose_logging: true
+    # テナント処理進捗の表示
+    show_tenant_progress: true
+    # パフォーマンス統計の表示
+    show_performance_stats: true
+
+# Seeds configuration
+seeds:
+  multitenant_analytics:
+    +column_types:
+      created_at: timestamp
+      updated_at: timestamp
+
+# Tests configuration
+tests:
+  multitenant_analytics:
+    +severity: warn
+
+# Snapshots configuration
+snapshots:
+  multitenant_analytics:
+    +strategy: timestamp
+    +updated_at: updated_at

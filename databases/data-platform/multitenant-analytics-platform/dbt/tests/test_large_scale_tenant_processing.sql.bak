@@ -1,0 +1,79 @@
+-- 大量テナント処理のテストスイート
+-- 1000+テナント対応の検証
+
+{% set test_scenarios = [
+  {'name': 'small_scale', 'tenant_count': 10, 'batch_size': 5},
+  {'name': 'medium_scale', 'tenant_count': 100, 'batch_size': 25},
+  {'name': 'large_scale', 'tenant_count': 500, 'batch_size': 50},
+  {'name': 'enterprise_scale', 'tenant_count': 1000, 'batch_size': 100}
+] %}
+
+-- テスト1: バッチ処理のロジック検証
+{% macro test_batch_processing_logic() %}
+  {{ log("=== Testing Batch Processing Logic ===", info=true) }}
+  
+  {% for scenario in test_scenarios %}
+    {% set batches = [] %}
+    {% set tenant_list = range(1, scenario.tenant_count + 1) | list %}
+    {% set batch_size = scenario.batch_size %}
+    
+    {% for i in range(0, tenant_list|length, batch_size) %}
+      {% set batch = tenant_list[i:i+batch_size] %}
+      {% do batches.append(batch) %}
+    {% endfor %}
+    
+    {% set expected_batch_count = (scenario.tenant_count / batch_size) | round(0, 'ceil') | int %}
+    {% set actual_batch_count = batches|length %}
+    
+    {{ log("Scenario: " ~ scenario.name, info=true) }}
+    {{ log("  Tenants: " ~ scenario.tenant_count ~ ", Batch Size: " ~ batch_size, info=true) }}
+    {{ log("  Expected Batches: " ~ expected_batch_count ~ ", Actual: " ~ actual_batch_count, info=true) }}
+    
+    {% if expected_batch_count != actual_batch_count %}
+      {{ log("  ❌ FAILED: Batch count mismatch", info=true) }}
+    {% else %}
+      {{ log("  ✅ PASSED: Batch processing logic correct", info=true) }}
+    {% endif %}
+  {% endfor %}
+  
+  {{ log("=== Batch Processing Logic Test Complete ===", info=true) }}
+{% endmacro %}
+
+-- テスト2: テナントフィルタリング機能の検証
+{% macro test_tenant_filtering() %}
+  {{ log("=== Testing Tenant Filtering ===", info=true) }}
+  
+  -- テストデータ作成
+  {% set all_tenants = ['tenant_a', 'tenant_b', 'tenant_c', 'tenant_d', 'tenant_e'] %}
+  {% set filter_list = ['tenant_a', 'tenant_c', 'tenant_e'] %}
+  
+  -- フィルタリングロジックのシミュレーション
+  {% set filtered_result = [] %}
+  {% for tenant in all_tenants %}
+    {% if tenant in filter_list %}
+      {% do filtered_result.append(tenant) %}
+    {% endif %}
+  {% endfor %}
+  
+  {{ log("All Tenants: " ~ all_tenants|join(', '), info=true) }}
+  {{ log("Filter List: " ~ filter_list|join(', '), info=true) }}
+  {{ log("Filtered Result: " ~ filtered_result|join(', '), info=true) }}
+  
+  {% if filtered_result|length == 3 and filtered_result == filter_list %}
+    {{ log("✅ PASSED: Tenant filtering works correctly", info=true) }}
+  {% else %}
+    {{ log("❌ FAILED: Tenant filtering logic error", info=true) }}
+  {% endif %}
+  
+  {{ log("=== Tenant Filtering Test Complete ===", info=true) }}
+{% endmacro %}
+
+-- テスト実行
+{{ test_batch_processing_logic() }}
+{{ test_tenant_filtering() }}
+
+-- メインテストクエリ（実際のSQL実行）
+SELECT 
+  'test_large_scale_tenant_processing' as test_name,
+  'completed' as status,
+  current_timestamp as test_time
