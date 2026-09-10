@@ -53,36 +53,17 @@ aws s3 sync "$ROOT/skills/corporate-deck/" \
   "s3://$SKILL_BUCKET/skills/corporate-deck/" --delete
 
 echo "[4/4] harness $HARNESS_NAME"
-SKILLS=$(cat <<JSON
-[
-  {"git": {"url": "$PUBLISHED_SKILL_URL", "path": "$PUBLISHED_SKILL_PATH"}},
-  {"s3": {"uri": "s3://$SKILL_BUCKET/skills/corporate-deck/"}}
-]
-JSON
-)
-PROMPT='[{"text": "You produce presentation decks. Always use the corporate-deck skill for layout and the published pptx skill for anything it does not cover. Never hand over a deck that has not passed check_deck.py."}]'
-
-if HARNESS=$(aws bedrock-agentcore-control list-harnesses \
-      --query "harnesses[?harnessName=='$HARNESS_NAME']|[0].harnessId" \
-      --output text 2>/dev/null) && [ "$HARNESS" != "None" ] && [ -n "$HARNESS" ]; then
-  aws bedrock-agentcore-control update-harness \
-    --harness-id "$HARNESS" --skills "$SKILLS" --system-prompt "$PROMPT" >/dev/null
-else
-  aws bedrock-agentcore-control create-harness \
-    --harness-name "$HARNESS_NAME" \
-    --execution-role-arn "$ROLE_ARN" \
-    --skills "$SKILLS" \
-    --system-prompt "$PROMPT" >/dev/null
-  HARNESS=$(aws bedrock-agentcore-control list-harnesses \
-    --query "harnesses[?harnessName=='$HARNESS_NAME']|[0].harnessId" --output text)
-fi
+# Driven through boto3: the harness API is recent enough that an AWS CLI
+# installed a few months ago has no create-harness subcommand.
+"${PYTHON:-python3}" "$HERE/harness.py" \
+  --name "$HARNESS_NAME" \
+  --execution-role-arn "$ROLE_ARN" \
+  --skill-uri "s3://$SKILL_BUCKET/skills/corporate-deck/" \
+  --published-url "$PUBLISHED_SKILL_URL" \
+  --published-path "$PUBLISHED_SKILL_PATH" \
+  --region "$AWS_REGION" | tee "$ROOT/.harness.env"
 
 echo
-echo "export HARNESS_ID=$HARNESS"
-echo
-echo "Poll until the status is READY:"
-echo "  aws bedrock-agentcore-control get-harness --harness-id \$HARNESS_ID"
-echo "Then resolve the ARN and ask for a deck:"
-echo "  export HARNESS_ARN=\$(aws bedrock-agentcore-control get-harness \\"
-echo "    --harness-id \"\$HARNESS_ID\" --query 'harnessArn || arn' --output text)"
+echo "Load the harness identifiers, then ask for a deck:"
+echo "  source .harness.env"
 echo "  python3 scripts/invoke.py 'Build a five slide deck on ...'"
