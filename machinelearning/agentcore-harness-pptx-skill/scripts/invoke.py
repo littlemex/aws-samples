@@ -17,8 +17,18 @@ import sys
 import uuid
 
 import boto3
+from botocore.config import Config
 
 WORKSPACE = "/workspace"
+
+#: A harness turn runs a whole agent loop - reading skills, writing a
+#: specification, building, checking - before the stream produces its next
+#: event. The SDK default read timeout of 60s expires mid-think and tears down
+#: a session that is working, so it is raised here rather than left implicit.
+#: Retries are disabled because replaying a partially consumed stream would ask
+#: the agent to redo work it has already done.
+CLIENT_CONFIG = Config(read_timeout=900, connect_timeout=15,
+                       retries={"max_attempts": 1})
 
 
 def run_command(client, harness_arn: str, session_id: str, command: str) -> int:
@@ -92,7 +102,8 @@ def main() -> int:
 
     # The API requires at least 33 characters, which a bare uuid4 satisfies.
     session_id = args.session_id or f"deck-{uuid.uuid4()}"
-    client = boto3.client("bedrock-agentcore", region_name=region)
+    client = boto3.client("bedrock-agentcore", region_name=region,
+                          config=CLIENT_CONFIG)
     print(f"[INFO] session {session_id}")
 
     print("[1/3] preparing the environment")
@@ -114,11 +125,21 @@ def main() -> int:
 
     print("\n\n[3/3] copying the deck out")
     key = f"decks/{session_id}.pptx"
-    copy = (f"set -e; test -f {WORKSPACE}/deck.pptx; "
-            f"aws s3 cp {WORKSPACE}/deck.pptx s3://{bucket}/{key}")
+    # Checked separately from the copy so a missing file and a failed upload do
+    # not report the same cause. Conflating them once sent us looking for a
+    # deck the agent had in fact produced.
+    if run_command(client, harness_arn, session_id,
+                   f"test -f {WORKSPACE}/deck.pptx") != 0:
+        print(f"[FAIL] the agent did not leave a deck at {WORKSPACE}/deck.pptx",
+              file=sys.stderr)
+        return 1
+    copy = f"aws s3 cp {WORKSPACE}/deck.pptx s3://{bucket}/{key}"
     if run_command(client, harness_arn, session_id, copy) != 0:
-        print("[FAIL] the agent did not leave a deck at "
-              f"{WORKSPACE}/deck.pptx", file=sys.stderr)
+        print(f"[FAIL] the deck was built but could not be uploaded to "
+              f"s3://{bucket}/{key}. Check that the bucket exists and that the "
+              f"execution role has s3:PutObject on it. The file is still in "
+              f"the session, so rerun with --session-id {session_id} once the "
+              f"bucket is fixed.", file=sys.stderr)
         return 1
 
     print(f"\n[OK] s3://{bucket}/{key}")

@@ -48,6 +48,18 @@ if ! aws s3api head-bucket --bucket "$SKILL_BUCKET" >/dev/null 2>&1; then
   fi
 fi
 
+if [ "$ARTIFACT_BUCKET" != "$SKILL_BUCKET" ]; then
+  echo "[2b/4] artifact bucket s3://$ARTIFACT_BUCKET"
+  if ! aws s3api head-bucket --bucket "$ARTIFACT_BUCKET" >/dev/null 2>&1; then
+    if [ "$AWS_REGION" = "us-east-1" ]; then
+      aws s3api create-bucket --bucket "$ARTIFACT_BUCKET" >/dev/null
+    else
+      aws s3api create-bucket --bucket "$ARTIFACT_BUCKET" \
+        --create-bucket-configuration "LocationConstraint=$AWS_REGION" >/dev/null
+    fi
+  fi
+fi
+
 echo "[3/4] upload the corporate skill"
 aws s3 sync "$ROOT/skills/corporate-deck/" \
   "s3://$SKILL_BUCKET/skills/corporate-deck/" --delete

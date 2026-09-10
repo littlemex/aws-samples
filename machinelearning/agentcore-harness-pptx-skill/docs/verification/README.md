@@ -36,3 +36,31 @@ skill's code calls directly. `scripts/invoke.py` also warned on every normal
 mid-loop turn until this run showed the warning firing constantly on
 successful sessions; it now only fires on the stop reasons that mean the
 harness gave up.
+
+## Second run: a Japanese deck on a real corporate template
+
+The same path was exercised again with the corporate template present at
+`skills/corporate-deck/assets/template.pptx` and a brief written in Japanese.
+The agent produced an eleven slide deck, in Japanese, on the corporate theme,
+with speaker notes on every slide — including a nine step `sequence` slide
+naming each API in call order. Both `build_deck.py` and `check_deck.py` exited
+zero, and the agent recovered on its own from two of its own overflow failures
+by shortening the offending blocks, which is the overflow guard doing its job.
+
+Three more defects surfaced only by running it:
+
+- `scripts/invoke.py` used the SDK default 60 second read timeout. A harness
+  turn runs an entire agent loop before the stream yields its next event, so a
+  session that was working was torn down mid-think. The client now sets a 900
+  second read timeout and disables retries, because replaying a partly consumed
+  stream would ask the agent to redo work it had finished.
+- `scripts/setup.sh` created the skill bucket but never the artifact bucket, so
+  the very last step of an otherwise successful run failed with `NoSuchBucket`.
+  It now creates both when they differ.
+- The upload failure was reported as "the agent did not leave a deck", sending
+  us to look for a file that had in fact been produced. The file check and the
+  upload are now separate steps with separate messages, and the failure message
+  names the session so the built file can be retrieved rather than rebuilt.
+
+The corporate template itself is deliberately not committed; see
+`skills/corporate-deck/assets/README.md`.

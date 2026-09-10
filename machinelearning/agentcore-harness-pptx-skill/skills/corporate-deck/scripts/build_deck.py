@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import unicodedata
 
@@ -155,6 +156,27 @@ class Theme:
 
 
 # ----------------------------------------------------------------- measuring
+LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
+
+
+def split_links(text: str) -> list:
+    """Split `a [label](url) b` into [(text, url|None), ...] runs."""
+    out, cursor = [], 0
+    for match in LINK.finditer(text):
+        if match.start() > cursor:
+            out.append((text[cursor:match.start()], None))
+        out.append((match.group(1), match.group(2)))
+        cursor = match.end()
+    if cursor < len(text):
+        out.append((text[cursor:], None))
+    return out or [(text, None)]
+
+
+def plain(text: str) -> str:
+    """The visible characters only, so a long URL cannot force a wrap."""
+    return "".join(label for label, _ in split_links(str(text)))
+
+
 def _char_width(char: str, size: float) -> float:
     if unicodedata.east_asian_width(char) in ("W", "F", "A"):
         return size * FULLWIDTH_ADVANCE
@@ -163,7 +185,7 @@ def _char_width(char: str, size: float) -> float:
 
 def wrapped_lines(text: str, width: float, size: float) -> int:
     total = 0
-    for raw in str(text).split("\n"):
+    for raw in plain(text).split("\n"):
         used, lines = 0.0, 1
         for char in raw:
             advance = _char_width(char, size)
@@ -203,13 +225,19 @@ class Renderer:
         for index, raw in enumerate(str(text).split("\n")):
             para = frame.paragraphs[0] if index == 0 else frame.add_paragraph()
             para.alignment = {"left": PP_ALIGN.LEFT, "center": PP_ALIGN.CENTER}[align]
-            run = para.add_run()
-            run.text = raw
-            run.font.size = Pt(size)
-            run.font.bold = bold
-            run.font.name = latin
-            run.font.color.rgb = colour or self.t.text
-            self._set_cjk(run, latin if mono else self.t.cjk_font)
+            for label, url in split_links(raw):
+                run = para.add_run()
+                run.text = label
+                run.font.size = Pt(size)
+                run.font.bold = bold
+                run.font.name = latin
+                if url:
+                    run.hyperlink.address = url
+                    run.font.color.rgb = self.t.accent
+                    run.font.underline = True
+                else:
+                    run.font.color.rgb = colour or self.t.text
+                self._set_cjk(run, latin if mono else self.t.cjk_font)
         return box
 
     @staticmethod
@@ -382,6 +410,47 @@ class SlideBuilder:
                        mono=True)
         self._advance(self.y + height, "code")
 
+    def sequence(self, steps, size=15, api_size=15):
+        """Numbered call order: badge, caller, API, and what it does.
+
+        Each step is {caller, api, note}. The number comes from the position,
+        so a reordered specification renumbers itself and the deck cannot
+        disagree with itself about which call comes first.
+        """
+        badge = 34.0
+        gap_x = 14.0
+        # The caller and API columns are sized to their widest entry so the
+        # note column absorbs whatever is left.
+        caller_w = max(len(plain(s["caller"])) for s in steps) * size * FULLWIDTH_ADVANCE + 16
+        api_w = max(len(plain(s["api"])) for s in steps) * size * MONO_ADVANCE + 16
+        note_w = self.w - badge - caller_w - api_w - gap_x * 3
+        if note_w < 200:
+            raise Overflow(
+                f"slide {self.index}: sequence leaves only {note_w:.0f}px for "
+                f"the notes column. Shorten the caller or api fields.")
+
+        y = self.y
+        for number, step in enumerate(steps, start=1):
+            height = max(line_height(size),
+                         text_height(step.get("note", ""), note_w, size))
+            self.r.rect(self.slide, self.x, y, badge - 6, line_height(size) + 4,
+                        fill=self.t.accent, stroke=None, radius=0.25)
+            self.r.textbox(self.slide, self.x, y, badge - 6,
+                           line_height(size) + 4, str(number), size=size,
+                           colour=self.t.background, bold=True, align="center",
+                           anchor="middle")
+            left = self.x + badge + gap_x
+            self.r.textbox(self.slide, left, y, caller_w, height,
+                           step["caller"], size=size, bold=True)
+            left += caller_w + gap_x
+            self.r.textbox(self.slide, left, y, api_w, height, step["api"],
+                           size=api_size, colour=self.t.accent, mono=True)
+            left += api_w + gap_x
+            self.r.textbox(self.slide, left, y, note_w, height,
+                           step.get("note", ""), size=size, colour=self.t.muted)
+            y += height + 10
+        self._advance(y - 10, "sequence")
+
     def callout(self, text, size=17):
         pad = 18.0
         inner = self.w - pad * 2 - 8
@@ -441,7 +510,7 @@ class SlideBuilder:
 
 
 # --------------------------------------------------------------------- build
-BLOCKS = {"bullets", "cards", "table", "code", "callout"}
+BLOCKS = {"bullets", "cards", "table", "code", "callout", "sequence"}
 
 
 def build(spec: dict, template: str, out: str) -> str:
@@ -481,6 +550,8 @@ def build(spec: dict, template: str, out: str) -> str:
                               block.get("fractions"))
             elif kind == "code":
                 builder.code(block["lines"], block.get("label"))
+            elif kind == "sequence":
+                builder.sequence(block["steps"])
             elif kind == "callout":
                 builder.callout(block["text"])
         if page.get("notes"):
