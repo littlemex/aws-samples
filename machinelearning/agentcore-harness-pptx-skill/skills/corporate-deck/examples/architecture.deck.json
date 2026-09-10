@@ -1,0 +1,123 @@
+{
+  "slides": [
+    {
+      "eyebrow": "Conclusion",
+      "title": "The gap is the execution environment, not the model",
+      "subtitle": "A document skill needs a place to run code and a path for files",
+      "blocks": [
+        {
+          "type": "cards",
+          "items": [
+            {
+              "title": "What works today",
+              "body": "Summarisation, classification, analysis and question answering all need one thing: the model. They run on Amazon Bedrock without change."
+            },
+            {
+              "title": "What does not",
+              "body": "Deck and document generation also needs a sandbox to execute python-pptx and a way to hand the produced file back."
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "Inference succeeding while document generation fails is the signature of a missing execution environment."
+        }
+      ],
+      "notes": [
+        "Lead with the conclusion",
+        "The model is not the problem",
+        "The missing pieces are a place to run code and a path for files"
+      ]
+    },
+    {
+      "eyebrow": "Anatomy",
+      "title": "A skill has three layers and only two of them travel",
+      "blocks": [
+        {
+          "type": "table",
+          "columns": ["Layer", "What it is", "Portable"],
+          "rows": [
+            ["1. SKILL.md", "Instructions in markdown with YAML frontmatter", "Yes, put it in Git or Amazon S3"],
+            ["2. scripts and assets", "The code that writes the file, plus templates and fonts", "Yes, the same way"],
+            ["3. Sandbox", "The filesystem, the shell and the file exchange path", "No, this is a place rather than a payload"]
+          ],
+          "fractions": [0.22, 0.4, 0.38]
+        },
+        {
+          "type": "bullets",
+          "items": [
+            "Layers 1 and 2 are the skill as published; layer 3 is supplied by whatever hosts the agent",
+            "AgentCore Harness supplies layer 3, which is why the published skill runs unmodified"
+          ]
+        }
+      ],
+      "notes": [
+        "Open a skill and there are three layers",
+        "The top two are files and travel anywhere",
+        "The third is the place where code runs"
+      ]
+    },
+    {
+      "eyebrow": "Wiring",
+      "title": "Attach the published skill next to the corporate one",
+      "subtitle": "Invoke-time skills are appended after create-time skills",
+      "blocks": [
+        {
+          "type": "code",
+          "label": "InvokeHarness",
+          "lines": [
+            "PUBLISHED = \"https://github.com/anthropics/skills\"",
+            "",
+            "response = client.invoke_harness(",
+            "    harnessArn=HARNESS_ARN,",
+            "    runtimeSessionId=SESSION_ID,",
+            "    skills=[",
+            "        {\"git\": {\"url\": PUBLISHED, \"path\": \"skills/pptx\"}},",
+            "        {\"s3\": {\"uri\": CORPORATE_SKILL_URI}},",
+            "    ],",
+            "    messages=[{\"role\": \"user\", \"content\": [{\"text\": PROMPT}]}],",
+            ")"
+          ]
+        },
+        {
+          "type": "bullets",
+          "items": [
+            "The corporate skill owns layout and branding; the published skill owns the file format",
+            "When both define a skill of the same name, the invoke-time entry wins"
+          ]
+        }
+      ],
+      "notes": [
+        "Two skills are attached side by side",
+        "One brings the file format and one brings the house style",
+        "Neither needs to be rewritten"
+      ]
+    },
+    {
+      "eyebrow": "Artifacts",
+      "title": "Decide how the file leaves the session before building",
+      "blocks": [
+        {
+          "type": "table",
+          "columns": ["Mechanism", "Where it lands", "Suited to"],
+          "rows": [
+            ["Session storage", "Service managed, per session", "Iterating with the agent. No VPC needed"],
+            ["S3 Files access point", "Your own S3 bucket", "Serving the file from an application. VPC needed"],
+            ["EFS access point", "Your own shared filesystem", "Reuse across agents. VPC needed"],
+            ["InvokeAgentRuntimeCommand", "Streamed to stdout", "Verification and post processing. No VPC needed"]
+          ],
+          "fractions": [0.26, 0.28, 0.46]
+        },
+        {
+          "type": "callout",
+          "text": "To serve the deck from an application, mount an S3 Files access point and return a presigned URL."
+        }
+      ],
+      "notes": [
+        "Decide the exit path for the file first",
+        "Session storage is enough while iterating",
+        "Mount S3 Files when an application serves the result"
+      ]
+    }
+  ]
+}
