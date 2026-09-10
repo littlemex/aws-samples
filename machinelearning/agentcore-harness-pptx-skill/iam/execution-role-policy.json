@@ -9,7 +9,7 @@
         "bedrock:InvokeModelWithResponseStream"
       ],
       "Resource": [
-        "arn:aws:bedrock:${AWS_REGION}::foundation-model/*",
+        "arn:aws:bedrock:*::foundation-model/*",
         "arn:aws:bedrock:${AWS_REGION}:${ACCOUNT_ID}:inference-profile/*"
       ]
     },
@@ -32,6 +32,22 @@
         "s3:PutObject"
       ],
       "Resource": "arn:aws:s3:::${ARTIFACT_BUCKET}/*"
+    },
+    {
+      "Sid": "HarnessConversationMemory",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:CreateEvent",
+        "bedrock-agentcore:ListEvents",
+        "bedrock-agentcore:GetEvent",
+        "bedrock-agentcore:ListSessions",
+        "bedrock-agentcore:ListActors",
+        "bedrock-agentcore:GetMemory",
+        "bedrock-agentcore:GetMemoryRecord",
+        "bedrock-agentcore:ListMemoryRecords",
+        "bedrock-agentcore:RetrieveMemoryRecords"
+      ],
+      "Resource": "arn:aws:bedrock-agentcore:${AWS_REGION}:${ACCOUNT_ID}:memory/*"
     },
     {
       "Sid": "Observability",

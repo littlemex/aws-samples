@@ -62,7 +62,12 @@ def ask(client, harness_arn: str, session_id: str, prompt: str) -> str:
             raise RuntimeError(event["runtimeClientError"]["message"])
         elif "messageStop" in event:
             reason = event["messageStop"].get("stopReason")
-            if reason not in (None, "end_turn"):
+            # tool_use / tool_result are ordinary turns inside the harness's
+            # own agent loop, which runs the whole shell/build/check cycle
+            # before returning control here. Only the reasons below mean the
+            # harness gave up before finishing.
+            if reason in ("max_tokens", "max_iterations_exceeded",
+                          "timeout_exceeded", "max_output_tokens_exceeded"):
                 print(f"\n[WARNING] the agent stopped early: {reason}",
                       file=sys.stderr)
     return "".join(parts)

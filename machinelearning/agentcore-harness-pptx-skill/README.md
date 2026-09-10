@@ -121,6 +121,17 @@ python3 scripts/invoke.py "Build a five slide deck on our Q3 cost review"
 file to `s3://$ARTIFACT_BUCKET/decks/<session>.pptx`. It prints the session id;
 pass it back with `--session-id` to revise the same deck on the same machine.
 
+## Verified end to end
+
+This sample was run against a real harness: `setup.sh` created the role and
+the harness, `invoke.py` opened a session, and the agent read both skills,
+wrote its own deck specification, ran `build_deck.py` and `check_deck.py`, and
+reported the path — all from a prompt that named neither. The produced file
+was downloaded and inspected outside the harness, and a second call revising
+it in the same session was also verified against the redownloaded file. Details,
+and the two IAM fixes this uncovered, are in `docs/verification/README.md`;
+the file itself is `docs/verification/sample-output.pptx`.
+
 ## Design notes worth knowing before you extend this
 
 **Skill fetches are not silently skipped.** Every failure fails the invocation
