@@ -68,6 +68,7 @@ Blocks are applied top to bottom in the order given.
 | `cards` | `items`: list of `{title, body}` | Two or three parallel ideas side by side |
 | `table` | `columns`, `rows`, optional `fractions` | A comparison across more than one axis |
 | `code` | `lines`: list of strings, optional `label` | An API call or command, exactly as it is typed |
+| `sequence` | `steps`: list of `{caller, api, note}` | The order calls happen in, when the order is the point |
 | `callout` | `text`: string | The one line to remember from the slide |
 
 `fractions` are column widths as fractions of the content width and must sum to
@@ -76,6 +77,17 @@ Blocks are applied top to bottom in the order given.
 `code` lines are never wrapped, because a broken line changes what the code
 means. If a line is too wide the build fails and names the line; shorten it by
 extracting a variable rather than by deleting part of the call.
+
+`sequence` numbers its steps from their position in the list, so never write a
+number into `caller`, `api` or `note`. Reordering the list renumbers the slide,
+which is the point: the deck cannot end up disagreeing with itself about which
+call comes first. Put the exact API name in `api` and leave `note` for what the
+call achieves. Use this instead of a box-and-arrow picture whenever the reader
+needs the order rather than the topology.
+
+Any text field may carry a link as `[label](https://example.com)`. Only the
+label is measured, so a long URL never forces a wrap. Link the first mention of
+anything a reader might want to open — a repository, a document, a console page.
 
 ## Adapting this skill
 
