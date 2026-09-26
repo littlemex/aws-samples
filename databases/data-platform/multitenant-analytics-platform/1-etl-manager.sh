@@ -15,6 +15,7 @@ ENVIRONMENT="dev"
 CLEANUP=false
 DRY_RUN=false
 SKIP_CLONE=false
+LOCAL_EXECUTION=false
 
 # Function to print colored output
 print_info() {
@@ -48,11 +49,15 @@ OPTIONS:
     --cleanup                  Clean up resources (destroy stacks)
     --dry-run                  Show what would be deployed without actually deploying
     --skip-clone               Skip cloning AWS samples repository (use existing)
+    --local                    Set up local Docker environment instead of AWS infrastructure
     -h, --help                 Show this help message
 
 EXAMPLES:
     # Deploy Aurora PostgreSQL infrastructure
     $0 -p aurora-postgresql -c config.json
+
+    # Set up local Docker environment
+    $0 -p aurora-postgresql -c config.json --local
 
     # Dry run to see what would be deployed
     $0 -p aurora-postgresql -c config.json --dry-run
@@ -106,6 +111,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-clone)
             SKIP_CLONE=true
+            shift
+            ;;
+        --local)
+            LOCAL_EXECUTION=true
             shift
             ;;
         -h|--help)
@@ -443,6 +452,90 @@ cleanup_resources() {
     fi
 }
 
+# Function to setup local Docker environment
+setup_local_environment() {
+    print_info "Setting up local Docker environment..."
+    
+    # Check if Docker is installed
+    if ! command -v docker &> /dev/null; then
+        print_error "Docker is not installed. Please install Docker first."
+        exit 1
+    fi
+    
+    # Check if Docker Compose is available
+    if ! docker compose version &> /dev/null; then
+        print_error "Docker Compose is not available. Please install Docker Compose."
+        exit 1
+    fi
+    
+    # Check if docker-compose.yml exists
+    if [[ ! -f "$PROJECT_ROOT/docker-compose.yml" ]]; then
+        print_error "docker-compose.yml not found in project root: $PROJECT_ROOT"
+        exit 1
+    fi
+    
+    print_info "Starting Docker Compose services..."
+    cd "$PROJECT_ROOT"
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would execute 'docker compose up -d'"
+        return
+    fi
+    
+    # Start Docker Compose services
+    docker compose up -d
+    
+    # Wait a moment for services to start
+    print_info "Waiting for services to start..."
+    sleep 5
+    
+    # Check service status
+    print_info "Checking service status..."
+    docker compose ps
+    
+    print_success "Local Docker environment ready!"
+}
+
+# Function to show local environment info
+show_local_info() {
+    print_info "=== Local Environment Information ==="
+    
+    cd "$PROJECT_ROOT"
+    
+    print_info "Docker Compose Services:"
+    docker compose ps
+    
+    print_info "=== Next Steps ==="
+    echo "Phase 1 (Local) completed successfully!"
+    echo ""
+    echo "Next step: Run Phase 2 for local database setup"
+    echo "  ./2-etl-manager.sh -p $PATTERN -c $CONFIG_FILE --local"
+    echo ""
+    echo "Or test local PostgreSQL connection:"
+    echo "  docker exec -it multitenant-analytics-platform-postgres-1 psql -U dbt_user -d postgres"
+}
+
+# Function to cleanup local environment
+cleanup_local_environment() {
+    print_warning "Cleaning up local Docker environment..."
+    
+    cd "$PROJECT_ROOT"
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would execute 'docker compose down -v'"
+        return
+    fi
+    
+    print_warning "This will stop and remove all local containers and volumes. Are you sure? (y/N)"
+    read -r response
+    if [[ "$response" =~ ^[Yy]$ ]]; then
+        docker compose down -v
+        print_success "Local environment cleaned up!"
+    else
+        print_info "Cleanup cancelled."
+    fi
+}
+
 # Function to show deployment info
 show_deployment_info() {
     print_info "=== Phase 1 Deployment Information ==="
@@ -501,27 +594,45 @@ show_deployment_info() {
 
 # Main execution
 main() {
-    print_info "Starting Phase 1: Infrastructure Deployment..."
-    
-    check_prerequisites
-    
-    if [[ "$CLEANUP" == true ]]; then
-        cleanup_resources
-        exit 0
+    if [[ "$LOCAL_EXECUTION" == true ]]; then
+        print_info "Starting Phase 1: Local Environment Setup..."
+        
+        if [[ "$CLEANUP" == true ]]; then
+            cleanup_local_environment
+            exit 0
+        fi
+        
+        setup_local_environment
+        
+        if [[ "$DRY_RUN" != true ]]; then
+            show_local_info
+        fi
+        
+        print_success "=== PHASE 1 (LOCAL) COMPLETED ==="
+        print_info "Local Docker environment ready!"
+    else
+        print_info "Starting Phase 1: Infrastructure Deployment..."
+        
+        check_prerequisites
+        
+        if [[ "$CLEANUP" == true ]]; then
+            cleanup_resources
+            exit 0
+        fi
+        
+        clone_samples
+        generate_cdk_context
+        setup_python_env
+        bootstrap_cdk
+        deploy_infrastructure
+        
+        if [[ "$DRY_RUN" != true ]]; then
+            show_deployment_info
+        fi
+        
+        print_success "=== PHASE 1 COMPLETED ==="
+        print_info "Infrastructure deployed successfully!"
     fi
-    
-    clone_samples
-    generate_cdk_context
-    setup_python_env
-    bootstrap_cdk
-    deploy_infrastructure
-    
-    if [[ "$DRY_RUN" != true ]]; then
-        show_deployment_info
-    fi
-    
-    print_success "=== PHASE 1 COMPLETED ==="
-    print_info "Infrastructure deployed successfully!"
 }
 
 # Run main function

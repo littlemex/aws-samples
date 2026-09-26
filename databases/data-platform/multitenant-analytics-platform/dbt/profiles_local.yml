@@ -1,0 +1,20 @@
+multitenant_analytics:
+  target: local
+  outputs:
+    local:
+      type: postgres
+      host: localhost
+      user: dbt_user
+      password: dbt_password
+      port: 5432
+      dbname: multitenant_analytics
+      schema: public
+      threads: 4
+      keepalives_idle: 0
+      search_path: "public"
+      
+    duckdb:
+      type: duckdb
+      path: './local_test.duckdb'
+      schema: main
+      threads: 4

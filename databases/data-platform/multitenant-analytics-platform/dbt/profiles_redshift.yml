@@ -1,0 +1,46 @@
+# Redshift Serverless 用の dbt プロファイル設定
+# Zero-ETL 統合後に使用する設定ファイル
+
+multitenant_analytics:
+  outputs:
+    # 本番環境（ Redshift Serverless ）
+    prod:
+      type: redshift
+      host: "{{ env_var('DBT_REDSHIFT_HOST') }}"           # Redshift Serverless ワークグループエンドポイント
+      user: "{{ env_var('DBT_REDSHIFT_USER') }}"           # Redshift ユーザー名
+      password: "{{ env_var('DBT_REDSHIFT_PASSWORD') }}"   # Redshift パスワード
+      port: "{{ env_var('DBT_REDSHIFT_PORT') | as_number }}"  # 通常は 5439
+      dbname: "{{ env_var('DBT_REDSHIFT_DATABASE') }}"     # Zero-ETL 統合データベース名
+      schema: "{{ env_var('DBT_REDSHIFT_SCHEMA') }}"       # ターゲットスキーマ
+      threads: "{{ env_var('DBT_REDSHIFT_THREADS') | as_number | default(4) }}"
+      keepalives_idle: 0
+      search_path: "{{ env_var('DBT_REDSHIFT_SEARCH_PATH') | default('public') }}"
+      
+      # Redshift 固有設定
+      sslmode: require
+      ra3_node: true
+      distkey: user_id          # 分散キー（必要に応じて調整）
+      sortkey: [tenant_id, created_at]  # ソートキー（必要に応じて調整）
+    
+    # 開発環境（ローカル PostgreSQL ）
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_POSTGRES_HOST', 'localhost') }}"
+      user: "{{ env_var('DBT_POSTGRES_USER', 'dbt_user') }}"
+      password: "{{ env_var('DBT_POSTGRES_PASSWORD', 'dbt_password') }}"
+      port: "{{ env_var('DBT_POSTGRES_PORT', '5432') | as_number }}"
+      dbname: "{{ env_var('DBT_POSTGRES_DATABASE', 'multitenant_analytics') }}"
+      schema: "{{ env_var('DBT_POSTGRES_SCHEMA', 'analytics') }}"
+      threads: "{{ env_var('DBT_POSTGRES_THREADS', '2') | as_number }}"
+  
+  target: dev  # デフォルトターゲット
+
+# 環境変数設定例:
+# export DBT_REDSHIFT_HOST="multitenant-analytics-wg.123456789012.us-east-1.redshift-serverless.amazonaws.com"
+# export DBT_REDSHIFT_USER="awsuser"
+# export DBT_REDSHIFT_PASSWORD="your-password"
+# export DBT_REDSHIFT_PORT="5439"
+# export DBT_REDSHIFT_DATABASE="aurora_zeroetl"
+# export DBT_REDSHIFT_SCHEMA="public"
+# export DBT_REDSHIFT_THREADS="4"
+# export DBT_REDSHIFT_SEARCH_PATH="public,tenant_a,tenant_b,tenant_c"

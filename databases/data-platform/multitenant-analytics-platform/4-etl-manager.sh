@@ -14,6 +14,7 @@ CONFIG_FILE=""
 BASTION_COMMAND=""
 SKIP_COPY=false
 DRY_RUN=false
+LOCAL_MODE=false
 STEP1=false
 STEP2=false
 STEP3=false
@@ -56,15 +57,27 @@ OPTIONS:
     --bastion-command COMMAND   Execute command on Bastion Host via SSM
     --skip-copy                Skip file transfer to Bastion Host (use existing workspace)
     
+    # Local mode operations:
+    --local                     Execute commands in local Docker environment instead of Bastion Host
+    
     --dry-run                   Show what would be executed without running
     -h, --help                  Show this help message
 
 EXAMPLES:
-    # 2-step workflow:
-    $0 -p aurora-postgresql -c config.json --step1   # Create dbt Views
-    $0 -p aurora-postgresql -c config.json --step2   # Verify and show results
+    # AWS environment (Bastion Host) workflow:
+    $0 -p aurora-postgresql -c config.json --step1   # Setup dbt on Bastion
+    $0 -p aurora-postgresql -c config.json --step2   # Create dbt models
+    $0 -p aurora-postgresql -c config.json --step3   # Test dbt models
 
-    # Manual dbt command execution:
+    # Local Docker environment workflow:
+    $0 -p aurora-postgresql -c config.json --local --step1   # Verify local dbt
+    $0 -p aurora-postgresql -c config.json --local --step2   # Create models locally
+    $0 -p aurora-postgresql -c config.json --local --step3   # Test models locally
+
+    # Custom dbt command (local):
+    $0 -p aurora-postgresql -c config.json --local --bastion-command "dbt run --select all_users"
+
+    # Manual dbt command execution (remote):
     $0 -p aurora-postgresql -c config.json --bastion-command "scripts/4-dbt-execute.sh config.json 'dbt run'"
     
     # Phase 4 SQL execution (unified authentication):
@@ -119,6 +132,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --skip-copy)
             SKIP_COPY=true
+            shift
+            ;;
+        --local)
+            LOCAL_MODE=true
             shift
             ;;
         --dry-run)
@@ -756,6 +773,128 @@ execute_bastion_command() {
     fi
 }
 
+# Function to execute local docker command
+execute_local_docker_command() {
+    local command="$1"
+    
+    print_info "=== LOCAL DOCKER COMMAND EXECUTION ==="
+    print_info "Command: $command"
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would execute command in local Docker"
+        return 0
+    fi
+    
+    # Check if docker compose is available
+    if ! command -v docker >/dev/null 2>&1; then
+        print_error "Docker is not installed"
+        exit 1
+    fi
+    
+    # Check if dbt-local container is running
+    if ! docker compose ps dbt-local | grep -q "Up"; then
+        print_error "dbt-local container is not running"
+        print_info "Please start Docker environment first:"
+        print_info "  docker compose up -d"
+        exit 1
+    fi
+    
+    # Capture start time
+    local start_time=$(date +%s)
+    
+    print_info "Executing command in dbt-local container..."
+    
+    # Execute command in dbt-local container (working directory is /usr/app/dbt)
+    local exit_code=0
+    docker compose exec -T dbt-local bash -c "$command" || exit_code=$?
+    
+    # Calculate execution time
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+    
+    print_info "=== EXECUTION SUMMARY ==="
+    print_info "Exit code: $exit_code"
+    print_info "Execution time: ${duration}s"
+    
+    if [[ $exit_code -eq 0 ]]; then
+        print_success "Command executed successfully in local Docker!"
+        return 0
+    else
+        print_error "Command failed in local Docker with exit code: $exit_code"
+        return 1
+    fi
+}
+
+# Local mode step functions
+step1_setup_dbt_environment_local() {
+    print_info "=== STEP 1 (LOCAL): Setting up dbt Environment ==="
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would setup dbt environment in local Docker"
+        return 0
+    fi
+    
+    print_info "Verifying dbt environment in local Docker..."
+    
+    if execute_local_docker_command "dbt debug"; then
+        print_success "=== Step 1 (LOCAL) completed successfully ==="
+        print_info "Next step: Run --local --step2 to create dbt models"
+        print_info "dbt is available in local Docker container"
+    else
+        print_error "Step 1 (LOCAL) failed - dbt environment verification unsuccessful"
+        return 1
+    fi
+}
+
+step2_create_dbt_models_local() {
+    print_info "=== STEP 2 (LOCAL): Creating dbt Analytics Models ==="
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would run dbt models in local Docker"
+        return 0
+    fi
+    
+    print_info "Running dbt models in local Docker..."
+    
+    if execute_local_docker_command "dbt run"; then
+        print_success "=== Step 2 (LOCAL) completed successfully ==="
+        print_info "Next step: Run --local --step3 to test the dbt models"
+    else
+        print_error "Step 2 (LOCAL) failed - dbt run unsuccessful"
+        return 1
+    fi
+}
+
+step3_test_dbt_models_local() {
+    print_info "=== STEP 3 (LOCAL): Testing dbt Models ==="
+    
+    if [[ "$DRY_RUN" == true ]]; then
+        print_info "DRY RUN: Would test dbt models in local Docker"
+        return 0
+    fi
+    
+    print_info "Testing dbt models in local Docker..."
+    
+    if execute_local_docker_command "dbt test"; then
+        print_success "=== Step 3 (LOCAL) completed successfully ==="
+        print_success "🎉 Local dbt Analytics Setup Complete!"
+        echo ""
+        print_info "Your local dbt analytics models are now ready:"
+        print_info "  ✅ dbt models executed successfully"
+        print_info "  ✅ Multi-tenant data integration working"
+        print_info "  ✅ Local PostgreSQL database"
+        echo ""
+        print_info "You can now:"
+        print_info "  • Query dbt-generated models locally"
+        print_info "  • Test changes before deploying to AWS"
+        print_info "  • Run dbt docs generate for documentation"
+        print_info "  • Extend with additional dbt models and tests"
+    else
+        print_error "Step 3 (LOCAL) failed - dbt test unsuccessful"
+        return 1
+    fi
+}
+
 # Function to execute dbt-specific command on Bastion Host via SSM (Phase4 dbt specific)
 execute_bastion_dbt_command() {
     local command="$1"
@@ -890,14 +1029,28 @@ step3_test_dbt_models() {
 main() {
     print_info "Starting dbt Analytics Phase 4 operations..."
     
-    # Check prerequisites
-    check_prerequisites
+    # Display mode
+    if [[ "$LOCAL_MODE" == true ]]; then
+        print_info "Mode: LOCAL (Docker)"
+    else
+        print_info "Mode: REMOTE (Bastion Host via SSM)"
+    fi
+    
+    # Check prerequisites (skip for local mode)
+    if [[ "$LOCAL_MODE" != true ]]; then
+        check_prerequisites
+    fi
     
     # Handle bastion command if specified
     if [[ -n "$BASTION_COMMAND" ]]; then
-        # Get Bastion Host instance ID from CloudFormation
-        local bastion_instance_id=$(get_bastion_instance_id)
-        execute_bastion_command "$BASTION_COMMAND" "$bastion_instance_id"
+        if [[ "$LOCAL_MODE" == true ]]; then
+            # Local mode: execute in Docker
+            execute_local_docker_command "$BASTION_COMMAND"
+        else
+            # Remote mode: execute on Bastion Host
+            local bastion_instance_id=$(get_bastion_instance_id)
+            execute_bastion_command "$BASTION_COMMAND" "$bastion_instance_id"
+        fi
         exit $?
     fi
     
@@ -927,17 +1080,33 @@ main() {
         exit 1
     fi
     
-    # Execute step-based operations
-    if [[ "$STEP1" == true ]]; then
-        step1_setup_dbt_environment
-    fi
-    
-    if [[ "$STEP2" == true ]]; then
-        step2_create_dbt_models
-    fi
-    
-    if [[ "$STEP3" == true ]]; then
-        step3_test_dbt_models
+    # Execute step-based operations based on mode
+    if [[ "$LOCAL_MODE" == true ]]; then
+        # Local mode: execute in Docker
+        if [[ "$STEP1" == true ]]; then
+            step1_setup_dbt_environment_local
+        fi
+        
+        if [[ "$STEP2" == true ]]; then
+            step2_create_dbt_models_local
+        fi
+        
+        if [[ "$STEP3" == true ]]; then
+            step3_test_dbt_models_local
+        fi
+    else
+        # Remote mode: execute on Bastion Host
+        if [[ "$STEP1" == true ]]; then
+            step1_setup_dbt_environment
+        fi
+        
+        if [[ "$STEP2" == true ]]; then
+            step2_create_dbt_models
+        fi
+        
+        if [[ "$STEP3" == true ]]; then
+            step3_test_dbt_models
+        fi
     fi
     
     print_success "=== Phase 4 dbt Analytics operations completed successfully ==="
