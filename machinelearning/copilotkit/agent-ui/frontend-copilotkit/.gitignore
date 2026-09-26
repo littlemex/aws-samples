@@ -1,0 +1,40 @@
+# 環境設定ファイル（機密情報を含む）
+.env
+.env.local
+.env.development
+.env.production
+.env*.local
+
+# Next.js
+/.next/
+/out/
+/build/
+.next
+
+# 依存関係
+/node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+/coverage
+
+# Misc
+*.log
+.vercel
